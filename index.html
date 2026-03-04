@@ -5647,7 +5647,7 @@ function idbPut(storeName, record) {
 function idbDelete(storeName, key) {
   const _db = window._db || null;
   return new Promise((resolve, reject) => {
-    if(_dbError) return resolve();
+    if(_dbError || !_db) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
     const req = tx.objectStore(storeName).delete(key);
     req.onsuccess = () => resolve();
@@ -5658,7 +5658,7 @@ function idbDelete(storeName, key) {
 function idbClear(storeName) {
   const _db = window._db || null;
   return new Promise((resolve, reject) => {
-    if(_dbError) return resolve();
+    if(_dbError || !_db) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
     const req = tx.objectStore(storeName).clear();
     req.onsuccess = () => resolve();
@@ -5669,7 +5669,7 @@ function idbClear(storeName) {
 function idbPutBulk(storeName, records) {
   const _db = window._db || null;
   return new Promise((resolve, reject) => {
-    if(_dbError||!records.length) return resolve();
+    if(_dbError || !_db || !records.length) return resolve();
     const tx    = _db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
     records.forEach(r => store.put(r));
