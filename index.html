@@ -11174,7 +11174,11 @@ function generateSalt() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  // Proper UUID v4 for Supabase compatibility
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
 }
 
 // ── Supabase DB helpers ───────────────────────────────────
@@ -11360,16 +11364,31 @@ async function doFamilyRegister() {
 
   try {
     // 1. Create Supabase auth user
-    const authData = await sbSignUp(email, password);
-    if (!authData.access_token) {
-      // Email confirmation may be required
-      errEl.textContent = 'Account created! Please check your email to confirm, then log in.';
-      errEl.style.color = '#06d6a0';
+    const signupData = await sbSignUp(email, password);
+    if (!signupData.user?.id && !signupData.access_token) {
+      errEl.textContent = signupData.msg || 'Signup failed. Try again.';
       errEl.classList.add('show');
       btn.disabled=false; btn.textContent='Create Family';
       return;
     }
-    const userId = authData.user?.id;
+
+    // 2. Sign in immediately to get a valid access token
+    let authData;
+    try {
+      authData = await sbSignIn(email, password);
+    } catch(signInErr) {
+      // If signup returned a token directly, use it
+      authData = signupData;
+    }
+    if (!authData.access_token) {
+      errEl.textContent = 'Account created! Please log in with your email and password.';
+      errEl.style.color = '#06d6a0';
+      errEl.classList.add('show');
+      btn.disabled=false; btn.textContent='Create Family';
+      switchAuthTab('login');
+      return;
+    }
+    const userId = authData.user?.id || signupData.user?.id;
     const accessToken = authData.access_token;
 
     // Store token temporarily for DB calls
