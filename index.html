@@ -922,6 +922,9 @@
         </div>
         <div id="auth-login-error" class="auth-error">Incorrect email or password.</div>
         <button class="auth-btn" onclick="doFamilyLogin()" id="auth-login-btn">🔓 Login</button>
+        <div style="text-align:center;margin-top:6px">
+          <span onclick="showForgotPassword()" style="font-size:12px;color:var(--accent);cursor:pointer;opacity:0.8">Forgot password?</span>
+        </div>
         <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
       </div>
 
@@ -11721,6 +11724,54 @@ function showAuthScreen() {
 // ── Listen for online/offline ─────────────────────────────
 window.addEventListener('online',  () => { setSyncStatus('syncing'); syncToCloud(); });
 window.addEventListener('offline', () => setSyncStatus('offline'));
+
+// ── Forgot Password ───────────────────────────────────────
+function showForgotPassword() {
+  document.getElementById('auth-screen-main').style.display = 'none';
+  document.getElementById('auth-screen-forgot').style.display = 'block';
+  const emailField = document.getElementById('auth-login-email');
+  if (emailField?.value) document.getElementById('forgot-email').value = emailField.value;
+}
+
+function showForgotBack() {
+  document.getElementById('auth-screen-forgot').style.display = 'none';
+  document.getElementById('auth-screen-main').style.display = 'block';
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const msg = document.getElementById('forgot-msg');
+  const btn = document.getElementById('forgot-btn');
+  if (!email || !email.includes('@')) {
+    msg.textContent = 'Please enter a valid email address.';
+    msg.style.background = 'rgba(255,107,107,0.15)';
+    msg.style.color = '#ff6b6b';
+    msg.style.display = 'block';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  msg.style.display = 'none';
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ email })
+    });
+    // Supabase returns 200 even if email doesn't exist (security)
+    msg.textContent = '✅ Reset link sent! Check your inbox (and spam folder).';
+    msg.style.background = 'rgba(6,214,160,0.12)';
+    msg.style.color = '#06d6a0';
+    msg.style.display = 'block';
+    btn.textContent = '📧 Send Reset Link';
+    btn.disabled = false;
+  } catch(e) {
+    msg.textContent = 'Failed to send. Please try again.';
+    msg.style.background = 'rgba(255,107,107,0.15)';
+    msg.style.color = '#ff6b6b';
+    msg.style.display = 'block';
+    btn.disabled = false; btn.textContent = '📧 Send Reset Link';
+  }
+}
 
 // ── Boot on page load ─────────────────────────────────────
 (function authBoot() {
