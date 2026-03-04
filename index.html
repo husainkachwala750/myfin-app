@@ -1448,7 +1448,7 @@
           </div>
           <div class="form-group"><label>Currency</label>
           <div id="exp-currency-wrap"></div>
-          <script>document.getElementById('exp-currency-wrap').innerHTML=buildCurrencySelect('exp-currency');</script>
+          
           </div>
           <div class="form-row">
             <div class="form-group"><label>Payment Mode</label>
@@ -1660,7 +1660,7 @@
         <div class="form-row">
           <div class="form-group"><label>Description</label><input type="text" id="txn-desc" placeholder="Transaction description"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="txn-amount" placeholder="0.00" step="0.01"></div>
-        <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div><script>document.getElementById('txn-currency-wrap').innerHTML=buildCurrencySelect('txn-currency');</script></div>
+        <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Select Bank</option></select></div>
@@ -1717,7 +1717,7 @@
           </div>
           <div class="form-row-3">
             <div class="form-group"><label>Invested Amount (₹)</label><input type="number" id="inv-amount" placeholder="0.00"></div>
-            <div class="form-group"><label>Currency</label><div id="inv-currency-wrap"></div><script>document.getElementById('inv-currency-wrap').innerHTML=buildCurrencySelect('inv-currency');</script></div>
+            <div class="form-group"><label>Currency</label><div id="inv-currency-wrap"></div></div>
             <div class="form-group"><label>Current Value (₹)</label><input type="number" id="inv-current" placeholder="0.00"></div>
             <div class="form-group"><label>Purchase Date</label><input type="date" id="inv-date"></div>
           </div>
@@ -3838,9 +3838,9 @@ function getCurrency(code) {
   return WORLD_CURRENCIES.find(c => c.code === code) || {code, symbol:code, name:code, country:''};
 }
 
-// Get base currency from settings
+// Get base currency from localStorage (not IndexedDB)
 function getBaseCurrency() {
-  return state.settings?.baseCurrency || 'USD';
+  try { return JSON.parse(localStorage.getItem('myfin_settings') || '{}').baseCurrency || 'USD'; } catch { return 'USD'; }
 }
 
 // Format amount with currency symbol
@@ -3970,8 +3970,7 @@ function totalIncomeInBase() {
 let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
-  businesses:[], invStatements:[], insurances:[], insClaims:[],
-  settings: { baseCurrency: 'USD' }
+  businesses:[], invStatements:[], insurances:[], insClaims:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -4254,6 +4253,23 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 });
 
 // =================== NAVIGATION ===================
+function initCurrencySelectsForPage(id) {
+  // Init currency dropdowns lazily when pages are shown
+  const pairs = [
+    ['exp-currency-wrap',  'exp-currency'],
+    ['txn-currency-wrap',  'txn-currency'],
+    ['inv-currency-wrap',  'inv-currency'],
+    ['inc-currency-wrap',  'inc-currency'],
+    ['base-currency-select-wrap', 'base-currency-select'],
+  ];
+  pairs.forEach(([wrapId, selId]) => {
+    const wrap = document.getElementById(wrapId);
+    if (wrap && !wrap.querySelector('select')) {
+      wrap.innerHTML = buildCurrencySelect(selId, getBaseCurrency());
+    }
+  });
+}
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -4276,6 +4292,7 @@ function showPage(id) {
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
   if(id==='features') { renderFeaturesGrid(); initCurrencySettings(); }
+  initCurrencySelectsForPage(id);
   // Always scroll to top when switching pages
   const mainEl = document.querySelector('.main');
   if(mainEl) mainEl.scrollTop = 0;
@@ -5336,7 +5353,7 @@ function expenseRow(e) {
     <td>${e.description}</td>
     <td><span class="category-pill" style="background:rgba(56,189,248,0.1);color:var(--accent2)">${e.category}</span></td>
     <td><span class="badge badge-blue">${e.mode}</span></td>
-    <td class="amount-debit">−${${(() => {
+    <td class="amount-debit">−${(() => {
       const base = getBaseCurrency();
       const sym = getCurrency(base).symbol;
       if (!e.currency || e.currency === base) return fmt(e.amount, base);
@@ -8185,9 +8202,11 @@ function saveBaseCurrency() {
   const sel = document.getElementById('base-currency-select');
   if (!sel) return;
   const code = sel.value;
-  if (!state.settings) state.settings = {};
-  state.settings.baseCurrency = code;
-  saveData();
+  try {
+    const s = JSON.parse(localStorage.getItem('myfin_settings') || '{}');
+    s.baseCurrency = code;
+    localStorage.setItem('myfin_settings', JSON.stringify(s));
+  } catch {}
   const msg = document.getElementById('currency-save-msg');
   const c = getCurrency(code);
   msg.textContent = `✅ Base currency set to ${c.name} (${c.symbol})`;
@@ -8402,7 +8421,7 @@ function applyPreset(preset) {
   const activePage = document.querySelector('.page.active');
   if(activePage) {
     const pageId = activePage.id.replace('page-', '');
-    if(pageId !== 'features' && !isFeatureEnabled(pageId)) showPage('dashboard');
+    if(pageId !== 'features' && !isFeatureEnabled(pageId)) showPage('dashboard'); initCurrencySelectsForPage('dashboard');
   }
 }
 
