@@ -39,7 +39,7 @@
   }
 
   /* Layout */
-  .app { display: flex; min-height: 100vh; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
   .sidebar {
     width: 240px;
     background: linear-gradient(180deg, #031525 0%, #051e2f 40%, #042035 100%);
@@ -48,7 +48,7 @@
     position: fixed; height: 100vh; z-index: 100;
     box-shadow: 4px 0 24px rgba(0,180,216,0.1);
   }
-  .main { margin-left: 240px; flex: 1; padding: 32px; min-height: 100vh; position: relative; }
+  .main { margin-left: 240px; flex: 1; padding: 32px; min-height: 100vh; position: relative; overflow-x: hidden; overflow-y: auto; height: 100vh; }
   .main::before { content: ''; position: fixed; bottom: 0; left: 240px; right: 0; height: 180px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 180'%3E%3Cpath fill='rgba(0,150,199,0.04)' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,180L0,180Z'/%3E%3C/svg%3E") no-repeat bottom; background-size: cover; pointer-events: none; z-index: 0; opacity: 0.6; }
   .main::after { content: ''; position: fixed; bottom: 0; left: 240px; right: 0; height: 120px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='rgba(6,214,160,0.03)' d='M0,64L60,74.7C120,85,240,107,360,101.3C480,96,600,64,720,53.3C840,43,960,53,1080,64C1200,75,1320,85,1380,90.7L1440,96L1440,120L0,120Z'/%3E%3C/svg%3E") no-repeat bottom; background-size: cover; pointer-events: none; z-index: 0; }
 
@@ -75,7 +75,7 @@
 
   /* Pages */
   .page { display: none; animation: fadeIn 0.3s ease; }
-  .page.active { display: block; }
+  .page.active { display: block; min-height: 0; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
   /* Headers */
@@ -528,7 +528,7 @@
   /* Tablet landscape: 900px – 1200px */
   @media (min-width: 901px) and (max-width: 1200px) {
     .sidebar { width: 200px; }
-    .main { margin-left: 200px; padding: 24px; }
+    .main { margin-left: 200px; padding: 24px; height: 100vh; overflow-y: auto; }
     .main::before, .main::after { left: 200px; }
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
     .advisor-scenario-grid { grid-template-columns: repeat(4, 1fr); }
@@ -912,17 +912,15 @@
 
       <!-- Login form -->
       <div id="auth-login-form" class="auth-form">
-        <div id="auth-family-select-group">
-          <label class="auth-label">Select Family</label>
-          <select class="auth-input" id="auth-family-select" onchange="onFamilySelectChange()">
-            <option value="">— Choose your family —</option>
-          </select>
+        <div>
+          <label class="auth-label">Email</label>
+          <input type="email" class="auth-input" id="auth-login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doFamilyLogin()">
         </div>
         <div>
           <label class="auth-label">Password</label>
-          <input type="password" class="auth-input" id="auth-login-password" placeholder="Enter family password" onkeydown="if(event.key==='Enter')doFamilyLogin()">
+          <input type="password" class="auth-input" id="auth-login-password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doFamilyLogin()">
         </div>
-        <div id="auth-login-error" class="auth-error">Incorrect password. Please try again.</div>
+        <div id="auth-login-error" class="auth-error">Incorrect email or password.</div>
         <button class="auth-btn" onclick="doFamilyLogin()" id="auth-login-btn">🔓 Login</button>
         <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
       </div>
@@ -934,11 +932,15 @@
           <input type="text" class="auth-input" id="auth-reg-family" placeholder="e.g. The Sharma Family">
         </div>
         <div>
-          <label class="auth-label">Admin Name (You)</label>
+          <label class="auth-label">Your Name (Admin)</label>
           <input type="text" class="auth-input" id="auth-reg-name" placeholder="Your full name">
         </div>
         <div>
-          <label class="auth-label">Password</label>
+          <label class="auth-label">Email</label>
+          <input type="email" class="auth-input" id="auth-reg-email" placeholder="your@email.com">
+        </div>
+        <div>
+          <label class="auth-label">Password (min 6 chars)</label>
           <input type="password" class="auth-input" id="auth-reg-password" placeholder="Create a strong password">
         </div>
         <div>
@@ -1077,6 +1079,13 @@
     <span style="margin-left:auto;font-size:10px;opacity:.7">⇄</span>
   </div>
   <div class="sidebar-footer">
+      <div id="sync-status-badge" style="font-size:11px;padding:5px 10px;margin-bottom:6px;text-align:center">
+        <span style="color:#94a3b8">☁️ Checking sync…</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button onclick="exportDataJSON()" title="Export backup" style="flex:1;padding:6px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:6px;font-size:11px;color:var(--accent);cursor:pointer;font-family:DM Sans,sans-serif">⬇ Export</button>
+        <label title="Import backup" style="flex:1;padding:6px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:6px;font-size:11px;color:#06d6a0;cursor:pointer;font-family:DM Sans,sans-serif;text-align:center">⬆ Import<input type="file" accept=".json" style="display:none" onchange="importDataJSON(this.files[0])"></label>
+      </div>
       <button onclick="logoutUser()" style="display:flex;align-items:center;gap:6px;width:100%;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:6px;font-size:11px;color:#ff6b6b;cursor:pointer;margin-bottom:8px;font-family:DM Sans,sans-serif;font-weight:600">🚪 Switch User / Logout</button>
       <div class="privacy-badge">🔒 100% Local Storage — No Cloud</div>
     </div>
@@ -1154,8 +1163,10 @@
 
         <div class="card">
           <div class="section-header"><h3>Recent Transactions</h3><button class="btn btn-secondary btn-sm" onclick="showPage('transactions')">View All</button></div>
+          <div id="recent-txn-wrapper">
           <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
           <tbody id="recent-txn-table"></tbody></table>
+          </div>
         </div>
       </div>
 
@@ -3704,6 +3715,10 @@ function showPage(id) {
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
   if(id==='features') { renderFeaturesGrid(); }
+  // Always scroll to top when switching pages
+  const mainEl = document.querySelector('.main');
+  if(mainEl) mainEl.scrollTop = 0;
+  window.scrollTo(0, 0);
 }
 
 // =================== MEMBERS ===================
@@ -5879,9 +5894,16 @@ function renderFamilyDashboard() {
   }
 
   // Recent transactions
-  const recentTxns = [...state.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const recentTxns = [...(state.transactions||[])].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
   const rtbody = document.getElementById('recent-txn-table');
-  if(!recentTxns.length) { rtbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">No transactions yet</td></tr>'; return; }
+  const rtWrapper = document.getElementById('recent-txn-wrapper');
+  if(!rtbody) return;
+  if(!recentTxns.length) { 
+    if(rtWrapper) rtWrapper.style.display = 'none';
+    rtbody.innerHTML = '';
+    return; 
+  }
+  if(rtWrapper) rtWrapper.style.display = '';
   rtbody.innerHTML = recentTxns.map(t => {
     const m = getMember(t.memberId);
     return `<tr>
@@ -11080,41 +11102,234 @@ showPage = function(id) {
 
 
 
-// =================== AUTHENTICATION SYSTEM ===================
-const AUTH_KEY = 'myfin_families';
-const SESSION_KEY = 'myfin_session';
+// =================== SUPABASE CONFIG ===================
+const SUPABASE_URL = 'https://lnivxetuqhyrgefkzmau.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_JxbauPXb7aU1K8hHD1HJPw_ezI9v_aO';
 const FAMILY_DB_PREFIX = 'FamilyVaultDB_';
+const SESSION_KEY = 'myfin_session';
+const SYNC_STATUS_KEY = 'myfin_sync_status';
 
-async function hashPassword(password, salt) {
-  const enc = new TextEncoder();
-  const data = enc.encode(password + salt);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+// ── Supabase REST helpers ─────────────────────────────────
+async function sbFetch(path, options={}) {
+  const session = getSession();
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${session?.access_token || SUPABASE_KEY}`,
+    ...( options.headers || {} )
+  };
+  const res = await fetch(SUPABASE_URL + path, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase ${res.status}: ${err}`);
+  }
+  const ct = res.headers.get('content-type')||'';
+  return ct.includes('json') ? res.json() : null;
 }
 
+// Auth via Supabase GoTrue
+async function sbSignUp(email, password) {
+  const res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || 'Signup failed');
+  return data;
+}
+
+async function sbSignIn(email, password) {
+  const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || 'Login failed');
+  return data;
+}
+
+async function sbSignOut(accessToken) {
+  await fetch(SUPABASE_URL + '/auth/v1/logout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}` }
+  }).catch(()=>{});
+}
+
+// ── Session ───────────────────────────────────────────────
+function getSession() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); } catch { return null; }
+}
+function setSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+// ── Crypto helpers ────────────────────────────────────────
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(password + salt));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 function generateSalt() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 }
 
-function getFamilies() {
-  try { return JSON.parse(localStorage.getItem(AUTH_KEY)||'[]'); } catch { return []; }
+// ── Supabase DB helpers ───────────────────────────────────
+async function sbGetFamily(userId) {
+  const data = await sbFetch(`/rest/v1/families?admin_user_id=eq.${userId}&select=*`);
+  return data && data.length > 0 ? data[0] : null;
 }
-function saveFamilies(fams) { localStorage.setItem(AUTH_KEY, JSON.stringify(fams)); }
-function getFamilyById(id) { return getFamilies().find(f=>f.id===id)||null; }
 
-function getSession() {
-  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null'); } catch { return null; }
+async function sbCreateFamily(userId, familyName) {
+  const data = await sbFetch('/rest/v1/families', {
+    method: 'POST',
+    headers: { 'Prefer': 'return=representation' },
+    body: JSON.stringify({ family_name: familyName, admin_user_id: userId })
+  });
+  return data && data[0] ? data[0] : null;
 }
-function setSession(s) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
-function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
+async function sbGetFamilyMembers(familyId) {
+  return await sbFetch(`/rest/v1/family_members?family_id=eq.${familyId}&select=*`);
+}
+
+async function sbUpsertFamilyMember(member) {
+  return await sbFetch('/rest/v1/family_members', {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(member)
+  });
+}
+
+async function sbGetFamilyData(familyId) {
+  const data = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function sbUpsertFamilyData(familyId, stateData, version) {
+  return await sbFetch('/rest/v1/family_data', {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ family_id: familyId, data: stateData, synced_at: new Date().toISOString(), version })
+  });
+}
+
+// ── Sync engine ───────────────────────────────────────────
+let _syncPending = false;
+let _syncTimer = null;
+let _syncVersion = 1;
+
+function scheduleSyncToCloud() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncToCloud, 3000); // debounce 3s
+}
+
+async function syncToCloud() {
+  if (!window._currentFamilyId || !navigator.onLine) return;
+  const session = getSession();
+  if (!session?.access_token) return;
+  try {
+    setSyncStatus('syncing');
+    const stateSnapshot = {};
+    Object.keys(state).forEach(k => { stateSnapshot[k] = state[k]; });
+    _syncVersion++;
+    await sbUpsertFamilyData(window._currentFamilyId, stateSnapshot, _syncVersion);
+    localStorage.setItem('myfin_last_sync', new Date().toISOString());
+    setSyncStatus('synced');
+  } catch(e) {
+    console.warn('Sync failed:', e.message);
+    setSyncStatus('error');
+  }
+}
+
+async function syncFromCloud(familyId) {
+  if (!navigator.onLine) return false;
+  const session = getSession();
+  if (!session?.access_token) return false;
+  try {
+    setSyncStatus('syncing');
+    const cloudData = await sbGetFamilyData(familyId);
+    if (!cloudData || !cloudData.data) { setSyncStatus('synced'); return false; }
+    // Only pull if cloud is newer
+    const localVersion = parseInt(localStorage.getItem('myfin_sync_version_'+familyId)||'0');
+    if (cloudData.version <= localVersion) { setSyncStatus('synced'); return false; }
+    // Merge cloud data into state
+    Object.keys(cloudData.data).forEach(k => {
+      if (k in state) state[k] = cloudData.data[k];
+    });
+    await saveData(); // persist to local IDB
+    localStorage.setItem('myfin_sync_version_'+familyId, cloudData.version);
+    _syncVersion = cloudData.version;
+    setSyncStatus('synced');
+    return true;
+  } catch(e) {
+    console.warn('Pull sync failed:', e.message);
+    setSyncStatus('offline');
+    return false;
+  }
+}
+
+function setSyncStatus(status) {
+  const el = document.getElementById('sync-status-badge');
+  if (!el) return;
+  const map = {
+    syncing: ['🔄', '#60a5fa', 'Syncing…'],
+    synced:  ['☁️', '#06d6a0', 'Synced'],
+    error:   ['⚠️', '#f87171', 'Sync error'],
+    offline: ['📴', '#94a3b8', 'Offline'],
+  };
+  const [icon, color, label] = map[status] || ['', '#94a3b8', ''];
+  el.innerHTML = `<span style="color:${color}">${icon} ${label}</span>`;
+}
+
+// Override saveData to also schedule cloud sync
+const _origSaveData = saveData;
+saveData = async function() {
+  const fid = window._currentFamilyId;
+  if (!fid) return;
+  if (_dbReady && !_dbError) {
+    const writes = Object.keys(STORES).filter(s=>s!=='meta'&&s in state).map(n=>idbPutBulk(n,state[n]));
+    await Promise.all(writes);
+    try { localStorage.setItem('fv_members_cache_'+fid, JSON.stringify(state.members)); } catch(e) {}
+  } else {
+    try { localStorage.setItem('fv_data_'+fid, JSON.stringify(state)); } catch(e) {}
+  }
+  scheduleSyncToCloud();
+};
+
+// Export / Import JSON
+function exportDataJSON() {
+  const snapshot = {};
+  Object.keys(state).forEach(k => { snapshot[k] = state[k]; });
+  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `myfin-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('Data exported as JSON!');
+}
+
+async function importDataJSON(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    Object.keys(data).forEach(k => { if(k in state) state[k] = data[k]; });
+    await saveData();
+    renderDashboard();
+    toast('Data imported successfully!');
+  } catch(e) {
+    toast('Import failed: ' + e.message, 'error');
+  }
+}
+
+// ── Auth UI state ─────────────────────────────────────────
 let _pinBuffer = '';
 let _pinTargetMember = null;
 let _pendingFamilyId = null;
+let _pendingFamilySupabaseId = null; // Supabase UUID for the family
 
 function switchAuthTab(tab) {
   document.getElementById('auth-login-form').style.display = tab==='login'?'flex':'none';
@@ -11124,63 +11339,153 @@ function switchAuthTab(tab) {
   document.getElementById('auth-reg-error').classList.remove('show');
 }
 
-function populateFamilySelect() {
-  const sel = document.getElementById('auth-family-select');
-  const fams = getFamilies();
-  sel.innerHTML = '<option value="">— Choose your family —</option>' + fams.map(f=>`<option value="${f.id}">${f.familyName}</option>`).join('');
-  if(fams.length===1) sel.value = fams[0].id;
-}
-
-function onFamilySelectChange() {
-  document.getElementById('auth-login-error').classList.remove('show');
-  document.getElementById('auth-login-password').value='';
-}
-
+// ── Register new family ───────────────────────────────────
 async function doFamilyRegister() {
   const familyName = document.getElementById('auth-reg-family').value.trim();
-  const adminName = document.getElementById('auth-reg-name').value.trim();
-  const password = document.getElementById('auth-reg-password').value;
-  const confirm = document.getElementById('auth-reg-confirm').value;
+  const adminName  = document.getElementById('auth-reg-name').value.trim();
+  const email      = document.getElementById('auth-reg-email').value.trim();
+  const password   = document.getElementById('auth-reg-password').value;
+  const confirm    = document.getElementById('auth-reg-confirm').value;
   const errEl = document.getElementById('auth-reg-error');
+  const btn   = document.querySelector('#auth-register-form .auth-btn');
+
   if(!familyName){errEl.textContent='Enter a family name.';errEl.classList.add('show');return;}
-  if(!adminName){errEl.textContent='Enter your name.';errEl.classList.add('show');return;}
-  if(password.length<4){errEl.textContent='Password must be at least 4 characters.';errEl.classList.add('show');return;}
+  if(!adminName) {errEl.textContent='Enter your name.';errEl.classList.add('show');return;}
+  if(!email||!email.includes('@')){errEl.textContent='Enter a valid email.';errEl.classList.add('show');return;}
+  if(password.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return;}
   if(password!==confirm){errEl.textContent='Passwords do not match.';errEl.classList.add('show');return;}
-  const salt=generateSalt(), hash=await hashPassword(password,salt);
-  const familyId=generateId(), adminId=generateId();
-  const family={id:familyId,familyName,adminId,adminName,passwordHash:hash,salt,createdAt:new Date().toISOString(),
-    members:[{id:adminId,name:adminName,role:'Admin',isAdmin:true,pin:null,color:'#00e5ff'}]};
-  const fams=getFamilies(); fams.push(family); saveFamilies(fams);
-  startSession(familyId,adminId,adminName,true);
-}
 
-async function doFamilyLogin() {
-  const familyId=document.getElementById('auth-family-select').value;
-  const password=document.getElementById('auth-login-password').value;
-  const errEl=document.getElementById('auth-login-error');
-  if(!familyId){errEl.textContent='Please select a family.';errEl.classList.add('show');return;}
-  if(!password){errEl.textContent='Please enter your password.';errEl.classList.add('show');return;}
-  const family=getFamilyById(familyId);
-  if(!family){errEl.textContent='Family not found.';errEl.classList.add('show');return;}
-  const hash=await hashPassword(password,family.salt);
-  if(hash!==family.passwordHash){errEl.classList.add('show');return;}
+  btn.disabled=true; btn.textContent='Creating…';
   errEl.classList.remove('show');
-  _pendingFamilyId=familyId;
-  const nonAdmins=(family.members||[]).filter(m=>!m.isAdmin);
-  if(nonAdmins.length>0) showMemberSelect(); else loginAsFamilyAdmin();
+
+  try {
+    // 1. Create Supabase auth user
+    const authData = await sbSignUp(email, password);
+    if (!authData.access_token) {
+      // Email confirmation may be required
+      errEl.textContent = 'Account created! Please check your email to confirm, then log in.';
+      errEl.style.color = '#06d6a0';
+      errEl.classList.add('show');
+      btn.disabled=false; btn.textContent='Create Family';
+      return;
+    }
+    const userId = authData.user?.id;
+    const accessToken = authData.access_token;
+
+    // Store token temporarily for DB calls
+    setSession({ access_token: accessToken, user_id: userId });
+
+    // 2. Create family record in Supabase
+    const family = await sbCreateFamily(userId, familyName);
+    const familyId = family.id;
+
+    // 3. Create admin member record
+    const adminMemberId = generateId();
+    await sbUpsertFamilyMember({
+      id: adminMemberId, family_id: familyId,
+      user_id: userId, name: adminName,
+      role: 'Admin', is_admin: true, color: '#00e5ff'
+    });
+
+    // 4. Save full session
+    const fullSession = {
+      access_token: accessToken,
+      user_id: userId,
+      family_id: familyId,
+      family_name: familyName,
+      member_id: adminMemberId,
+      member_name: adminName,
+      is_admin: true,
+      email,
+      login_time: Date.now()
+    };
+    setSession(fullSession);
+
+    // 5. Cache family locally
+    cacheSessionLocally(fullSession);
+    startSession(fullSession);
+
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+    btn.disabled=false; btn.textContent='Create Family';
+  }
 }
 
-function showMemberSelect() {
-  if(!_pendingFamilyId) return;
-  const family=getFamilyById(_pendingFamilyId); if(!family) return;
+// ── Login ─────────────────────────────────────────────────
+async function doFamilyLogin() {
+  const email    = document.getElementById('auth-login-email').value.trim();
+  const password = document.getElementById('auth-login-password').value;
+  const errEl = document.getElementById('auth-login-error');
+  const btn   = document.getElementById('auth-login-btn');
+
+  if(!email){errEl.textContent='Enter your email.';errEl.classList.add('show');return;}
+  if(!password){errEl.textContent='Enter your password.';errEl.classList.add('show');return;}
+
+  btn.disabled=true; btn.textContent='Signing in…';
+  errEl.classList.remove('show');
+
+  try {
+    // 1. Sign in via Supabase
+    const authData = await sbSignIn(email, password);
+    const userId = authData.user?.id;
+    const accessToken = authData.access_token;
+
+    // 2. Get family record
+    setSession({ access_token: accessToken, user_id: userId });
+    const family = await sbGetFamily(userId);
+    if (!family) throw new Error('No family found for this account. Please register first.');
+
+    // 3. Get members
+    const members = await sbGetFamilyMembers(family.id);
+    const adminMember = members.find(m=>m.is_admin) || members[0];
+
+    const fullSession = {
+      access_token: accessToken,
+      user_id: userId,
+      family_id: family.id,
+      family_name: family.family_name,
+      member_id: adminMember?.id || generateId(),
+      member_name: adminMember?.name || 'Admin',
+      is_admin: true,
+      email,
+      login_time: Date.now(),
+      all_members: members
+    };
+    setSession(fullSession);
+    cacheSessionLocally(fullSession);
+
+    // Check if family has non-admin members for PIN login
+    const nonAdmins = members.filter(m=>!m.is_admin);
+    if (nonAdmins.length > 0) {
+      _pendingFamilyId = family.id;
+      _pendingFamilySupabaseId = family.id;
+      _pendingSession = fullSession;
+      showMemberSelectFromSupabase(family, members);
+    } else {
+      startSession(fullSession);
+    }
+
+    btn.disabled=false; btn.textContent='Login';
+
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+    btn.disabled=false; btn.textContent='Login';
+  }
+}
+
+let _pendingSession = null;
+
+function showMemberSelectFromSupabase(family, members) {
   document.getElementById('auth-screen-main').style.display='none';
   document.getElementById('auth-screen-pin').style.display='none';
   document.getElementById('auth-screen-member').style.display='block';
-  document.getElementById('auth-family-display').textContent=family.familyName;
+  document.getElementById('auth-family-display').textContent=family.family_name;
   const grid=document.getElementById('auth-member-grid');
-  grid.innerHTML=(family.members||[]).filter(m=>!m.isAdmin).map(m=>{
+  grid.innerHTML=members.filter(m=>!m.is_admin).map(m=>{
     const init=m.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return `<div class="member-login-card" onclick="selectMemberLogin('${m.id}')">
+    return `<div class="member-login-card" onclick="selectMemberLoginSupabase('${m.id}')">
       <div class="member-login-avatar" style="background:${m.color||'#00e5ff'}22;border-color:${m.color||'#00e5ff'};color:${m.color||'#00e5ff'};width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;margin:0 auto 8px;border:2px solid">${init}</div>
       <div class="member-login-name">${m.name}</div>
       <div class="member-login-role">${m.role||'Member'}</div>
@@ -11188,11 +11493,20 @@ function showMemberSelect() {
   }).join('');
 }
 
-function selectMemberLogin(memberId) {
-  const family=getFamilyById(_pendingFamilyId);
-  const member=(family?.members||[]).find(m=>m.id===memberId); if(!member) return;
-  if(!member.pin){startSession(_pendingFamilyId,memberId,member.name,false);return;}
-  _pinTargetMember=member; _pinBuffer=''; updatePinDots();
+function selectMemberLoginSupabase(memberId) {
+  const session = getSession();
+  const members = session?.all_members || [];
+  const member = members.find(m=>m.id===memberId); if(!member) return;
+  if(!member.pin_hash) {
+    // No PIN — log in as this member
+    const ms = {..._pendingSession, member_id: memberId, member_name: member.name, is_admin: false};
+    setSession(ms);
+    startSession(ms);
+    return;
+  }
+  // Show PIN pad
+  _pinTargetMember = {...member, pin: member.pin_hash};
+  _pinBuffer=''; updatePinDots();
   const init=member.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const av=document.getElementById('pin-member-avatar');
   av.textContent=init;
@@ -11203,6 +11517,14 @@ function selectMemberLogin(memberId) {
   document.getElementById('auth-screen-pin').style.display='block';
 }
 
+function showMemberSelect() {
+  if(!_pendingSession) return;
+  const session = getSession();
+  const members = session?.all_members || [];
+  const family = { id: session?.family_id, family_name: session?.family_name };
+  showMemberSelectFromSupabase(family, members);
+}
+
 function pinPress(d){if(_pinBuffer.length>=4)return;_pinBuffer+=d;updatePinDots();if(_pinBuffer.length===4)setTimeout(checkPin,150);}
 function pinBack(){_pinBuffer=_pinBuffer.slice(0,-1);updatePinDots();}
 function pinClear(){_pinBuffer='';updatePinDots();}
@@ -11211,45 +11533,67 @@ function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('p
 async function checkPin() {
   if(!_pinTargetMember) return;
   const hash=await hashPassword(_pinBuffer,_pinTargetMember.id);
-  if(hash===_pinTargetMember.pin){document.getElementById('pin-error').classList.remove('show');startSession(_pendingFamilyId,_pinTargetMember.id,_pinTargetMember.name,false);}
-  else{document.getElementById('pin-error').classList.add('show');_pinBuffer='';updatePinDots();}
+  if(hash===_pinTargetMember.pin){
+    document.getElementById('pin-error').classList.remove('show');
+    const ms={..._pendingSession,member_id:_pinTargetMember.id,member_name:_pinTargetMember.name,is_admin:false};
+    setSession(ms); startSession(ms);
+  } else {
+    document.getElementById('pin-error').classList.add('show');
+    _pinBuffer=''; updatePinDots();
+  }
 }
 
 function loginAsFamilyAdmin() {
-  if(!_pendingFamilyId) return;
-  const f=getFamilyById(_pendingFamilyId); if(!f) return;
-  startSession(_pendingFamilyId,f.adminId,f.adminName,true);
+  if(!_pendingSession) return;
+  startSession(_pendingSession);
 }
 
-function startSession(familyId,memberId,memberName,isAdmin) {
-  setSession({familyId,memberId,memberName,isAdmin,loginTime:Date.now()});
-  window._currentFamilyId=familyId;
-  window._currentMemberId=memberId;
-  window._currentMemberName=memberName;
-  window._currentIsAdmin=isAdmin;
+// ── Cache family locally (for offline access) ─────────────
+function cacheSessionLocally(session) {
+  const cached = JSON.parse(localStorage.getItem('myfin_offline_sessions')||'[]');
+  const idx = cached.findIndex(s=>s.email===session.email);
+  const entry = { email: session.email, family_name: session.family_name, family_id: session.family_id, cached_at: Date.now() };
+  if(idx>=0) cached[idx]=entry; else cached.push(entry);
+  localStorage.setItem('myfin_offline_sessions', JSON.stringify(cached));
+}
+
+function getOfflineSessions() {
+  return JSON.parse(localStorage.getItem('myfin_offline_sessions')||'[]');
+}
+
+// ── Start session & boot app ──────────────────────────────
+function startSession(session) {
+  window._currentFamilyId  = session.family_id;
+  window._currentMemberId  = session.member_id;
+  window._currentMemberName= session.member_name;
+  window._currentIsAdmin   = session.is_admin;
+  window._currentEmail     = session.email;
   document.getElementById('auth-overlay').classList.add('hidden');
   updateSessionUI();
-  bootFamilyApp(familyId);
+  bootFamilyApp(session.family_id);
 }
 
 function updateSessionUI() {
-  const fam=getFamilyById(window._currentFamilyId);
   const si=document.getElementById('session-info'); if(si) si.style.display='block';
   const sn=document.getElementById('session-name-display'); if(sn) sn.textContent=window._currentMemberName||'—';
   const bb=document.getElementById('family-badge-btn'); if(bb) bb.style.display='flex';
-  const bn=document.getElementById('family-badge-name'); if(bn&&fam) bn.textContent=fam.familyName;
-  const ba=document.getElementById('family-badge-avatar'); if(ba&&fam) ba.textContent=fam.familyName.charAt(0).toUpperCase();
+  const session=getSession();
+  const bn=document.getElementById('family-badge-name'); if(bn) bn.textContent=session?.family_name||'Family';
+  const ba=document.getElementById('family-badge-avatar'); if(ba) ba.textContent=(session?.family_name||'F').charAt(0).toUpperCase();
 }
 
 async function bootFamilyApp(familyId) {
-  // Ensure db-splash is hidden
-  const dbSplash = document.getElementById('db-splash');
-  if (dbSplash) dbSplash.style.display = 'none';
+  const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
   await initFamilyDatabase(familyId);
+  // Try to sync from cloud (pull latest data)
+  const pulled = await syncFromCloud(familyId);
+  if(pulled) { renderDashboard(); }
   initApp();
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
+  // Show sync status
+  setTimeout(()=>setSyncStatus(navigator.onLine?'synced':'offline'), 500);
 }
 
 async function initFamilyDatabase(familyId) {
@@ -11266,54 +11610,25 @@ async function initFamilyDatabase(familyId) {
         }
       });
     };
-    req.onsuccess = e => {
-      _db = e.target.result; _dbReady = true;
-      loadAllFromDB().then(resolve);
-    };
+    req.onsuccess = e => { _db=e.target.result; _dbReady=true; loadAllFromDB().then(resolve); };
     req.onerror = () => {
-      _dbError = true;
-      const raw = localStorage.getItem('fv_data_'+familyId);
-      if(raw) try { Object.assign(state,JSON.parse(raw)); } catch(e) {}
+      _dbError=true;
+      const raw=localStorage.getItem('fv_data_'+familyId);
+      if(raw) try{Object.assign(state,JSON.parse(raw));}catch(e){}
       resolve();
     };
   });
 }
 
-// Override saveData to use family-specific storage key
-const _origSaveData = saveData;
-saveData = async function() {
-  const fid = window._currentFamilyId;
-  if(!fid) return;
-  if(_dbReady && !_dbError) {
-    const writes = Object.keys(STORES).filter(s=>s!=='meta'&&s in state).map(name=>idbPutBulk(name,state[name]));
-    await Promise.all(writes);
-    try { localStorage.setItem('fv_members_cache_'+fid, JSON.stringify(state.members)); } catch(e) {}
-  } else {
-    try { localStorage.setItem('fv_data_'+fid, JSON.stringify(state)); } catch(e) {}
-  }
-};
-
-function saveMemberToFamily(member) {
-  if(!window._currentFamilyId) return;
-  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId); if(!fam) return;
-  if(!fam.members) fam.members=[];
-  const idx=fam.members.findIndex(m=>m.id===member.id);
-  const entry={id:member.id,name:member.name,role:member.role,isAdmin:false,pin:null,color:member.color};
-  if(idx>=0) fam.members[idx]={...fam.members[idx],...entry}; else fam.members.push(entry);
-  saveFamilies(fams);
-}
-
-function removeMemberFromFamily(memberId) {
-  if(!window._currentFamilyId) return;
-  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId); if(!fam) return;
-  fam.members=(fam.members||[]).filter(m=>m.id!==memberId||m.isAdmin);
-  saveFamilies(fams);
-}
+// ── Member PIN management ─────────────────────────────────
+function saveMemberToFamily(member) { /* handled via Supabase */ }
+function removeMemberFromFamily(memberId) { /* handled via Supabase */ }
 
 function openSetPinModal(memberId) {
-  if(!window._currentIsAdmin){toast('Only the family admin can set PINs.','error');return;}
-  const fam=getFamilyById(window._currentFamilyId);
-  const mem=(fam?.members||[]).find(m=>m.id===memberId); if(!mem) return;
+  if(!window._currentIsAdmin){toast('Only admin can set PINs.','error');return;}
+  const session=getSession();
+  const members=session?.all_members||[];
+  const mem=members.find(m=>m.id===memberId); if(!mem) return;
   const modal=document.createElement('div');
   modal.className='modal-overlay open'; modal.id='pin-set-modal';
   modal.innerHTML=`<div class="modal">
@@ -11324,7 +11639,7 @@ function openSetPinModal(memberId) {
     <div id="pin-set-error" class="auth-error"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-primary" onclick="confirmSetPin('${memberId}')" style="flex:1">Save PIN</button>
-      ${mem.pin?`<button class="btn btn-danger" onclick="clearMemberPin('${memberId}')" style="flex:1">Remove PIN</button>`:''}
+      ${mem.pin_hash?`<button class="btn btn-danger" onclick="clearMemberPin('${memberId}')" style="flex:1">Remove PIN</button>`:''}
     </div></div>`;
   document.body.appendChild(modal);
 }
@@ -11336,28 +11651,35 @@ async function confirmSetPin(memberId) {
   if(np.length!==4||!/^\d{4}$/.test(np)){err.textContent='PIN must be exactly 4 digits.';err.classList.add('show');return;}
   if(np!==cp){err.textContent='PINs do not match.';err.classList.add('show');return;}
   const hash=await hashPassword(np,memberId);
-  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId);
-  const mem=(fam?.members||[]).find(m=>m.id===memberId);
-  if(mem) mem.pin=hash;
-  saveFamilies(fams);
-  document.getElementById('pin-set-modal').remove();
-  toast('PIN set for ' + (mem?.name||'member'));
+  try {
+    await sbUpsertFamilyMember({id:memberId,pin_hash:hash});
+    // Update local session cache
+    const session=getSession();
+    if(session?.all_members) {
+      const m=session.all_members.find(m=>m.id===memberId);
+      if(m) m.pin_hash=hash;
+      setSession(session);
+    }
+    document.getElementById('pin-set-modal').remove();
+    toast('PIN saved!');
+  } catch(e) { err.textContent='Failed: '+e.message; err.classList.add('show'); }
 }
 
-function clearMemberPin(memberId) {
-  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId);
-  const mem=(fam?.members||[]).find(m=>m.id===memberId); if(mem) mem.pin=null;
-  saveFamilies(fams);
+async function clearMemberPin(memberId) {
+  await sbUpsertFamilyMember({id:memberId,pin_hash:null}).catch(()=>{});
   document.getElementById('pin-set-modal').remove();
   toast('PIN removed');
 }
 
+// ── Logout ────────────────────────────────────────────────
 function showFamilySwitcher() {
   if(!confirm('Switch user or log out? Your data is saved.')) return;
   logoutUser();
 }
 
-function logoutUser() {
+async function logoutUser() {
+  const session=getSession();
+  if(session?.access_token) await sbSignOut(session.access_token);
   clearSession();
   window._currentFamilyId=null; window._currentMemberId=null;
   Object.keys(state).forEach(k=>{if(Array.isArray(state[k]))state[k]=[];});
@@ -11368,31 +11690,30 @@ function logoutUser() {
   document.getElementById('auth-screen-pin').style.display='none';
   const si=document.getElementById('session-info'); if(si) si.style.display='none';
   const bb=document.getElementById('family-badge-btn'); if(bb) bb.style.display='none';
-  _pendingFamilyId=null; populateFamilySelect(); switchAuthTab('login');
+  _pendingFamilyId=null; _pendingSession=null;
+  switchAuthTab('login');
 }
 
 function showAuthScreen() {
-  populateFamilySelect();
-  const fams=getFamilies();
-  if(fams.length===0) switchAuthTab('register'); else switchAuthTab('login');
+  switchAuthTab('login');
   document.getElementById('auth-overlay').classList.remove('hidden');
 }
 
-// Boot on page load
-(function authBoot() {
-  // Hide the original db-splash immediately - auth system takes over
-  const dbSplash = document.getElementById('db-splash');
-  if (dbSplash) { dbSplash.style.display = 'none'; }
+// ── Listen for online/offline ─────────────────────────────
+window.addEventListener('online',  () => { setSyncStatus('syncing'); syncToCloud(); });
+window.addEventListener('offline', () => setSyncStatus('offline'));
 
+// ── Boot on page load ─────────────────────────────────────
+(function authBoot() {
+  const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   const session=getSession();
-  if(session&&session.familyId) {
-    window._currentFamilyId=session.familyId;
-    window._currentMemberId=session.memberId;
-    window._currentMemberName=session.memberName;
-    window._currentIsAdmin=session.isAdmin;
-    _pendingFamilyId=session.familyId;
+  if(session&&session.family_id&&session.access_token) {
+    window._currentFamilyId  = session.family_id;
+    window._currentMemberId  = session.member_id;
+    window._currentMemberName= session.member_name;
+    window._currentIsAdmin   = session.is_admin;
     updateSessionUI();
-    bootFamilyApp(session.familyId).then(()=>{
+    bootFamilyApp(session.family_id).then(()=>{
       document.getElementById('auth-overlay').classList.add('hidden');
     });
   } else {
