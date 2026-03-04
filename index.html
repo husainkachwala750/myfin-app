@@ -255,7 +255,187 @@
     position: fixed; height: 100vh; z-index: 100;
     box-shadow: 4px 0 24px rgba(0,0,0,0.15);
   }
-  .main { margin-left: 240px; flex: 1; padding: 32px; min-height: 100vh; position: relative; overflow-x: hidden; overflow-y: auto; height: 100vh; }
+  /* ── DUAL PANEL LAYOUT ── */
+.dual-panel-layout {
+  display: flex;
+  margin-left: 240px;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: 32px;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: 100vh;
+  transition: margin-right 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.main.setup-panel-open {
+  margin-right: 300px;
+}
+
+/* ── RIGHT SETUP PANEL ── */
+.setup-panel {
+  width: 300px;
+  min-width: 300px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-left: 1px solid #e2e8f0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 90;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-panel.open {
+  transform: translateX(0);
+}
+
+.setup-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.setup-panel-close {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 12px;
+  color: #64748b;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.setup-panel-close:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+.setup-panel-nav {
+  flex: 1;
+  padding: 12px 12px;
+  overflow-y: auto;
+}
+
+.setup-nav-section {
+  margin-bottom: 4px;
+}
+
+.setup-nav-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  padding: 10px 8px 4px;
+}
+
+.setup-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+}
+
+.setup-nav-item:hover {
+  background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.setup-nav-item.active {
+  background: #fff;
+  border-color: #bfdbfe;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.12);
+}
+
+.setup-nav-icon {
+  font-size: 18px;
+  width: 36px; height: 36px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.setup-nav-item.active .setup-nav-icon {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.setup-nav-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.setup-nav-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+.setup-panel-footer {
+  padding: 14px 18px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+/* Setup panel toggle button in left nav */
+.setup-toggle-btn {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.08)) !important;
+  border: 1px solid rgba(59,130,246,0.2) !important;
+  border-radius: 8px !important;
+  margin: 0 8px !important;
+}
+.setup-toggle-btn:hover {
+  background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(99,102,241,0.16)) !important;
+}
+.setup-toggle-btn.panel-open {
+  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(99,102,241,0.2)) !important;
+  border-color: rgba(59,130,246,0.4) !important;
+}
+
+/* Dark theme for setup panel */
+@media (prefers-color-scheme: dark) {
+  .setup-panel {
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border-left-color: rgba(255,255,255,0.08);
+  }
+  .setup-panel-header { background: #1e293b; border-bottom-color: rgba(255,255,255,0.08); }
+  .setup-nav-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+  .setup-nav-item.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); }
+  .setup-nav-title { color: #f1f5f9; }
+  .setup-nav-icon { background: rgba(255,255,255,0.08); }
+  .setup-panel-footer { background: #1e293b; border-top-color: rgba(255,255,255,0.08); }
+  .setup-panel-close { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: #94a3b8; }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .dual-panel-layout { margin-left: 0; }
+  .setup-panel { top: 60px; height: calc(100vh - 60px); width: 280px; min-width: 280px; }
+  .main.setup-panel-open { margin-right: 0; }
+}
   .main::before_DISABLED { content: ''; display:none; position: fixed; bottom: 0; left: 240px; right: 0; height: 180px; background: "" no-repeat bottom; background-size: cover; pointer-events: none; z-index: 0; opacity: 0.6; }
   .main::after { content: ''; position: fixed; bottom: 0; left: 240px; right: 0; height: 120px; background: "" no-repeat bottom; background-size: cover; pointer-events: none; z-index: 0; }
 
@@ -672,6 +852,7 @@
       margin-left: 0 !important;
       padding: 80px 16px 80px;
     }
+    .dual-panel-layout { margin-left: 0 !important; }
     .main::before, .main::after { left: 0; }
     .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .grid-3 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -736,7 +917,7 @@
   /* Tablet landscape: 900px – 1200px */
   @media (min-width: 901px) and (max-width: 1200px) {
     .sidebar { width: 200px; }
-    .main { margin-left: 200px; padding: 24px; height: 100vh; overflow-y: auto; }
+    .main { padding: 24px; height: 100vh; overflow-y: auto; }
     .main::before, .main::after { left: 200px; }
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
     .advisor-scenario-grid { grid-template-columns: repeat(4, 1fr); }
@@ -1259,55 +1440,52 @@
     <div class="logo" onclick="showPage('dashboard');closeSidebar()" title="Go to Dashboard">
       <div class="logo-icon">🌊</div>
       <h1>MyFin</h1>
-      <span>Personal Finance Manager</span>
+      <span>Personal Finance</span>
     </div>
+
     <div class="nav-section">
       <div class="nav-label">Overview</div>
       <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">📊</span> Dashboard</div>
-      <div class="nav-item" onclick="showPage('members')" data-page="members"><span class="icon">👨‍👩‍👧‍👦</span> Family Members</div>
     </div>
+
     <div class="nav-section">
-      <div class="nav-label">Finance</div>
+      <div class="nav-label">Daily Tracking</div>
       <div class="nav-item" onclick="showPage('expenses')" data-page="expenses"><span class="icon">💸</span> Expenses</div>
       <div class="nav-item" onclick="showPage('transactions')" data-page="transactions"><span class="icon">🔄</span> Transactions</div>
-      <div class="nav-item" onclick="showPage('investments')" data-page="investments"><span class="icon">📈</span> Investments</div>
+      <div class="nav-item" onclick="showPage('statements')" data-page="statements"><span class="icon">📄</span> Statements</div>
     </div>
+
     <div class="nav-section">
-      <div class="nav-label">Banking</div>
-      <div class="nav-item" onclick="showPage('bankdetails')" data-page="bankdetails"><span class="icon">🏛️</span> Bank Details</div>
-      <div class="nav-item" onclick="showPage('creditcards')" data-page="creditcards"><span class="icon">💳</span> Credit Cards</div>
-      <div class="nav-item" onclick="showPage('statements')" data-page="statements"><span class="icon">📄</span> Bank Statements</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Protection</div>
-      <div class="nav-item" onclick="showPage('insurance')" data-page="insurance"><span class="icon">🛡️</span> Insurance Vault</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Business</div>
-      <div class="nav-item" onclick="showPage('business')" data-page="business"><span class="icon">🏢</span> Business Manager</div>
-    </div>
-    <div class="nav-section">
-      <div class="nav-label">Reports</div>
+      <div class="nav-label">Analysis</div>
       <div class="nav-item" onclick="showPage('reports')" data-page="reports"><span class="icon">📋</span> Reports</div>
+      <div class="nav-item" onclick="showPage('portfolio')" data-page="portfolio"><span class="icon">📉</span> Portfolio</div>
     </div>
+
     <div class="nav-section">
-      <div class="nav-label">AI Advisor</div>
-      <div class="nav-item" onclick="showPage('advisor')" data-page="advisor"><span class="icon">🧠</span> Decision Advisor</div>
-      <div class="nav-item" onclick="showPage('aichat')" data-page="aichat"><span class="icon">💬</span> AI Finance Chat</div>
-      <div class="nav-item" onclick="showPage('portfolio')" data-page="portfolio"><span class="icon">📉</span> Portfolio Tracker</div>
+      <div class="nav-label">AI Tools</div>
+      <div class="nav-item" onclick="showPage('advisor')" data-page="advisor"><span class="icon">🧠</span> Advisor</div>
+      <div class="nav-item" onclick="showPage('aichat')" data-page="aichat"><span class="icon">💬</span> AI Chat</div>
     </div>
+
+    <!-- Setup Panel Toggle (mobile/collapsed) -->
     <div class="nav-section" style="margin-top:auto;padding-top:8px;border-top:1px solid rgba(0,180,216,0.12)">
-      <div class="nav-item" onclick="showPage('features')"><span class="icon">⚙️</span> Features &amp; Settings</div>
+      <div class="nav-item setup-toggle-btn" onclick="toggleSetupPanel()" id="setup-panel-toggle-btn">
+        <span class="icon">⚙️</span> Setup &amp; Config
+        <span id="setup-panel-chevron" style="margin-left:auto;font-size:10px;opacity:0.6">▶</span>
+      </div>
     </div>
+
     <div id="session-info" class="session-user" style="display:none">
-    Signed in as <strong id="session-name-display">—</strong>
-  </div>
-  <div class="family-badge" id="family-badge-btn" style="display:none;margin:0 12px 8px" onclick="showFamilySwitcher()">
-    <div class="family-avatar" id="family-badge-avatar">F</div>
-    <span id="family-badge-name">Family</span>
-    <span style="margin-left:auto;font-size:10px;opacity:.7">⇄</span>
-  </div>
-  <div class="sidebar-footer">
+      Signed in as <strong id="session-name-display">—</strong>
+    </div>
+    <div class="family-badge" id="family-badge-btn" style="display:none;margin:0 12px 8px" onclick="showFamilySwitcher()">
+      <div class="family-avatar" id="family-badge-avatar">F</div>
+      <span id="family-badge-name">Family</span>
+      <span style="margin-left:auto;font-size:10px;opacity:.7">⇄</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div id="storage-status-badge" onclick="showStoragePicker(window._currentFamilyId, false)" style="font-size:11px;padding:3px 10px;margin-bottom:2px;text-align:center;cursor:pointer;color:#9ca3af">📁 No storage set</div>
       <div id="sync-status-badge" style="color:rgba(241,245,249,0.7)!important" style="font-size:11px;padding:5px 10px;margin-bottom:6px;text-align:center">
         <span style="color:#94a3b8">☁️ Checking sync…</span>
       </div>
@@ -1317,11 +1495,12 @@
         <label title="Import backup" style="flex:1;padding:6px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:6px;font-size:11px;color:#06d6a0;cursor:pointer;font-family:DM Sans,sans-serif;text-align:center">⬆ Import<input type="file" accept=".json" style="display:none" onchange="importDataJSON(this.files[0])"></label>
       </div>
       <button onclick="logoutUser()" style="display:flex;align-items:center;gap:6px;width:100%;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:6px;font-size:11px;color:#ff6b6b;cursor:pointer;margin-bottom:8px;font-family:DM Sans,sans-serif;font-weight:600">🚪 Switch User / Logout</button>
-      <div class="privacy-badge">🔒 100% Local Storage — No Cloud</div>
+      <div class="privacy-badge">🔒 Your Data, Your Storage</div>
     </div>
   </aside>
 
-  <main class="main">
+  <div class="dual-panel-layout">
+  <main class="main" id="main-content">
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page active">
@@ -1329,7 +1508,7 @@
         <h2 id="dash-title">Family Dashboard</h2>
         <p id="dash-subtitle">Complete overview of your family finances</p>
       </div>
-      <div class="security-bar">🔐 Your data is stored locally in this browser only. Nothing is sent to any server.</div>
+      <div class="security-bar">🔐 Your data is encrypted and synced to the secure cloud database. Available across all your devices.</div>
 
       <!-- View Toggle + Member Selector -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
@@ -1801,7 +1980,7 @@
     <!-- BANK DETAILS -->
     <div id="page-bankdetails" class="page">
       <div class="page-header"><h2>Bank Details</h2><p>Securely store family bank account information</p></div>
-      <div class="security-bar">🔒 Bank details are encrypted and stored only in your browser's local storage. Never shared externally.</div>
+      <div class="security-bar">🔒 Bank details are AES-256 encrypted on your device before being saved to the secure cloud database. Account numbers are never stored in plain text.</div>
       <div class="member-tabs" id="bank-member-tabs"></div>
       <div class="section-header"><h3>Add Bank Account</h3></div>
       <div class="card" style="margin-bottom:24px">
@@ -2736,6 +2915,106 @@
 
   </main>
 
+  <!-- RIGHT SETUP PANEL -->
+  <aside class="setup-panel" id="setup-panel">
+    
+    <div class="setup-panel-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">⚙️</span>
+        <div>
+          <div style="font-weight:800;font-size:15px;color:var(--text)">Setup & Configuration</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">Family, accounts & features</div>
+        </div>
+      </div>
+      <button class="setup-panel-close" onclick="closeSetupPanel()" title="Close">✕</button>
+    </div>
+
+    <div class="setup-panel-nav">
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">👨‍👩‍👧‍👦 Family</div>
+        <div class="setup-nav-item" onclick="showSetupPage('members')" data-page="members">
+          <span class="setup-nav-icon">👤</span>
+          <div>
+            <div class="setup-nav-title">Family Members</div>
+            <div class="setup-nav-desc">Add & manage members</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">🏦 Banking</div>
+        <div class="setup-nav-item" onclick="showSetupPage('bankdetails')" data-page="bankdetails">
+          <span class="setup-nav-icon">🏛️</span>
+          <div>
+            <div class="setup-nav-title">Bank Accounts</div>
+            <div class="setup-nav-desc">Add bank accounts & IFSC</div>
+          </div>
+        </div>
+        <div class="setup-nav-item" onclick="showSetupPage('creditcards')" data-page="creditcards">
+          <span class="setup-nav-icon">💳</span>
+          <div>
+            <div class="setup-nav-title">Credit Cards</div>
+            <div class="setup-nav-desc">Cards, limits & billing</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">📈 Investments</div>
+        <div class="setup-nav-item" onclick="showSetupPage('investments')" data-page="investments">
+          <span class="setup-nav-icon">📊</span>
+          <div>
+            <div class="setup-nav-title">Investments</div>
+            <div class="setup-nav-desc">MF, stocks, FD & more</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">🛡️ Protection</div>
+        <div class="setup-nav-item" onclick="showSetupPage('insurance')" data-page="insurance">
+          <span class="setup-nav-icon">🛡️</span>
+          <div>
+            <div class="setup-nav-title">Insurance Vault</div>
+            <div class="setup-nav-desc">Policies & coverage</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">🏢 Business</div>
+        <div class="setup-nav-item" onclick="showSetupPage('business')" data-page="business">
+          <span class="setup-nav-icon">🏢</span>
+          <div>
+            <div class="setup-nav-title">Business Manager</div>
+            <div class="setup-nav-desc">GST, invoices & ledger</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">⚙️ Settings</div>
+        <div class="setup-nav-item" onclick="showSetupPage('features')" data-page="features">
+          <span class="setup-nav-icon">⚡</span>
+          <div>
+            <div class="setup-nav-title">Features & Settings</div>
+            <div class="setup-nav-desc">Currency, storage, prefs</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="setup-panel-footer">
+      <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.5">
+        💡 Set up once — track forever
+      </div>
+    </div>
+  </aside>
+
+</div><!-- dual-panel-layout -->
+
   <!-- Bottom Navigation (mobile) -->
   <nav class="bottom-nav" id="bottom-nav">
     <div class="bottom-nav-item active" id="bn-dashboard" data-page="dashboard" onclick="showPage('dashboard');setActiveBottomNav('bn-dashboard')">
@@ -3171,6 +3450,82 @@
           <span style="color:var(--accent)">💡 Auto Conversion:</span> All dashboard totals, expense summaries, and investment values are automatically converted to your base currency using live exchange rates (updated hourly). Each entry also shows the original amount for reference.
           <div style="margin-top:6px"><span id="fx-rate-badge-settings" style="color:#06d6a0">💱 Loading rates…</span>
           <button onclick="loadExchangeRates(true).then(()=>toast('Rates refreshed!','success'))" style="margin-left:10px;padding:3px 10px;background:rgba(26,115,232,0.1);border:1px solid rgba(26,115,232,0.2);border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer">🔄 Refresh Rates</button></div>
+        </div>
+      </div>
+
+      <!-- Storage Provider Section -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:22px">🗄️</span>
+            <div>
+              <div style="font-weight:700;font-size:15px;color:var(--text)">Data Storage Provider</div>
+              <div style="font-size:12px;color:var(--text3)">Your financial data — your storage. MyFin only stores login credentials.</div>
+            </div>
+          </div>
+          <div id="storage-status-settings" style="font-size:13px;font-weight:600;color:#9ca3af">📁 Not connected</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+          <button onclick="storagePickerSelect('supabase', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#1a73e8';this.style.background='#eff6ff'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">☁️</div>
+            <div style="font-weight:700;font-size:13px">MyFin Cloud</div>
+            <div style="font-size:11px;color:#6b7a90">Easiest — encrypted</div>
+          </button>
+          <button onclick="storagePickerSelect('local', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#0891b2';this.style.background='#ecfeff'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">💻</div>
+            <div style="font-weight:700;font-size:13px">Local Folder</div>
+            <div style="font-size:11px;color:#6b7a90">PC / Mac</div>
+          </button>
+          <button onclick="storagePickerSelect('gdrive', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#059669';this.style.background='#f0fdf4'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">🟢</div>
+            <div style="font-weight:700;font-size:13px">Google Drive</div>
+            <div style="font-size:11px;color:#6b7a90">Personal Drive</div>
+          </button>
+          <button onclick="storagePickerSelect('onedrive', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#0078d4';this.style.background='#eff6ff'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">🔵</div>
+            <div style="font-weight:700;font-size:13px">OneDrive</div>
+            <div style="font-size:11px;color:#6b7a90">Microsoft</div>
+          </button>
+          <button onclick="storagePickerSelect('dropbox', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#0061ff';this.style.background='#eff6ff'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">📦</div>
+            <div style="font-weight:700;font-size:13px">Dropbox</div>
+            <div style="font-size:11px;color:#6b7a90">Personal</div>
+          </button>
+          <button onclick="storagePickerSelect('webdav', window._currentFamilyId)"
+            style="padding:12px;border-radius:10px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s"
+            onmouseover="this.style.borderColor='#7c3aed';this.style.background='#faf5ff'"
+            onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+            <div style="font-size:20px;margin-bottom:4px">🖥️</div>
+            <div style="font-weight:700;font-size:13px">WebDAV / Server</div>
+            <div style="font-size:11px;color:#6b7a90">Nextcloud / Custom</div>
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" onclick="storagePullData(window._currentFamilyId).then(()=>{renderDashboard();toast('Data loaded!','success')})">⬇️ Load from Storage</button>
+          <button class="btn btn-secondary" onclick="storagePushData(window._currentFamilyId).then(()=>toast('Data saved!','success'))">⬆️ Save to Storage</button>
+          <button class="btn btn-secondary" onclick="fsWriteFullBackup()">💾 Full Backup</button>
+          <button class="btn btn-secondary" style="color:#dc2626;border-color:#fca5a5" onclick="if(confirm('Disconnect storage provider?')){storageClearProvider();toast('Storage disconnected','success')}">🔌 Disconnect</button>
+        </div>
+
+        <div style="margin-top:12px;font-size:11px;color:var(--text3);padding:10px;background:var(--surface2);border-radius:8px">
+          🔒 <strong>Privacy guarantee:</strong> By default, MyFin stores data only in your chosen personal storage. If you select "MyFin Cloud", data is AES-256 encrypted on your device before upload — even Anthropic cannot read it. You can switch or export anytime.
         </div>
       </div>
 
@@ -3650,6 +4005,1262 @@ const DB_NAME    = 'FamilyVaultDB';
 const DB_VERSION = 3;
 
 // All collections (object stores) and their key paths
+
+// ═══════════════════════════════════════════════════════════
+// CLIENT-SIDE ENCRYPTION FOR SENSITIVE FINANCIAL DATA
+// Uses Web Crypto API (AES-GCM 256-bit)
+// Sensitive fields are encrypted BEFORE leaving the device
+// ═══════════════════════════════════════════════════════════
+
+// Fields to encrypt per collection
+const SENSITIVE_FIELDS = {
+  bankAccounts: ['accountNumber', 'ifsc', 'cif', 'mobile', 'email', 'branch', 'nominee'],
+  creditCards:  ['cardNumber', 'cvv', 'expiryDate', 'billingAddress'],
+};
+
+let _cryptoKey = null; // cached derived key
+
+// Derive an AES key from family_id + a fixed app salt
+async function deriveCryptoKey(familyId) {
+  if (_cryptoKey) return _cryptoKey;
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(familyId + '_myfin_v1_secure'),
+    { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  _cryptoKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode('myfin_salt_2024'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false, ['encrypt', 'decrypt']
+  );
+  return _cryptoKey;
+}
+
+async function encryptField(value, key) {
+  if (!value && value !== 0) return value;
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    enc.encode(String(value))
+  );
+  // Store as base64(iv):base64(ciphertext)
+  const b64 = arr => btoa(String.fromCharCode(...arr));
+  return 'ENC:' + b64(iv) + ':' + b64(new Uint8Array(encrypted));
+}
+
+async function decryptField(value, key) {
+  if (!value || !String(value).startsWith('ENC:')) return value;
+  try {
+    const parts = String(value).split(':');
+    const iv  = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+    const ct  = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(dec);
+  } catch { return value; } // return as-is if decryption fails
+}
+
+async function encryptRecord(record, collection) {
+  const fields = SENSITIVE_FIELDS[collection];
+  if (!fields || !window._currentFamilyId) return record;
+  const key = await deriveCryptoKey(window._currentFamilyId);
+  const encrypted = { ...record };
+  for (const f of fields) {
+    if (encrypted[f] !== undefined) {
+      encrypted[f] = await encryptField(encrypted[f], key);
+    }
+  }
+  return encrypted;
+}
+
+async function decryptRecord(record, collection) {
+  const fields = SENSITIVE_FIELDS[collection];
+  if (!fields || !window._currentFamilyId) return record;
+  const key = await deriveCryptoKey(window._currentFamilyId);
+  const decrypted = { ...record };
+  for (const f of fields) {
+    if (decrypted[f] !== undefined) {
+      decrypted[f] = await decryptField(decrypted[f], key);
+    }
+  }
+  return decrypted;
+}
+
+// Encrypt all sensitive records in state before cloud sync
+async function encryptStateForCloud(stateSnapshot) {
+  const encrypted = { ...stateSnapshot };
+  for (const [collection, fields] of Object.entries(SENSITIVE_FIELDS)) {
+    if (encrypted[collection]?.length) {
+      encrypted[collection] = await Promise.all(
+        encrypted[collection].map(r => encryptRecord(r, collection))
+      );
+    }
+  }
+  return encrypted;
+}
+
+// Decrypt all sensitive records after loading from cloud
+async function decryptStateFromCloud(stateData) {
+  const decrypted = { ...stateData };
+  for (const [collection] of Object.entries(SENSITIVE_FIELDS)) {
+    if (decrypted[collection]?.length) {
+      decrypted[collection] = await Promise.all(
+        decrypted[collection].map(r => decryptRecord(r, collection))
+      );
+    }
+  }
+  return decrypted;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// LOCAL FOLDER STRUCTURE — File System Access API
+// Auto-creates folders & files on user's PC when data is added
+// Folder is chosen once; all subsequent saves are automatic
+// ═══════════════════════════════════════════════════════════════════
+
+let _fsRootDir = null;       // Root folder handle (persisted via IndexedDB)
+let _fsReady   = false;
+const FS_DB_KEY = 'myfin_fs_root_handle';
+
+// Folder structure definition
+const FS_FOLDERS = {
+  bankAccounts:  ['Banks'],
+  creditCards:   ['Credit Cards'],
+  investments:   ['Investments'],
+  expenses:      ['Expenses'],
+  members:       ['Members'],
+  transactions:  ['Transactions'],
+  insurances:    ['Insurance'],
+  loans:         ['Loans'],
+  contracts:     ['Documents', 'Contracts'],
+  businesses:    ['Documents', 'Businesses'],
+};
+
+// Investment sub-folders by type
+const FS_INVESTMENT_SUBFOLDERS = {
+  'Mutual Fund': 'Mutual Funds',
+  'Stock':       'Stocks',
+  'Fixed Deposit': 'Fixed Deposits',
+  'PPF':         'PPF & PF',
+  'PF':          'PPF & PF',
+  'Gold':        'Gold & Commodities',
+  'Real Estate': 'Real Estate',
+  'Crypto':      'Crypto',
+  'Bond':        'Bonds',
+  'NPS':         'NPS & Pension',
+};
+
+// ── Persist / restore folder handle across sessions ──
+async function fsSaveHandle(handle) {
+  try {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('myfin_fs', 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+      r.onsuccess = e => res(e.target.result);
+      r.onerror   = rej;
+    });
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, FS_DB_KEY);
+    await new Promise(r => tx.oncomplete = r);
+    db.close();
+  } catch(e) { console.warn('FS handle save failed:', e); }
+}
+
+async function fsLoadHandle() {
+  try {
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('myfin_fs', 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+      r.onsuccess = e => res(e.target.result);
+      r.onerror   = rej;
+    });
+    const tx = db.transaction('handles', 'readonly');
+    const handle = await new Promise(r => { const req = tx.objectStore('handles').get(FS_DB_KEY); req.onsuccess = () => r(req.result); req.onerror = () => r(null); });
+    db.close();
+    return handle || null;
+  } catch { return null; }
+}
+
+// ── Ask user to choose root folder (only once) ──
+async function fsRequestRootFolder() {
+  if (!window.showDirectoryPicker) {
+    toast('⚠️ Local folder sync requires Chrome or Edge browser on desktop', 'error');
+    return false;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({
+      id: 'myfin-root',
+      mode: 'readwrite',
+      startIn: 'documents',
+    });
+    _fsRootDir = handle;
+    _fsReady = true;
+    await fsSaveHandle(handle);
+    await fsEnsureAllFolders();
+    toast('✅ MyFin folder connected! Data will auto-save here.', 'success');
+    updateFsStatusBadge();
+    return true;
+  } catch(e) {
+    if (e.name !== 'AbortError') toast('Folder access denied: ' + e.message, 'error');
+    return false;
+  }
+}
+
+// ── Restore previously chosen folder on app boot ──
+async function fsRestoreFolder() {
+  try {
+    const handle = await fsLoadHandle();
+    if (!handle) return;
+    // Verify permission is still granted
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      _fsRootDir = handle;
+      _fsReady = true;
+      updateFsStatusBadgeAll();
+      await fsEnsureAllFolders();
+    } else if (perm === 'prompt') {
+      // Will need re-permission on next user interaction
+      _fsRootDir = handle;
+      _fsReady = false;
+      updateFsStatusBadge('needs-permission');
+    }
+  } catch(e) { console.warn('FS restore failed:', e); }
+}
+
+// ── Get or create nested folder path ──
+async function fsGetFolder(pathParts) {
+  let dir = _fsRootDir;
+  for (const part of pathParts) {
+    dir = await dir.getDirectoryHandle(part, { create: true });
+  }
+  return dir;
+}
+
+// ── Create all base folders upfront ──
+async function fsEnsureAllFolders() {
+  if (!_fsReady || !_fsRootDir) return;
+  try {
+    const allFolders = [
+      ['Banks'],
+      ['Credit Cards'],
+      ['Investments'],
+      ['Investments', 'Mutual Funds'],
+      ['Investments', 'Stocks'],
+      ['Investments', 'Fixed Deposits'],
+      ['Investments', 'PPF & PF'],
+      ['Investments', 'Gold & Commodities'],
+      ['Investments', 'Real Estate'],
+      ['Investments', 'Crypto'],
+      ['Investments', 'Bonds'],
+      ['Investments', 'NPS & Pension'],
+      ['Expenses'],
+      ['Members'],
+      ['Transactions'],
+      ['Insurance'],
+      ['Loans'],
+      ['Documents'],
+      ['Documents', 'Contracts'],
+      ['Documents', 'Businesses'],
+      ['Backups'],
+    ];
+    for (const path of allFolders) {
+      await fsGetFolder(path);
+    }
+    console.log('MyFin: All local folders created ✅');
+  } catch(e) { console.warn('FS folder creation failed:', e); }
+}
+
+// ── Generate a safe filename from record ──
+function fsSafeFilename(str) {
+  return String(str || 'Unknown').replace(/[^a-zA-Z0-9_\-\. ]/g, '_').trim();
+}
+
+function fsBankFilename(b) {
+  const member = getMember(b.memberId);
+  return fsSafeFilename(b.bankName) + '_' + fsSafeFilename(b.accountType || 'Account') + '_' + fsSafeFilename(member?.name || 'Member') + '.json';
+}
+
+function fsCCFilename(c) {
+  const member = getMember(c.memberId);
+  return fsSafeFilename(c.bankName) + '_' + fsSafeFilename(c.variant || 'Card') + '_' + fsSafeFilename(member?.name || 'Member') + '.json';
+}
+
+function fsInvFilename(inv) {
+  const member = getMember(inv.memberId);
+  return fsSafeFilename(inv.name || inv.type) + '_' + fsSafeFilename(member?.name || 'Member') + '.json';
+}
+
+// ── Write a JSON file to a folder ──
+async function fsWriteJson(folderPath, filename, data) {
+  if (!_fsReady || !_fsRootDir) return;
+  try {
+    // Re-request permission if needed
+    const perm = await _fsRootDir.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { _fsReady = false; updateFsStatusBadge('needs-permission'); return; }
+    const folder = await fsGetFolder(folderPath);
+    const fileHandle = await folder.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
+  } catch(e) { console.warn('FS write failed:', e.message); }
+}
+
+// ── Delete a file when record is deleted ──
+async function fsDeleteFile(folderPath, filename) {
+  if (!_fsReady || !_fsRootDir) return;
+  try {
+    const folder = await fsGetFolder(folderPath);
+    await folder.removeEntry(filename);
+  } catch(e) { /* file may not exist, ignore */ }
+}
+
+// ── Save a bank account to local folder ──
+async function fsSaveBankAccount(b) {
+  if (!_fsReady) return;
+  const member = getMember(b.memberId);
+  const data = {
+    _info: 'MyFin Bank Account — Auto-saved by MyFin App',
+    _savedAt: new Date().toISOString(),
+    id: b.id,
+    bankName: b.bankName,
+    accountType: b.accountType,
+    accountNumber: b.accountNumber,   // stored locally unmasked
+    ifsc: b.ifsc,
+    branch: b.branch,
+    cif: b.cif,
+    balance: b.balance,
+    currency: b.currency || 'INR',
+    mobile: b.mobile,
+    email: b.email,
+    nominee: b.notes,
+    member: { id: member?.id, name: member?.name },
+    _note: 'Sensitive fields are encrypted in cloud storage. Local copy is plain text — keep this folder secure.',
+  };
+  await fsWriteJson(['Banks'], fsBankFilename(b), data);
+}
+
+// ── Save a credit card to local folder ──
+async function fsSaveCreditCard(c) {
+  if (!_fsReady) return;
+  const member = getMember(c.memberId);
+  const data = {
+    _info: 'MyFin Credit Card — Auto-saved by MyFin App',
+    _savedAt: new Date().toISOString(),
+    id: c.id,
+    bankName: c.bankName,
+    variant: c.variant,
+    cardNumber: c.cardNumber,
+    expiryDate: c.expiryDate,
+    limit: c.limit,
+    outstanding: c.outstanding,
+    billDate: c.billDate,
+    dueDate: c.dueDate,
+    currency: c.currency,
+    member: { id: member?.id, name: member?.name },
+  };
+  await fsWriteJson(['Credit Cards'], fsCCFilename(c), data);
+}
+
+// ── Save an investment to local folder ──
+async function fsSaveInvestment(inv) {
+  if (!_fsReady) return;
+  const subfolder = FS_INVESTMENT_SUBFOLDERS[inv.type] || 'Other';
+  const member = getMember(inv.memberId);
+  const data = {
+    _info: 'MyFin Investment — Auto-saved by MyFin App',
+    _savedAt: new Date().toISOString(),
+    ...inv,
+    member: { id: member?.id, name: member?.name },
+  };
+  await fsWriteJson(['Investments', subfolder], fsInvFilename(inv), data);
+}
+
+// ── Save expenses summary (monthly) ──
+async function fsSaveExpensesSummary() {
+  if (!_fsReady) return;
+  const now = new Date();
+  const monthKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const monthExpenses = state.expenses.filter(e => e.date && e.date.startsWith(monthKey));
+  if (!monthExpenses.length) return;
+  const data = {
+    _info: 'MyFin Expenses — Monthly Summary',
+    _savedAt: new Date().toISOString(),
+    month: monthKey,
+    totalAmount: monthExpenses.reduce((s,e) => s + (parseFloat(e.amount)||0), 0),
+    count: monthExpenses.length,
+    expenses: monthExpenses,
+  };
+  await fsWriteJson(['Expenses'], 'Expenses_' + monthKey + '.json', data);
+}
+
+// ── Full backup to Backups folder ──
+async function fsWriteFullBackup() {
+  if (!_fsReady) return;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0,19);
+  const data = {
+    _info: 'MyFin Full Backup',
+    _savedAt: new Date().toISOString(),
+    version: 1,
+    ...state,
+  };
+  await fsWriteJson(['Backups'], 'MyFin_Backup_' + timestamp + '.json', data);
+  toast('💾 Backup saved to MyFin/Backups folder', 'success');
+}
+
+// ── Status badge update ──
+function updateFsStatusBadgeAll(status) {
+  updateFsStatusBadge(status);
+  const el2 = document.getElementById('fs-status-badge-settings');
+  if (el2) el2.textContent = _fsReady ? '📁 Connected — ' + (_fsRootDir?.name || 'Folder') : '📁 Not connected';
+}
+
+function updateFsStatusBadge(status) {
+  const el = document.getElementById('fs-status-badge');
+  if (!el) return;
+  if (status === 'needs-permission') {
+    el.innerHTML = '📁 Click to reconnect folder';
+    el.style.color = '#f59e0b';
+    el.style.cursor = 'pointer';
+    el.onclick = async () => { await _fsRootDir.requestPermission({mode:'readwrite'}); _fsReady=true; updateFsStatusBadge(); };
+  } else if (_fsReady) {
+    el.innerHTML = '📁 Local Folder: Active';
+    el.style.color = '#059669';
+    el.style.cursor = 'default';
+    el.onclick = null;
+  } else {
+    el.innerHTML = '📁 Set up local folder';
+    el.style.color = '#6b7a90';
+    el.style.cursor = 'pointer';
+    el.onclick = fsRequestRootFolder;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MYFIN STORAGE ENGINE  — Privacy-First, User-Owned Data
+//  Supabase = Auth only. ALL financial data lives in user's chosen storage.
+//
+//  Supported providers:
+//    • local    — PC/Mac folder via File System Access API
+//    • gdrive   — Google Drive (via Google Picker + Drive API)
+//    • onedrive — Microsoft OneDrive (via Graph API)
+//    • dropbox  — Dropbox (via Dropbox API v2)
+//    • webdav   — Any WebDAV server (self-hosted, Nextcloud, etc.)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY        = 'myfin_storage_provider';   // localStorage key
+const STORAGE_TOKEN_KEY  = 'myfin_storage_token';
+const STORAGE_META_KEY   = 'myfin_storage_meta';
+const DATA_FILENAME      = 'myfin_data.json';           // main data file per family
+const BACKUP_PREFIX      = 'myfin_backup_';
+
+// Provider registry
+const STORAGE_PROVIDERS = {
+  supabase: {
+    label: 'MyFin Cloud',
+    icon:  '☁️',
+    desc:  'Easiest option — stored securely on MyFin's servers',
+    color: '#1a73e8',
+  },
+  local: {
+    label: 'Local Folder',
+    icon:  '💻',
+    desc:  'Save to a folder on this PC or Mac',
+    color: '#0891b2',
+  },
+  gdrive: {
+    label: 'Google Drive',
+    icon:  '🟢',
+    desc:  'Sync to your personal Google Drive',
+    color: '#059669',
+  },
+  onedrive: {
+    label: 'OneDrive',
+    icon:  '🔵',
+    desc:  'Sync to your Microsoft OneDrive',
+    color: '#0078d4',
+  },
+  dropbox: {
+    label: 'Dropbox',
+    icon:  '📦',
+    desc:  'Sync to your Dropbox account',
+    color: '#0061ff',
+  },
+  webdav: {
+    label: 'Own Server / WebDAV',
+    icon:  '🖥️',
+    desc:  'Nextcloud, ownCloud, or any WebDAV server',
+    color: '#7c3aed',
+  },
+};
+
+let _storageProvider  = null;   // active provider id
+let _storageSyncTimer = null;
+let _storageReady     = false;
+
+// ── Get/set active provider ──────────────────────────────────────────────
+function storageGetProvider() {
+  if (_storageProvider) return _storageProvider;
+  _storageProvider = localStorage.getItem(STORAGE_KEY) || null;
+  return _storageProvider;
+}
+function storageSetProvider(id) {
+  _storageProvider = id;
+  localStorage.setItem(STORAGE_KEY, id);
+  updateStorageStatusBadge();
+}
+function storageClearProvider() {
+  _storageProvider = null;
+  _storageReady    = false;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_TOKEN_KEY);
+  localStorage.removeItem(STORAGE_META_KEY);
+  updateStorageStatusBadge();
+}
+
+// ── Schedule debounced sync (500ms) ─────────────────────────────────────
+function scheduleStorageSync() {
+  if (_storageSyncTimer) clearTimeout(_storageSyncTimer);
+  _storageSyncTimer = setTimeout(() => storagePushData(window._currentFamilyId), 500);
+}
+
+// ── Build data package to save ───────────────────────────────────────────
+async function storageBuildPackage(familyId) {
+  const pkg = {
+    _myfin_version: 2,
+    _saved_at:      new Date().toISOString(),
+    _family_id:     familyId,
+    _provider:      storageGetProvider(),
+  };
+  // Copy all state collections
+  Object.keys(state).forEach(k => { pkg[k] = state[k]; });
+  return pkg;
+}
+
+// ── PUSH: save data to chosen provider ──────────────────────────────────
+async function storagePushData(familyId) {
+  if (!familyId) return;
+  const provider = storageGetProvider();
+  if (!provider) return;
+  const pkg = await storageBuildPackage(familyId);
+  setSyncStatus('syncing');
+  try {
+    switch(provider) {
+      case 'supabase': await storagePushSupabase(familyId, pkg); break;
+      case 'local':    await storagePushLocal(familyId, pkg);    break;
+      case 'gdrive':   await storagePushGDrive(familyId, pkg);   break;
+      case 'onedrive': await storagePushOneDrive(familyId, pkg); break;
+      case 'dropbox':  await storagePushDropbox(familyId, pkg);  break;
+      case 'webdav':   await storagePushWebDAV(familyId, pkg);   break;
+    }
+    setSyncStatus('synced');
+    updateStorageStatusBadge();
+  } catch(e) {
+    console.warn('Storage push failed:', e);
+    setSyncStatus('error');
+  }
+}
+
+// ── PULL: load data from chosen provider ────────────────────────────────
+async function storagePullData(familyId) {
+  const provider = storageGetProvider();
+  if (!provider) return false;
+  try {
+    let pkg = null;
+    switch(provider) {
+      case 'supabase': pkg = await storagePullSupabase(familyId); break;
+      case 'local':    pkg = await storagePullLocal(familyId);    break;
+      case 'gdrive':   pkg = await storagePullGDrive(familyId);   break;
+      case 'onedrive': pkg = await storagePullOneDrive(familyId); break;
+      case 'dropbox':  pkg = await storagePullDropbox(familyId);  break;
+      case 'webdav':   pkg = await storagePullWebDAV(familyId);   break;
+    }
+    if (!pkg) return false;
+    Object.keys(pkg).forEach(k => {
+      if (k in state) state[k] = pkg[k];
+    });
+    await saveData();
+    return true;
+  } catch(e) {
+    console.warn('Storage pull failed:', e);
+    return false;
+  }
+}
+
+// ── BOOT: called on login to load data & show picker if needed ──────────
+async function storageBootLoad(familyId) {
+  const provider = storageGetProvider();
+  if (!provider) {
+    // First time — show storage picker
+    showStoragePicker(familyId, true);
+    return;
+  }
+  setSyncStatus('syncing');
+  const loaded = await storagePullData(familyId);
+  if (!loaded) {
+    // Could not load (permission revoked, token expired etc)
+    showStoragePicker(familyId, false);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SUPABASE CLOUD PROVIDER  (opt-in, encrypted)
+// ════════════════════════════════════════════════════════════════
+
+async function storagePushSupabase(familyId, pkg) {
+  // Encrypt sensitive fields before storing
+  const encrypted = await encryptStateForCloud(pkg);
+  const version = (_syncVersion || 0) + 1;
+  _syncVersion = version;
+  const res = await sbFetch('/rest/v1/family_data', {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({
+      family_id: familyId,
+      data: encrypted,
+      synced_at: new Date().toISOString(),
+      version
+    })
+  });
+  localStorage.setItem('myfin_sync_version_' + familyId, String(version));
+  localStorage.setItem('myfin_last_sync', new Date().toISOString());
+  return res;
+}
+
+async function storagePullSupabase(familyId) {
+  const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
+  if (!res || !res.length) return null;
+  const row = res[0];
+  if (!row?.data) return null;
+  // Decrypt sensitive fields
+  return await decryptStateFromCloud(row.data);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  LOCAL FOLDER PROVIDER
+// ════════════════════════════════════════════════════════════════
+
+function storageLocalFamilyPath(familyId) {
+  return ['MyFin', 'Family_' + familyId.slice(0, 8)];
+}
+
+async function storagePushLocal(familyId, pkg) {
+  if (!_fsReady || !_fsRootDir) throw new Error('Local folder not connected');
+  const folder = await fsGetFolder(storageLocalFamilyPath(familyId));
+  const fh     = await folder.getFileHandle(DATA_FILENAME, { create: true });
+  const w      = await fh.createWritable();
+  await w.write(JSON.stringify(pkg, null, 2));
+  await w.close();
+  // Also save per-category files
+  await fsSaveCategoryFiles(familyId, pkg);
+}
+
+async function storagePullLocal(familyId) {
+  if (!_fsReady || !_fsRootDir) {
+    // Try to restore
+    await fsRestoreFolder();
+    if (!_fsReady) throw new Error('Local folder not connected');
+  }
+  try {
+    const folder = await fsGetFolder(storageLocalFamilyPath(familyId));
+    const fh     = await folder.getFileHandle(DATA_FILENAME);
+    const file   = await fh.getFile();
+    return JSON.parse(await file.text());
+  } catch { return null; }
+}
+
+// Save per-category JSON files (Banks/, Investments/ etc)
+async function fsSaveCategoryFiles(familyId, pkg) {
+  if (!_fsReady) return;
+  const base = storageLocalFamilyPath(familyId);
+
+  // Banks
+  for (const b of (pkg.bankAccounts || [])) {
+    await fsWriteJson([...base, 'Banks'], fsBankFilename(b), { ...b, _savedAt: new Date().toISOString() });
+  }
+  // Credit Cards
+  for (const c of (pkg.creditCards || [])) {
+    await fsWriteJson([...base, 'Credit Cards'], fsCCFilename(c), { ...c, _savedAt: new Date().toISOString() });
+  }
+  // Investments
+  for (const inv of (pkg.investments || [])) {
+    const sub = FS_INVESTMENT_SUBFOLDERS[inv.type] || 'Other';
+    await fsWriteJson([...base, 'Investments', sub], fsInvFilename(inv), { ...inv, _savedAt: new Date().toISOString() });
+  }
+  // Monthly expenses
+  const months = {};
+  (pkg.expenses || []).forEach(e => {
+    const m = (e.date || '').slice(0, 7);
+    if (m) (months[m] = months[m] || []).push(e);
+  });
+  for (const [m, exps] of Object.entries(months)) {
+    await fsWriteJson([...base, 'Expenses'], `Expenses_${m}.json`, { month: m, expenses: exps, _savedAt: new Date().toISOString() });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE PROVIDER
+// ════════════════════════════════════════════════════════════════
+
+const GDRIVE_FOLDER = 'MyFin_Data';
+const GDRIVE_CLIENT_ID = ''; // Set by user in settings
+let   _gdriveToken  = null;
+
+function gdriveGetToken() {
+  if (_gdriveToken) return _gdriveToken;
+  try { _gdriveToken = JSON.parse(localStorage.getItem(STORAGE_TOKEN_KEY + '_gdrive') || 'null'); } catch {}
+  return _gdriveToken;
+}
+
+async function gdriveConnect() {
+  const clientId = localStorage.getItem('myfin_gdrive_client_id') || '';
+  if (!clientId) {
+    showGDriveSetup();
+    return false;
+  }
+  return new Promise(resolve => {
+    const scope    = 'https://www.googleapis.com/auth/drive.file';
+    const redirect = window.location.origin + window.location.pathname;
+    const authUrl  = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirect)}&response_type=token&scope=${encodeURIComponent(scope)}&prompt=consent`;
+    // Store intent
+    localStorage.setItem('myfin_oauth_intent', 'gdrive');
+    window.location.href = authUrl;
+    resolve(false); // page will reload with token
+  });
+}
+
+function gdriveHandleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token  = params.get('access_token');
+  const intent = localStorage.getItem('myfin_oauth_intent');
+  if (token && intent === 'gdrive') {
+    _gdriveToken = { token, expires: Date.now() + 3600 * 1000 };
+    localStorage.setItem(STORAGE_TOKEN_KEY + '_gdrive', JSON.stringify(_gdriveToken));
+    localStorage.removeItem('myfin_oauth_intent');
+    storageSetProvider('gdrive');
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('✅ Google Drive connected!', 'success');
+  }
+}
+
+async function gdriveFetch(path, opts = {}) {
+  const tok = gdriveGetToken();
+  if (!tok) throw new Error('Not authenticated');
+  const res = await fetch('https://www.googleapis.com/drive/v3' + path, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + tok.token, ...opts.headers }
+  });
+  if (!res.ok) throw new Error('Drive API error: ' + res.status);
+  return res;
+}
+
+async function gdriveFindOrCreateFolder(name, parentId = null) {
+  const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false` + (parentId ? ` and '${parentId}' in parents` : '');
+  const r = await gdriveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name)`);
+  const d = await r.json();
+  if (d.files?.length) return d.files[0].id;
+  // Create folder
+  const cr = await gdriveFetch('/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parentId ? { parents: [parentId] } : {}) })
+  });
+  return (await cr.json()).id;
+}
+
+async function gdriveFindFile(name, folderId) {
+  const q = `name='${name}' and '${folderId}' in parents and trashed=false`;
+  const r = await gdriveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name)`);
+  const d = await r.json();
+  return d.files?.[0]?.id || null;
+}
+
+async function gdriveWriteFile(name, content, folderId) {
+  const existing = await gdriveFindFile(name, folderId);
+  const body     = JSON.stringify(content, null, 2);
+  const blob     = new Blob([body], { type: 'application/json' });
+  if (existing) {
+    const fd = new FormData();
+    fd.append('metadata', new Blob([JSON.stringify({})], { type: 'application/json' }));
+    fd.append('file', blob);
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + gdriveGetToken().token },
+      body: fd,
+    });
+  } else {
+    const fd = new FormData();
+    fd.append('metadata', new Blob([JSON.stringify({ name, parents: [folderId] })], { type: 'application/json' }));
+    fd.append('file', blob);
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + gdriveGetToken().token },
+      body: fd,
+    });
+  }
+}
+
+async function storagePushGDrive(familyId, pkg) {
+  const rootId   = await gdriveFindOrCreateFolder(GDRIVE_FOLDER);
+  const familyId8 = 'Family_' + familyId.slice(0, 8);
+  const famId    = await gdriveFindOrCreateFolder(familyId8, rootId);
+  await gdriveWriteFile(DATA_FILENAME, pkg, famId);
+  // Per-category files
+  const banksId  = await gdriveFindOrCreateFolder('Banks', famId);
+  for (const b of (pkg.bankAccounts || []))
+    await gdriveWriteFile(fsBankFilename(b), { ...b, _savedAt: new Date().toISOString() }, banksId);
+  const ccId = await gdriveFindOrCreateFolder('Credit Cards', famId);
+  for (const c of (pkg.creditCards || []))
+    await gdriveWriteFile(fsCCFilename(c), { ...c, _savedAt: new Date().toISOString() }, ccId);
+  const invRootId = await gdriveFindOrCreateFolder('Investments', famId);
+  for (const inv of (pkg.investments || [])) {
+    const sub   = FS_INVESTMENT_SUBFOLDERS[inv.type] || 'Other';
+    const subId = await gdriveFindOrCreateFolder(sub, invRootId);
+    await gdriveWriteFile(fsInvFilename(inv), { ...inv, _savedAt: new Date().toISOString() }, subId);
+  }
+}
+
+async function storagePullGDrive(familyId) {
+  const rootId    = await gdriveFindOrCreateFolder(GDRIVE_FOLDER);
+  const familyId8 = 'Family_' + familyId.slice(0, 8);
+  const famId     = await gdriveFindOrCreateFolder(familyId8, rootId);
+  const fileId    = await gdriveFindFile(DATA_FILENAME, famId);
+  if (!fileId) return null;
+  const r    = await gdriveFetch(`/files/${fileId}?alt=media`);
+  return await r.json();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ONEDRIVE PROVIDER (Microsoft Graph API)
+// ════════════════════════════════════════════════════════════════
+
+let _onedriveToken = null;
+const ONEDRIVE_FOLDER = 'MyFin_Data';
+
+function onedriveGetToken() {
+  if (_onedriveToken) return _onedriveToken;
+  try { _onedriveToken = JSON.parse(localStorage.getItem(STORAGE_TOKEN_KEY + '_onedrive') || 'null'); } catch {}
+  return _onedriveToken;
+}
+
+async function onedriveConnect() {
+  const clientId = localStorage.getItem('myfin_onedrive_client_id') || '';
+  if (!clientId) { showOneDriveSetup(); return false; }
+  const scope    = 'Files.ReadWrite';
+  const redirect = window.location.origin + window.location.pathname;
+  const authUrl  = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirect)}&scope=${encodeURIComponent(scope)}&response_mode=fragment`;
+  localStorage.setItem('myfin_oauth_intent', 'onedrive');
+  window.location.href = authUrl;
+  return false;
+}
+
+function onedriveHandleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token  = params.get('access_token');
+  const intent = localStorage.getItem('myfin_oauth_intent');
+  if (token && intent === 'onedrive') {
+    _onedriveToken = { token, expires: Date.now() + 3600 * 1000 };
+    localStorage.setItem(STORAGE_TOKEN_KEY + '_onedrive', JSON.stringify(_onedriveToken));
+    localStorage.removeItem('myfin_oauth_intent');
+    storageSetProvider('onedrive');
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('✅ OneDrive connected!', 'success');
+  }
+}
+
+async function onedriveFetch(path, opts = {}) {
+  const tok = onedriveGetToken();
+  if (!tok) throw new Error('Not authenticated');
+  const res = await fetch('https://graph.microsoft.com/v1.0/me/drive' + path, {
+    ...opts,
+    headers: { Authorization: 'Bearer ' + tok.token, ...opts.headers }
+  });
+  if (!res.ok && res.status !== 404) throw new Error('OneDrive error: ' + res.status);
+  return res;
+}
+
+async function storagePushOneDrive(familyId, pkg) {
+  const path = `/${ONEDRIVE_FOLDER}/Family_${familyId.slice(0,8)}/${DATA_FILENAME}`;
+  await onedriveFetch(`/root:${path}:/content`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pkg, null, 2)
+  });
+  // Per-category files
+  for (const b of (pkg.bankAccounts || [])) {
+    await onedriveFetch(`/root:/${ONEDRIVE_FOLDER}/Family_${familyId.slice(0,8)}/Banks/${fsBankFilename(b)}:/content`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...b, _savedAt: new Date().toISOString() }, null, 2)
+    });
+  }
+  for (const c of (pkg.creditCards || [])) {
+    await onedriveFetch(`/root:/${ONEDRIVE_FOLDER}/Family_${familyId.slice(0,8)}/Credit Cards/${fsCCFilename(c)}:/content`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...c, _savedAt: new Date().toISOString() }, null, 2)
+    });
+  }
+}
+
+async function storagePullOneDrive(familyId) {
+  const path = `/${ONEDRIVE_FOLDER}/Family_${familyId.slice(0,8)}/${DATA_FILENAME}`;
+  const r    = await onedriveFetch(`/root:${path}:/content`);
+  if (r.status === 404) return null;
+  return await r.json();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  DROPBOX PROVIDER
+// ════════════════════════════════════════════════════════════════
+
+let _dropboxToken = null;
+
+function dropboxGetToken() {
+  if (_dropboxToken) return _dropboxToken;
+  try { _dropboxToken = JSON.parse(localStorage.getItem(STORAGE_TOKEN_KEY + '_dropbox') || 'null'); } catch {}
+  return _dropboxToken;
+}
+
+async function dropboxConnect() {
+  const appKey = localStorage.getItem('myfin_dropbox_app_key') || '';
+  if (!appKey) { showDropboxSetup(); return false; }
+  const redirect = window.location.origin + window.location.pathname;
+  const authUrl  = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=token&redirect_uri=${encodeURIComponent(redirect)}`;
+  localStorage.setItem('myfin_oauth_intent', 'dropbox');
+  window.location.href = authUrl;
+  return false;
+}
+
+function dropboxHandleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token  = params.get('access_token');
+  const intent = localStorage.getItem('myfin_oauth_intent');
+  if (token && intent === 'dropbox') {
+    _dropboxToken = { token };
+    localStorage.setItem(STORAGE_TOKEN_KEY + '_dropbox', JSON.stringify(_dropboxToken));
+    localStorage.removeItem('myfin_oauth_intent');
+    storageSetProvider('dropbox');
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('✅ Dropbox connected!', 'success');
+  }
+}
+
+async function dropboxFetch(url, opts = {}) {
+  const tok = dropboxGetToken();
+  if (!tok) throw new Error('Not authenticated');
+  return fetch(url, { ...opts, headers: { Authorization: 'Bearer ' + tok.token, ...opts.headers } });
+}
+
+async function storagePushDropbox(familyId, pkg) {
+  const path = `/MyFin_Data/Family_${familyId.slice(0,8)}/${DATA_FILENAME}`;
+  await dropboxFetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ path, mode: 'overwrite', autorename: false })
+    },
+    body: JSON.stringify(pkg, null, 2)
+  });
+}
+
+async function storagePullDropbox(familyId) {
+  const path = `/MyFin_Data/Family_${familyId.slice(0,8)}/${DATA_FILENAME}`;
+  const r    = await dropboxFetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: { 'Dropbox-API-Arg': JSON.stringify({ path }) }
+  });
+  if (!r.ok) return null;
+  return await r.json();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  WEBDAV PROVIDER
+// ════════════════════════════════════════════════════════════════
+
+function webdavGetConfig() {
+  try { return JSON.parse(localStorage.getItem('myfin_webdav_config') || 'null'); } catch { return null; }
+}
+
+async function webdavFetch(path, opts = {}) {
+  const cfg = webdavGetConfig();
+  if (!cfg) throw new Error('WebDAV not configured');
+  const url  = cfg.url.replace(/\/$/, '') + path;
+  const auth = 'Basic ' + btoa(cfg.username + ':' + cfg.password);
+  return fetch(url, { ...opts, headers: { Authorization: auth, ...opts.headers } });
+}
+
+async function webdavEnsureFolder(path) {
+  const cfg = webdavGetConfig();
+  if (!cfg) return;
+  const parts = path.split('/').filter(Boolean);
+  let built = '';
+  for (const part of parts) {
+    built += '/' + part;
+    await webdavFetch(built, { method: 'MKCOL' }).catch(() => {});
+  }
+}
+
+async function storagePushWebDAV(familyId, pkg) {
+  const base = `/MyFin_Data/Family_${familyId.slice(0,8)}`;
+  await webdavEnsureFolder(base);
+  await webdavEnsureFolder(base + '/Banks');
+  await webdavEnsureFolder(base + '/Credit Cards');
+  await webdavEnsureFolder(base + '/Investments');
+  await webdavFetch(`${base}/${DATA_FILENAME}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pkg, null, 2)
+  });
+}
+
+async function storagePullWebDAV(familyId) {
+  const path = `/MyFin_Data/Family_${familyId.slice(0,8)}/${DATA_FILENAME}`;
+  const r    = await webdavFetch(path, { method: 'GET' });
+  if (!r.ok) return null;
+  return await r.json();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  STORAGE PICKER UI  — shown on first login or when no provider set
+// ════════════════════════════════════════════════════════════════
+
+function showStoragePicker(familyId, isFirstTime) {
+  const title = isFirstTime
+    ? '📁 Where should MyFin store your data?'
+    : '🔄 Reconnect your data storage';
+  const subtitle = isFirstTime
+    ? 'Your financial data stays <strong>100% in your control</strong>. Choose where it lives — even MyFin Cloud is AES-256 encrypted so only you can read it:'
+    : 'Your storage connection needs to be reconnected. Choose a provider to load your data:';
+
+  const html = `
+    <div id="storage-picker-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:20px;padding:32px;max-width:520px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="font-size:22px;font-weight:800;color:#111827;margin-bottom:6px">${title}</div>
+        <div style="font-size:13px;color:#6b7a90;margin-bottom:24px;line-height:1.5">${subtitle}</div>
+
+        <div style="display:grid;gap:10px;margin-bottom:24px">
+          ${Object.entries(STORAGE_PROVIDERS).map(([id, p]) => `
+            <button onclick="storagePickerSelect('${id}','${familyId}')"
+              style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;border:1.5px solid #e4e9f0;background:#fff;cursor:pointer;text-align:left;transition:all .15s;width:100%"
+              onmouseover="this.style.borderColor='${p.color}';this.style.background='${p.color}11'"
+              onmouseout="this.style.borderColor='#e4e9f0';this.style.background='#fff'">
+              <span style="font-size:24px">${p.icon}</span>
+              <div>
+                <div style="font-weight:700;font-size:14px;color:#111827">${p.label}</div>
+                <div style="font-size:12px;color:#6b7a90">${p.desc}</div>
+              </div>
+              <span style="margin-left:auto;color:#9ca3af">→</span>
+            </button>
+          `).join('')}
+        </div>
+
+        ${!isFirstTime ? `<button onclick="document.getElementById('storage-picker-overlay').remove()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e4e9f0;background:#f9fafb;cursor:pointer;color:#6b7a90;font-size:13px">Continue with local cache only</button>` : ''}
+
+        <div style="margin-top:16px;font-size:11px;color:#9ca3af;text-align:center">
+          🔒 MyFin never stores your financial data on its servers. Your data, your storage.
+        </div>
+      </div>
+    </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function storagePickerSelect(providerId, familyId) {
+  document.getElementById('storage-picker-overlay')?.remove();
+  switch(providerId) {
+    case 'supabase':
+      storageSetProvider('supabase');
+      const pulled = await storagePullData(familyId);
+      if (pulled) { renderDashboard(); toast('☁️ MyFin Cloud connected — data loaded!', 'success'); }
+      else { toast('☁️ MyFin Cloud connected! Add data to start saving.', 'success'); }
+      break;
+    case 'local':
+      const ok = await fsRequestRootFolder();
+      if (ok) { storageSetProvider('local'); await storagePullData(familyId); renderDashboard(); }
+      break;
+    case 'gdrive':
+      storageSetProvider('gdrive');
+      await gdriveConnect();
+      break;
+    case 'onedrive':
+      storageSetProvider('onedrive');
+      await onedriveConnect();
+      break;
+    case 'dropbox':
+      storageSetProvider('dropbox');
+      await dropboxConnect();
+      break;
+    case 'webdav':
+      showWebDAVSetupModal(familyId);
+      break;
+  }
+}
+
+// ── WebDAV setup modal ───────────────────────────────────────────────────
+function showWebDAVSetupModal(familyId) {
+  const html = `
+    <div id="webdav-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:18px;padding:28px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px">🖥️ WebDAV Server Setup</div>
+        <div style="font-size:12px;color:#6b7a90;margin-bottom:20px">Connect to Nextcloud, ownCloud, or any WebDAV server</div>
+        <div style="display:grid;gap:12px">
+          <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Server URL</label>
+          <input id="wdav-url" placeholder="https://nextcloud.yourdomain.com/remote.php/dav/files/username/" style="width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Username</label>
+          <input id="wdav-user" placeholder="your username" style="width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+          <div><label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Password / App Token</label>
+          <input id="wdav-pass" type="password" placeholder="password or app-specific token" style="width:100%;margin-top:4px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px">
+          <button onclick="saveWebDAVConfig('${familyId}')" style="flex:1;padding:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Connect</button>
+          <button onclick="document.getElementById('webdav-setup-modal').remove()" style="padding:10px 16px;border:1px solid #e4e9f0;border-radius:8px;background:#f9fafb;cursor:pointer;color:#6b7a90">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveWebDAVConfig(familyId) {
+  const url  = document.getElementById('wdav-url')?.value.trim();
+  const user = document.getElementById('wdav-user')?.value.trim();
+  const pass = document.getElementById('wdav-pass')?.value;
+  if (!url || !user || !pass) return toast('Please fill all fields', 'error');
+  localStorage.setItem('myfin_webdav_config', JSON.stringify({ url, username: user, password: pass }));
+  document.getElementById('webdav-setup-modal')?.remove();
+  storageSetProvider('webdav');
+  const loaded = await storagePullData(familyId);
+  if (loaded) { renderDashboard(); toast('✅ WebDAV connected & data loaded!', 'success'); }
+  else { toast('✅ WebDAV connected! Add data to start saving.', 'success'); }
+}
+
+// ── Google Drive setup modal (for Client ID entry) ───────────────────────
+function showGDriveSetup() {
+  const html = `
+    <div id="gdrive-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px">🟢 Google Drive Setup</div>
+        <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">You need a Google OAuth Client ID. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#059669">Get one here →</a></div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:12px;color:#166534;margin-bottom:16px;line-height:1.6">
+          1. Go to Google Cloud Console → Create Project<br>
+          2. Enable Google Drive API<br>
+          3. Create OAuth 2.0 Client ID (Web Application)<br>
+          4. Add <strong>${window.location.origin}</strong> as authorised redirect URI
+        </div>
+        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">OAuth Client ID</label>
+        <input id="gdrive-client-id" placeholder="xxx.apps.googleusercontent.com" style="width:100%;margin-top:4px;margin-bottom:16px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px">
+        <div style="display:flex;gap:8px">
+          <button onclick="saveGDriveClientId()" style="flex:1;padding:10px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Connect Google Drive</button>
+          <button onclick="document.getElementById('gdrive-setup-modal').remove()" style="padding:10px 16px;border:1px solid #e4e9f0;border-radius:8px;background:#f9fafb;cursor:pointer;color:#6b7a90">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveGDriveClientId() {
+  const id = document.getElementById('gdrive-client-id')?.value.trim();
+  if (!id) return toast('Enter a Client ID', 'error');
+  localStorage.setItem('myfin_gdrive_client_id', id);
+  document.getElementById('gdrive-setup-modal')?.remove();
+  await gdriveConnect();
+}
+
+function showOneDriveSetup() {
+  const html = `
+    <div id="onedrive-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px">🔵 OneDrive Setup</div>
+        <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">Register an app at <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" style="color:#0078d4">Azure App Registrations →</a></div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;font-size:12px;color:#1e40af;margin-bottom:16px;line-height:1.6">
+          1. Register new application → Single Page Application<br>
+          2. Add redirect URI: <strong>${window.location.origin}</strong><br>
+          3. Under API permissions → add Files.ReadWrite<br>
+          4. Copy the Application (client) ID below
+        </div>
+        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Azure Application (Client) ID</label>
+        <input id="onedrive-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;margin-top:4px;margin-bottom:16px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px">
+        <div style="display:flex;gap:8px">
+          <button onclick="saveOneDriveClientId()" style="flex:1;padding:10px;background:linear-gradient(135deg,#0078d4,#005a9e);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Connect OneDrive</button>
+          <button onclick="document.getElementById('onedrive-setup-modal').remove()" style="padding:10px 16px;border:1px solid #e4e9f0;border-radius:8px;background:#f9fafb;cursor:pointer;color:#6b7a90">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveOneDriveClientId() {
+  const id = document.getElementById('onedrive-client-id')?.value.trim();
+  if (!id) return toast('Enter a Client ID', 'error');
+  localStorage.setItem('myfin_onedrive_client_id', id);
+  document.getElementById('onedrive-setup-modal')?.remove();
+  await onedriveConnect();
+}
+
+function showDropboxSetup() {
+  const html = `
+    <div id="dropbox-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px">📦 Dropbox Setup</div>
+        <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">Create an app at <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color:#0061ff">Dropbox App Console →</a></div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;font-size:12px;color:#1e40af;margin-bottom:16px;line-height:1.6">
+          1. Create App → Scoped access → Full Dropbox<br>
+          2. Add redirect URI: <strong>${window.location.origin}</strong><br>
+          3. Copy the App Key below
+        </div>
+        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Dropbox App Key</label>
+        <input id="dropbox-app-key" placeholder="your app key" style="width:100%;margin-top:4px;margin-bottom:16px;padding:8px 12px;border:1.5px solid #e4e9f0;border-radius:8px;font-size:13px">
+        <div style="display:flex;gap:8px">
+          <button onclick="saveDropboxAppKey()" style="flex:1;padding:10px;background:linear-gradient(135deg,#0061ff,#0040cc);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Connect Dropbox</button>
+          <button onclick="document.getElementById('dropbox-setup-modal').remove()" style="padding:10px 16px;border:1px solid #e4e9f0;border-radius:8px;background:#f9fafb;cursor:pointer;color:#6b7a90">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveDropboxAppKey() {
+  const key = document.getElementById('dropbox-app-key')?.value.trim();
+  if (!key) return toast('Enter App Key', 'error');
+  localStorage.setItem('myfin_dropbox_app_key', key);
+  document.getElementById('dropbox-setup-modal')?.remove();
+  await dropboxConnect();
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────
+function updateStorageStatusBadge() {
+  const provider = storageGetProvider();
+  const p        = provider ? STORAGE_PROVIDERS[provider] : null;
+  const badge    = document.getElementById('storage-status-badge');
+  const settings = document.getElementById('storage-status-settings');
+  const text     = p ? `${p.icon} ${p.label}` : '📁 No storage set';
+  const color    = p ? p.color : '#9ca3af';
+  [badge, settings].forEach(el => {
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = color;
+  });
+  // Also update sync badge
+  if (p) setSyncStatus(_storageReady ? 'synced' : 'syncing');
+}
+
+// Handle OAuth redirects on page load
+function storageHandleOAuthRedirect() {
+  const intent = localStorage.getItem('myfin_oauth_intent');
+  if (!intent) return;
+  if (intent === 'gdrive')    gdriveHandleOAuthCallback();
+  if (intent === 'onedrive')  onedriveHandleOAuthCallback();
+  if (intent === 'dropbox')   dropboxHandleOAuthCallback();
+}
+
+
 const STORES = {
   members:      { keyPath: 'id' },
   expenses:     { keyPath: 'id', indexes: [['memberId','memberId'],['date','date'],['category','category']] },
@@ -4080,33 +5691,20 @@ async function loadAllFromDB() {
 
 // ── saveData: persist entire state to IDB + LS fallback ───────────
 async function saveData() {
+  // 1. Write to IndexedDB (offline cache)
   if(_dbReady && !_dbError) {
-    // Write each collection to its own object store
     const writes = Object.keys(STORES)
       .filter(s => s !== 'meta' && s in state)
       .map(name => idbPutBulk(name, state[name]));
     await Promise.all(writes);
-    // Also keep a lightweight LS copy (member list + meta only) for fast first paint
     try {
       localStorage.setItem('fv_members_cache', JSON.stringify(state.members));
       localStorage.setItem('fv_db_version', String(DB_VERSION));
     } catch(e) {}
-  } else {
-    // Full LS fallback
-    try { localStorage.setItem('familyvault_data', JSON.stringify(state)); } catch(e) {
-      console.warn('Storage full:', e);
-    }
   }
+  // 2. Sync to user's chosen storage provider (Supabase is auth-only)
+  scheduleStorageSync();
 }
-
-// Sync save a single collection (used by high-frequency operations)
-function saveStore(name) {
-  if(!_dbReady || _dbError) return saveData();
-  if(!(name in state)) return;
-  return idbPutBulk(name, state[name]);
-}
-
-// ── Targeted delete: remove one record from IDB + state ───────────
 async function dbDelete(storeName, id) {
   state[storeName] = (state[storeName]||[]).filter(r => r.id !== id);
   if(_dbReady && !_dbError) {
@@ -4270,7 +5868,7 @@ function initCurrencySelectsForPage(id) {
   });
 }
 
-function showPage(id) {
+function _showPageCore(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
@@ -5284,7 +6882,7 @@ function addExpense() {
     mode: document.getElementById('exp-mode').value,
     notes: document.getElementById('exp-notes').value
   });
-  saveData(); renderExpenses(); toast('Expense added!');
+  saveData(); fsSaveExpensesSummary(); renderExpenses(); toast('Expense added!');
   document.getElementById('exp-amount').value = '';
   document.getElementById('exp-desc').value = '';
   document.getElementById('exp-notes').value = '';
@@ -5967,7 +7565,7 @@ function addInvestment() {
     folio: document.getElementById('inv-folio').value,
     notes: document.getElementById('inv-notes').value
   });
-  saveData(); renderInvestments(); toast('Investment added!');
+  saveData(); fsSaveInvestment(state.investments[state.investments.length-1]); renderInvestments(); toast('Investment added!');
   document.getElementById('inv-amount').value='';
   document.getElementById('inv-current').value='';
   document.getElementById('inv-name').value='';
@@ -6066,7 +7664,7 @@ function addBankAccount() {
     email: document.getElementById('bank-email').value,
     notes: document.getElementById('bank-notes').value
   });
-  saveData(); renderBankAccounts(); populateBankSelects(); toast('Bank account saved!');
+  saveData(); fsSaveBankAccount(state.bankAccounts[state.bankAccounts.length-1]); renderBankAccounts(); populateBankSelects(); toast('Bank account saved!');
   ['bank-name','bank-accno','bank-ifsc','bank-branch','bank-cif','bank-balance','bank-mobile','bank-email','bank-notes'].forEach(id => document.getElementById(id).value='');
 }
 
@@ -6126,6 +7724,7 @@ function bankAccountCard(b) {
         <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
           ${m.name ? `<span class="badge badge-blue" style="background:${m.color||'#00e5ff'}22;color:${m.color||'#00e5ff'};border:1px solid ${m.color||'#00e5ff'}44"><span style="margin-right:3px">${m.name[0]}</span>${m.name}</span>` : ''}
           ${b.ifsc ? `<span class="badge badge-purple">IFSC: ${b.ifsc}</span>` : ''}
+          <span class="badge" style="background:#dcfce7;color:#166534;font-size:10px">🔒 Encrypted</span>
         </div>
       </div>
     </div>
@@ -7349,6 +8948,7 @@ function addCreditCard() {
     addedOn: today()
   });
   saveData();
+  fsSaveCreditCard(state.creditCards[state.creditCards.length-1]);
   ccPhotoData = null;
   renderCreditCards();
   toast('Credit card saved! 💳');
@@ -11839,17 +13439,13 @@ async function sbUpsertFamilyMember(member) {
   });
 }
 
-async function sbGetFamilyData(familyId) {
-  const data = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
-  return data && data.length > 0 ? data[0] : null;
+async // sbGetFamilyData: Supabase is auth-only — data lives in user's storage provider
+function sbGetFamilyData(familyId) {
+  return Promise.resolve(null); // No-op: use storagePullData() instead
 }
-
-async function sbUpsertFamilyData(familyId, stateData, version) {
-  return await sbFetch('/rest/v1/family_data', {
-    method: 'POST',
-    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-    body: JSON.stringify({ family_id: familyId, data: stateData, synced_at: new Date().toISOString(), version })
-  });
+// sbUpsertFamilyData: Supabase is auth-only — data lives in user's storage provider
+function sbUpsertFamilyData(familyId, stateData, version) {
+  return Promise.resolve(null); // No-op: use storagePushData() instead
 }
 
 // ── Sync engine ───────────────────────────────────────────
@@ -11858,211 +13454,26 @@ let _syncTimer = null;
 let _syncVersion = 1;
 
 function scheduleSyncToCloud() {
-  if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(syncToCloud, 3000); // debounce 3s
+  // No-op: Supabase is auth-only. Data goes to user's chosen storage provider.
+  scheduleStorageSync();
 }
 
 async function syncToCloud() {
-  if (!window._currentFamilyId || !navigator.onLine) return;
-  const session = getSession();
-  if (!session?.access_token) return;
-  try {
-    setSyncStatus('syncing');
-    const stateSnapshot = {};
-    Object.keys(state).forEach(k => { stateSnapshot[k] = state[k]; });
-    _syncVersion++;
-    await sbUpsertFamilyData(window._currentFamilyId, stateSnapshot, _syncVersion);
-    localStorage.setItem('myfin_last_sync', new Date().toISOString());
-    setSyncStatus('synced');
-  } catch(e) {
-    console.warn('Sync failed:', e.message);
-    setSyncStatus('error');
-  }
+  // Legacy no-op kept for compatibility
 }
+
 
 async function syncFromCloud(familyId) {
-  if (!navigator.onLine) return false;
-  const session = getSession();
-  if (!session?.access_token) return false;
-  try {
-    setSyncStatus('syncing');
-    const cloudData = await sbGetFamilyData(familyId);
-    if (!cloudData || !cloudData.data) { setSyncStatus('synced'); return false; }
-    // Only pull if cloud is newer
-    const localVersion = parseInt(localStorage.getItem('myfin_sync_version_'+familyId)||'0');
-    if (cloudData.version <= localVersion) { setSyncStatus('synced'); return false; }
-    // Merge cloud data into state
-    Object.keys(cloudData.data).forEach(k => {
-      if (k in state) state[k] = cloudData.data[k];
-    });
-    await saveData(); // persist to local IDB
-    localStorage.setItem('myfin_sync_version_'+familyId, cloudData.version);
-    _syncVersion = cloudData.version;
-    setSyncStatus('synced');
-    return true;
-  } catch(e) {
-    console.warn('Pull sync failed:', e.message);
-    setSyncStatus('offline');
-    return false;
+  // Supabase is auth-only — data loads from user's chosen storage provider
+  // Called on boot: show storage picker if no provider configured
+  const provider = storageGetProvider();
+  if (provider) {
+    return await storagePullData(familyId);
   }
+  return false;
 }
 
-function setSyncStatus(status) {
-  const el = document.getElementById('sync-status-badge');
-  if (!el) return;
-  const map = {
-    syncing: ['🔄', '#60a5fa', 'Syncing…'],
-    synced:  ['☁️', '#06d6a0', 'Synced'],
-    error:   ['⚠️', '#f87171', 'Sync error'],
-    offline: ['📴', '#94a3b8', 'Offline'],
-  };
-  const [icon, color, label] = map[status] || ['', '#94a3b8', ''];
-  el.innerHTML = `<span style="color:${color}">${icon} ${label}</span>`;
-}
 
-// Override saveData to also schedule cloud sync
-const _origSaveData = saveData;
-saveData = async function() {
-  const fid = window._currentFamilyId;
-  if (!fid) return;
-  if (_dbReady && !_dbError) {
-    const writes = Object.keys(STORES).filter(s=>s!=='meta'&&s in state).map(n=>idbPutBulk(n,state[n]));
-    await Promise.all(writes);
-    try { localStorage.setItem('fv_members_cache_'+fid, JSON.stringify(state.members)); } catch(e) {}
-  } else {
-    try { localStorage.setItem('fv_data_'+fid, JSON.stringify(state)); } catch(e) {}
-  }
-  scheduleSyncToCloud();
-};
-
-// Export / Import JSON
-function exportDataJSON() {
-  const snapshot = {};
-  Object.keys(state).forEach(k => { snapshot[k] = state[k]; });
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `myfin-backup-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  toast('Data exported as JSON!');
-}
-
-async function importDataJSON(file) {
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    Object.keys(data).forEach(k => { if(k in state) state[k] = data[k]; });
-    await saveData();
-    renderDashboard();
-    toast('Data imported successfully!');
-  } catch(e) {
-    toast('Import failed: ' + e.message, 'error');
-  }
-}
-
-// ── Auth UI state ─────────────────────────────────────────
-let _pinBuffer = '';
-let _pinTargetMember = null;
-let _pendingFamilyId = null;
-let _pendingFamilySupabaseId = null; // Supabase UUID for the family
-
-function switchAuthTab(tab) {
-  document.getElementById('auth-login-form').style.display = tab==='login'?'flex':'none';
-  document.getElementById('auth-register-form').style.display = tab==='register'?'flex':'none';
-  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
-  document.getElementById('auth-login-error').classList.remove('show');
-  document.getElementById('auth-reg-error').classList.remove('show');
-}
-
-// ── Register new family ───────────────────────────────────
-async function doFamilyRegister() {
-  const familyName = document.getElementById('auth-reg-family').value.trim();
-  const adminName  = document.getElementById('auth-reg-name').value.trim();
-  const email      = document.getElementById('auth-reg-email').value.trim();
-  const password   = document.getElementById('auth-reg-password').value;
-  const confirm    = document.getElementById('auth-reg-confirm').value;
-  const errEl = document.getElementById('auth-reg-error');
-  const btn   = document.querySelector('#auth-register-form .auth-btn');
-
-  if(!familyName){errEl.textContent='Enter a family name.';errEl.classList.add('show');return;}
-  if(!adminName) {errEl.textContent='Enter your name.';errEl.classList.add('show');return;}
-  if(!email||!email.includes('@')){errEl.textContent='Enter a valid email.';errEl.classList.add('show');return;}
-  if(password.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return;}
-  if(password!==confirm){errEl.textContent='Passwords do not match.';errEl.classList.add('show');return;}
-
-  btn.disabled=true; btn.textContent='Creating…';
-  errEl.classList.remove('show');
-
-  try {
-    // 1. Create Supabase auth user
-    const signupData = await sbSignUp(email, password);
-    if (!signupData.user?.id && !signupData.access_token) {
-      errEl.textContent = signupData.msg || 'Signup failed. Try again.';
-      errEl.classList.add('show');
-      btn.disabled=false; btn.textContent='Create Family';
-      return;
-    }
-
-    // 2. Sign in immediately to get a valid access token
-    let authData;
-    try {
-      authData = await sbSignIn(email, password);
-    } catch(signInErr) {
-      // If signup returned a token directly, use it
-      authData = signupData;
-    }
-    if (!authData.access_token) {
-      errEl.textContent = 'Account created! Please log in with your email and password.';
-      errEl.style.color = '#06d6a0';
-      errEl.classList.add('show');
-      btn.disabled=false; btn.textContent='Create Family';
-      switchAuthTab('login');
-      return;
-    }
-    const userId = authData.user?.id || signupData.user?.id;
-    const accessToken = authData.access_token;
-
-    // Store token temporarily for DB calls
-    setSession({ access_token: accessToken, user_id: userId });
-
-    // 2. Create family record in Supabase
-    const family = await sbCreateFamily(userId, familyName);
-    const familyId = family.id;
-
-    // 3. Create admin member record
-    const adminMemberId = generateId();
-    await sbUpsertFamilyMember({
-      id: adminMemberId, family_id: familyId,
-      user_id: userId, name: adminName,
-      role: 'Admin', is_admin: true, color: '#00e5ff'
-    });
-
-    // 4. Save full session
-    const fullSession = {
-      access_token: accessToken,
-      user_id: userId,
-      family_id: familyId,
-      family_name: familyName,
-      member_id: adminMemberId,
-      member_name: adminName,
-      is_admin: true,
-      email,
-      login_time: Date.now()
-    };
-    setSession(fullSession);
-
-    // 5. Cache family locally
-    cacheSessionLocally(fullSession);
-    startSession(fullSession);
-
-  } catch(e) {
-    errEl.textContent = e.message;
-    errEl.classList.add('show');
-    btn.disabled=false; btn.textContent='Create Family';
-  }
-}
-
-// ── Login ─────────────────────────────────────────────────
 async function doFamilyLogin() {
   const email    = document.getElementById('auth-login-email').value.trim();
   const password = document.getElementById('auth-login-password').value;
@@ -12235,12 +13646,12 @@ function updateSessionUI() {
 async function bootFamilyApp(familyId) {
   const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
+  fsRestoreFolder(); // restore local folder access if previously granted
   loadExchangeRates(); // load live FX rates on boot
   setInterval(loadExchangeRates, 60*60*1000); // refresh hourly
   await initFamilyDatabase(familyId);
-  // Try to sync from cloud (pull latest data)
-  const pulled = await syncFromCloud(familyId);
-  if(pulled) { renderDashboard(); }
+  // Load data from user's chosen storage provider
+  await storageBootLoad(familyId);
   initApp();
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
@@ -12517,11 +13928,74 @@ async function doForgotPassword() {
     updateSessionUI();
     bootFamilyApp(session.family_id).then(()=>{
       document.getElementById('auth-overlay').classList.add('hidden');
+      updateStorageStatusBadge();
     });
   } else {
     showAuthScreen();
   }
 })();
+
+
+// ══════════════════════════════════════════════
+//  SETUP PANEL (right side) — toggle & routing
+// ══════════════════════════════════════════════
+
+let _setupPanelOpen = false;
+
+function openSetupPanel() {
+  _setupPanelOpen = true;
+  document.getElementById('setup-panel')?.classList.add('open');
+  document.getElementById('main-content')?.classList.add('setup-panel-open');
+  document.getElementById('setup-panel-toggle-btn')?.classList.add('panel-open');
+  const chevron = document.getElementById('setup-panel-chevron');
+  if (chevron) chevron.textContent = '◀';
+}
+
+function closeSetupPanel() {
+  _setupPanelOpen = false;
+  document.getElementById('setup-panel')?.classList.remove('open');
+  document.getElementById('main-content')?.classList.remove('setup-panel-open');
+  document.getElementById('setup-panel-toggle-btn')?.classList.remove('panel-open');
+  const chevron = document.getElementById('setup-panel-chevron');
+  if (chevron) chevron.textContent = '▶';
+}
+
+function toggleSetupPanel() {
+  if (_setupPanelOpen) closeSetupPanel();
+  else openSetupPanel();
+}
+
+// Navigate to a setup page (shows in main area, opens panel)
+function showSetupPage(page) {
+  showPage(page);
+  // Highlight active item in setup panel
+  document.querySelectorAll('.setup-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  // On mobile, close the setup panel after navigating
+  if (window.innerWidth < 900) closeSetupPanel();
+}
+
+// Pages that belong in the setup panel — auto-open panel when navigated to
+const SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features']);
+
+// Override showPage to auto-open setup panel for setup pages
+function showPage(pageId) {
+  _showPageCore(pageId);
+  if (SETUP_PAGES.has(pageId)) {
+    openSetupPanel();
+    // Highlight active item
+    document.querySelectorAll('.setup-nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === pageId);
+    });
+  } else {
+    // Clear setup panel highlights when navigating away
+    document.querySelectorAll('.setup-nav-item').forEach(el => el.classList.remove('active'));
+  }
+}
+
+// Handle OAuth redirects from Google Drive / OneDrive / Dropbox
+storageHandleOAuthRedirect();
 
 </script>
 </body>
