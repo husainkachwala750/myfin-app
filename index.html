@@ -237,6 +237,128 @@
   .pt-performer { display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,150,199,0.1);font-size:13px; }
   .pt-performer:last-child{border-bottom:none}
 
+
+/* ==================== AUTH SYSTEM STYLES ==================== */
+#auth-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #020f1a;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,180,216,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,214,160,0.10) 0%, transparent 55%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+}
+#auth-overlay.hidden { display: none; }
+
+.auth-card {
+  width: 420px; max-width: 95vw;
+  background: linear-gradient(135deg, rgba(5,30,47,0.98), rgba(10,45,66,0.95));
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 24px; padding: 36px 32px;
+  box-shadow: 0 24px 80px rgba(0,100,160,0.4);
+  animation: slideUp 0.4s ease;
+}
+.auth-logo { text-align: center; margin-bottom: 28px; }
+.auth-logo-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: linear-gradient(135deg, #00e5ff, #0096c7, #06d6a0);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 26px; margin-bottom: 12px;
+  box-shadow: 0 6px 24px rgba(0,229,255,0.4);
+}
+.auth-logo h1 {
+  font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700;
+  background: linear-gradient(90deg, #00e5ff, #06d6a0);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin-bottom: 4px;
+}
+.auth-logo p { font-size: 13px; color: var(--text3); }
+
+.auth-tabs { display: flex; background: rgba(0,150,199,0.1); border-radius: 10px; padding: 4px; margin-bottom: 24px; gap: 2px; }
+.auth-tab {
+  flex: 1; padding: 8px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+  background: none; color: var(--text3); transition: all 0.2s;
+}
+.auth-tab.active { background: rgba(0,229,255,0.15); color: var(--accent); border: 1px solid rgba(0,229,255,0.25); }
+
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; display: block; margin-bottom: 5px; }
+.auth-input {
+  width: 100%; background: rgba(2,15,26,0.8); border: 1px solid rgba(0,180,216,0.25);
+  border-radius: 10px; padding: 11px 14px; font-size: 14px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
+}
+.auth-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.1); }
+.auth-btn {
+  width: 100%; padding: 13px; border-radius: 10px; border: none; cursor: pointer;
+  font-size: 15px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+  background: linear-gradient(135deg, #00e5ff, #0096c7); color: #020f1a;
+  box-shadow: 0 4px 20px rgba(0,229,255,0.35); transition: all 0.2s; margin-top: 4px;
+}
+.auth-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,229,255,0.5); }
+.auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.auth-error { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--danger); display: none; }
+.auth-error.show { display: block; }
+.auth-divider { height: 1px; background: rgba(0,180,216,0.15); margin: 4px 0; }
+.auth-switch { text-align: center; font-size: 12px; color: var(--text3); margin-top: 8px; }
+.auth-switch span { color: var(--accent); cursor: pointer; font-weight: 600; }
+.auth-switch span:hover { text-decoration: underline; }
+
+/* Family switcher in header */
+.family-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.2); border-radius: 20px;
+  font-size: 12px; color: var(--text2); cursor: pointer;
+  transition: all 0.2s; margin-top: auto; margin-bottom: 8px;
+}
+.family-badge:hover { background: rgba(0,229,255,0.14); color: var(--accent); }
+.family-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg,#00e5ff,#06d6a0);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: #020f1a; flex-shrink: 0;
+}
+
+/* Member PIN login screen */
+.member-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.member-login-card {
+  background: rgba(10,45,66,0.8); border: 1px solid rgba(0,180,216,0.2);
+  border-radius: 14px; padding: 14px; cursor: pointer; text-align: center;
+  transition: all 0.2s;
+}
+.member-login-card:hover { border-color: var(--accent); background: rgba(0,229,255,0.08); transform: translateY(-2px); }
+.member-login-card.admin-card { border-color: rgba(0,229,255,0.35); }
+.member-login-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; margin: 0 auto 8px;
+  border: 2px solid;
+}
+.member-login-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.member-login-role { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.pin-dots { display: flex; gap: 10px; justify-content: center; margin: 16px 0; }
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(0,180,216,0.4); background: transparent; transition: all 0.2s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-pad { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.pin-key {
+  padding: 14px; border-radius: 10px; border: 1px solid rgba(0,180,216,0.2);
+  background: rgba(10,45,66,0.6); color: var(--text); font-size: 18px;
+  font-weight: 600; cursor: pointer; text-align: center; transition: all 0.2s;
+  font-family: 'DM Mono', monospace;
+}
+.pin-key:hover { background: rgba(0,229,255,0.1); border-color: var(--accent); }
+.pin-key:active { transform: scale(0.95); }
+
+/* Session indicator in sidebar */
+.session-user { padding: 10px 20px 4px; font-size: 12px; color: var(--text3); }
+.session-user strong { color: var(--text2); }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -771,6 +893,111 @@
 </head>
 <body>
 
+<!-- ==================== AUTH OVERLAY ==================== -->
+<div id="auth-overlay">
+  <div class="auth-card" id="auth-card">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💰</div>
+      <h1>MyFin</h1>
+      <p>Family Finance Manager</p>
+    </div>
+
+    <!-- SCREEN 1: Family Select / Login / Register -->
+    <div id="auth-screen-main">
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">🔑 Login</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">🏠 New Family</button>
+      </div>
+
+      <!-- Login form -->
+      <div id="auth-login-form" class="auth-form">
+        <div id="auth-family-select-group">
+          <label class="auth-label">Select Family</label>
+          <select class="auth-input" id="auth-family-select" onchange="onFamilySelectChange()">
+            <option value="">— Choose your family —</option>
+          </select>
+        </div>
+        <div>
+          <label class="auth-label">Password</label>
+          <input type="password" class="auth-input" id="auth-login-password" placeholder="Enter family password" onkeydown="if(event.key==='Enter')doFamilyLogin()">
+        </div>
+        <div id="auth-login-error" class="auth-error">Incorrect password. Please try again.</div>
+        <button class="auth-btn" onclick="doFamilyLogin()" id="auth-login-btn">🔓 Login</button>
+        <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
+      </div>
+
+      <!-- Register form -->
+      <div id="auth-register-form" class="auth-form" style="display:none">
+        <div>
+          <label class="auth-label">Family Name</label>
+          <input type="text" class="auth-input" id="auth-reg-family" placeholder="e.g. The Sharma Family">
+        </div>
+        <div>
+          <label class="auth-label">Admin Name (You)</label>
+          <input type="text" class="auth-input" id="auth-reg-name" placeholder="Your full name">
+        </div>
+        <div>
+          <label class="auth-label">Password</label>
+          <input type="password" class="auth-input" id="auth-reg-password" placeholder="Create a strong password">
+        </div>
+        <div>
+          <label class="auth-label">Confirm Password</label>
+          <input type="password" class="auth-input" id="auth-reg-confirm" placeholder="Re-enter password" onkeydown="if(event.key==='Enter')doFamilyRegister()">
+        </div>
+        <div id="auth-reg-error" class="auth-error"></div>
+        <button class="auth-btn" onclick="doFamilyRegister()">🏠 Create Family</button>
+        <div class="auth-switch">Already have a family? <span onclick="switchAuthTab('login')">Login →</span></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: Member PIN selector (after family login) -->
+    <div id="auth-screen-member" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:4px">Logged into</div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent)" id="auth-family-display"></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">Who is using the app?</div>
+      <div class="member-grid" id="auth-member-grid"></div>
+      <div class="auth-divider"></div>
+      <button class="auth-btn" style="background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(6,214,160,0.1));color:var(--accent);border:1px solid rgba(0,229,255,0.3);margin-top:12px" onclick="loginAsFamilyAdmin()">👑 Continue as Family Admin</button>
+    </div>
+
+    <!-- SCREEN 3: PIN entry for member -->
+    <div id="auth-screen-pin" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div class="member-login-avatar" id="pin-member-avatar" style="margin:0 auto 8px;width:52px;height:52px;font-size:22px"></div>
+        <div style="font-weight:700;font-size:16px;color:var(--text)" id="pin-member-name"></div>
+        <div style="font-size:12px;color:var(--text3)">Enter your PIN to continue</div>
+      </div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div id="pin-error" class="auth-error" style="margin-bottom:10px;text-align:center">Incorrect PIN</div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pinPress('1')">1</div>
+        <div class="pin-key" onclick="pinPress('2')">2</div>
+        <div class="pin-key" onclick="pinPress('3')">3</div>
+        <div class="pin-key" onclick="pinPress('4')">4</div>
+        <div class="pin-key" onclick="pinPress('5')">5</div>
+        <div class="pin-key" onclick="pinPress('6')">6</div>
+        <div class="pin-key" onclick="pinPress('7')">7</div>
+        <div class="pin-key" onclick="pinPress('8')">8</div>
+        <div class="pin-key" onclick="pinPress('9')">9</div>
+        <div class="pin-key" onclick="pinClear()" style="font-size:13px">CLR</div>
+        <div class="pin-key" onclick="pinPress('0')">0</div>
+        <div class="pin-key" onclick="pinBack()">⌫</div>
+      </div>
+      <button class="auth-btn" style="background:none;color:var(--text3);box-shadow:none;border:1px solid rgba(0,180,216,0.2);margin-top:10px" onclick="showMemberSelect()">← Back</button>
+    </div>
+
+  </div>
+</div>
+
+
 <!-- DB Loading Splash -->
 <div id="db-splash" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#020f1a;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .35s">
   <div style="font-size:54px">🏦</div>
@@ -841,7 +1068,16 @@
     <div class="nav-section" style="margin-top:auto;padding-top:8px;border-top:1px solid rgba(0,180,216,0.12)">
       <div class="nav-item" onclick="showPage('features')"><span class="icon">⚙️</span> Features &amp; Settings</div>
     </div>
-    <div class="sidebar-footer">
+    <div id="session-info" class="session-user" style="display:none">
+    Signed in as <strong id="session-name-display">—</strong>
+  </div>
+  <div class="family-badge" id="family-badge-btn" style="display:none;margin:0 12px 8px" onclick="showFamilySwitcher()">
+    <div class="family-avatar" id="family-badge-avatar">F</div>
+    <span id="family-badge-name">Family</span>
+    <span style="margin-left:auto;font-size:10px;opacity:.7">⇄</span>
+  </div>
+  <div class="sidebar-footer">
+      <button onclick="logoutUser()" style="display:flex;align-items:center;gap:6px;width:100%;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:6px;font-size:11px;color:#ff6b6b;cursor:pointer;margin-bottom:8px;font-family:DM Sans,sans-serif;font-weight:600">🚪 Switch User / Logout</button>
       <div class="privacy-badge">🔒 100% Local Storage — No Cloud</div>
     </div>
   </aside>
@@ -3205,6 +3441,7 @@ function openDB() {
 
 // ── Low-level IDB helpers ──────────────────────────────────────────
 function idbGetAll(storeName) {
+  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError) return resolve([]);
     const tx  = _db.transaction(storeName, 'readonly');
@@ -3215,6 +3452,7 @@ function idbGetAll(storeName) {
 }
 
 function idbPut(storeName, record) {
+  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
@@ -3225,6 +3463,7 @@ function idbPut(storeName, record) {
 }
 
 function idbDelete(storeName, key) {
+  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
@@ -3235,6 +3474,7 @@ function idbDelete(storeName, key) {
 }
 
 function idbClear(storeName) {
+  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
@@ -3245,6 +3485,7 @@ function idbClear(storeName) {
 }
 
 function idbPutBulk(storeName, records) {
+  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError||!records.length) return resolve();
     const tx    = _db.transaction(storeName, 'readwrite');
@@ -7234,7 +7475,7 @@ function initApp() {
 }
 
 // Boot: open IndexedDB, migrate if needed, then call initApp()
-initDatabase();
+// initDatabase() moved to auth flow (bootFamilyApp)
 
 // =================== FEATURES & SETTINGS ===================
 
@@ -10662,6 +10903,111 @@ function exportPortfolioPDF() {
   }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Portfolio Report</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#222}h1{color:#0096c7;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th{background:#f0f8ff;padding:9px 10px;text-align:left;font-size:12px;color:#666;text-transform:uppercase;border-bottom:2px solid #ddd}td{font-size:13px}.summary{display:flex;gap:24px;margin:16px 0;padding:16px;background:#f9fbff;border-radius:8px}.sum-box{text-align:center}.sum-label{font-size:11px;color:#888;text-transform:uppercase}.sum-val{font-size:20px;font-weight:700;color:#0096c7;margin-top:4px}</style></head><body>
+
+<!-- ==================== AUTH OVERLAY ==================== -->
+<div id="auth-overlay">
+  <div class="auth-card" id="auth-card">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💰</div>
+      <h1>MyFin</h1>
+      <p>Family Finance Manager</p>
+    </div>
+
+    <!-- SCREEN 1: Family Select / Login / Register -->
+    <div id="auth-screen-main">
+      <div class="auth-tabs" id="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">🔑 Login</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">🏠 New Family</button>
+      </div>
+
+      <!-- Login form -->
+      <div id="auth-login-form" class="auth-form">
+        <div id="auth-family-select-group">
+          <label class="auth-label">Select Family</label>
+          <select class="auth-input" id="auth-family-select" onchange="onFamilySelectChange()">
+            <option value="">— Choose your family —</option>
+          </select>
+        </div>
+        <div>
+          <label class="auth-label">Password</label>
+          <input type="password" class="auth-input" id="auth-login-password" placeholder="Enter family password" onkeydown="if(event.key==='Enter')doFamilyLogin()">
+        </div>
+        <div id="auth-login-error" class="auth-error">Incorrect password. Please try again.</div>
+        <button class="auth-btn" onclick="doFamilyLogin()" id="auth-login-btn">🔓 Login</button>
+        <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
+      </div>
+
+      <!-- Register form -->
+      <div id="auth-register-form" class="auth-form" style="display:none">
+        <div>
+          <label class="auth-label">Family Name</label>
+          <input type="text" class="auth-input" id="auth-reg-family" placeholder="e.g. The Sharma Family">
+        </div>
+        <div>
+          <label class="auth-label">Admin Name (You)</label>
+          <input type="text" class="auth-input" id="auth-reg-name" placeholder="Your full name">
+        </div>
+        <div>
+          <label class="auth-label">Password</label>
+          <input type="password" class="auth-input" id="auth-reg-password" placeholder="Create a strong password">
+        </div>
+        <div>
+          <label class="auth-label">Confirm Password</label>
+          <input type="password" class="auth-input" id="auth-reg-confirm" placeholder="Re-enter password" onkeydown="if(event.key==='Enter')doFamilyRegister()">
+        </div>
+        <div id="auth-reg-error" class="auth-error"></div>
+        <button class="auth-btn" onclick="doFamilyRegister()">🏠 Create Family</button>
+        <div class="auth-switch">Already have a family? <span onclick="switchAuthTab('login')">Login →</span></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: Member PIN selector (after family login) -->
+    <div id="auth-screen-member" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:4px">Logged into</div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent)" id="auth-family-display"></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">Who is using the app?</div>
+      <div class="member-grid" id="auth-member-grid"></div>
+      <div class="auth-divider"></div>
+      <button class="auth-btn" style="background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(6,214,160,0.1));color:var(--accent);border:1px solid rgba(0,229,255,0.3);margin-top:12px" onclick="loginAsFamilyAdmin()">👑 Continue as Family Admin</button>
+    </div>
+
+    <!-- SCREEN 3: PIN entry for member -->
+    <div id="auth-screen-pin" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div class="member-login-avatar" id="pin-member-avatar" style="margin:0 auto 8px;width:52px;height:52px;font-size:22px"></div>
+        <div style="font-weight:700;font-size:16px;color:var(--text)" id="pin-member-name"></div>
+        <div style="font-size:12px;color:var(--text3)">Enter your PIN to continue</div>
+      </div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div id="pin-error" class="auth-error" style="margin-bottom:10px;text-align:center">Incorrect PIN</div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pinPress('1')">1</div>
+        <div class="pin-key" onclick="pinPress('2')">2</div>
+        <div class="pin-key" onclick="pinPress('3')">3</div>
+        <div class="pin-key" onclick="pinPress('4')">4</div>
+        <div class="pin-key" onclick="pinPress('5')">5</div>
+        <div class="pin-key" onclick="pinPress('6')">6</div>
+        <div class="pin-key" onclick="pinPress('7')">7</div>
+        <div class="pin-key" onclick="pinPress('8')">8</div>
+        <div class="pin-key" onclick="pinPress('9')">9</div>
+        <div class="pin-key" onclick="pinClear()" style="font-size:13px">CLR</div>
+        <div class="pin-key" onclick="pinPress('0')">0</div>
+        <div class="pin-key" onclick="pinBack()">⌫</div>
+      </div>
+      <button class="auth-btn" style="background:none;color:var(--text3);box-shadow:none;border:1px solid rgba(0,180,216,0.2);margin-top:10px" onclick="showMemberSelect()">← Back</button>
+    </div>
+
+  </div>
+</div>
+
     <h1>📊 Investment Portfolio Report</h1>
     <p style="color:#666;font-size:13px">Generated on ${new Date().toLocaleDateString('en-IN')}</p>
     <div class="summary">
@@ -10731,6 +11077,320 @@ showPage = function(id) {
   if (id === 'portfolio') { switchPortfolioTab('overview'); }
 };
 
+
+
+// =================== AUTHENTICATION SYSTEM ===================
+const AUTH_KEY = 'myfin_families';
+const SESSION_KEY = 'myfin_session';
+const FAMILY_DB_PREFIX = 'FamilyVaultDB_';
+
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const data = enc.encode(password + salt);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function generateSalt() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function getFamilies() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY)||'[]'); } catch { return []; }
+}
+function saveFamilies(fams) { localStorage.setItem(AUTH_KEY, JSON.stringify(fams)); }
+function getFamilyById(id) { return getFamilies().find(f=>f.id===id)||null; }
+
+function getSession() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null'); } catch { return null; }
+}
+function setSession(s) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+
+let _pinBuffer = '';
+let _pinTargetMember = null;
+let _pendingFamilyId = null;
+
+function switchAuthTab(tab) {
+  document.getElementById('auth-login-form').style.display = tab==='login'?'flex':'none';
+  document.getElementById('auth-register-form').style.display = tab==='register'?'flex':'none';
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('auth-login-error').classList.remove('show');
+  document.getElementById('auth-reg-error').classList.remove('show');
+}
+
+function populateFamilySelect() {
+  const sel = document.getElementById('auth-family-select');
+  const fams = getFamilies();
+  sel.innerHTML = '<option value="">— Choose your family —</option>' + fams.map(f=>`<option value="${f.id}">${f.familyName}</option>`).join('');
+  if(fams.length===1) sel.value = fams[0].id;
+}
+
+function onFamilySelectChange() {
+  document.getElementById('auth-login-error').classList.remove('show');
+  document.getElementById('auth-login-password').value='';
+}
+
+async function doFamilyRegister() {
+  const familyName = document.getElementById('auth-reg-family').value.trim();
+  const adminName = document.getElementById('auth-reg-name').value.trim();
+  const password = document.getElementById('auth-reg-password').value;
+  const confirm = document.getElementById('auth-reg-confirm').value;
+  const errEl = document.getElementById('auth-reg-error');
+  if(!familyName){errEl.textContent='Enter a family name.';errEl.classList.add('show');return;}
+  if(!adminName){errEl.textContent='Enter your name.';errEl.classList.add('show');return;}
+  if(password.length<4){errEl.textContent='Password must be at least 4 characters.';errEl.classList.add('show');return;}
+  if(password!==confirm){errEl.textContent='Passwords do not match.';errEl.classList.add('show');return;}
+  const salt=generateSalt(), hash=await hashPassword(password,salt);
+  const familyId=generateId(), adminId=generateId();
+  const family={id:familyId,familyName,adminId,adminName,passwordHash:hash,salt,createdAt:new Date().toISOString(),
+    members:[{id:adminId,name:adminName,role:'Admin',isAdmin:true,pin:null,color:'#00e5ff'}]};
+  const fams=getFamilies(); fams.push(family); saveFamilies(fams);
+  startSession(familyId,adminId,adminName,true);
+}
+
+async function doFamilyLogin() {
+  const familyId=document.getElementById('auth-family-select').value;
+  const password=document.getElementById('auth-login-password').value;
+  const errEl=document.getElementById('auth-login-error');
+  if(!familyId){errEl.textContent='Please select a family.';errEl.classList.add('show');return;}
+  if(!password){errEl.textContent='Please enter your password.';errEl.classList.add('show');return;}
+  const family=getFamilyById(familyId);
+  if(!family){errEl.textContent='Family not found.';errEl.classList.add('show');return;}
+  const hash=await hashPassword(password,family.salt);
+  if(hash!==family.passwordHash){errEl.classList.add('show');return;}
+  errEl.classList.remove('show');
+  _pendingFamilyId=familyId;
+  const nonAdmins=(family.members||[]).filter(m=>!m.isAdmin);
+  if(nonAdmins.length>0) showMemberSelect(); else loginAsFamilyAdmin();
+}
+
+function showMemberSelect() {
+  if(!_pendingFamilyId) return;
+  const family=getFamilyById(_pendingFamilyId); if(!family) return;
+  document.getElementById('auth-screen-main').style.display='none';
+  document.getElementById('auth-screen-pin').style.display='none';
+  document.getElementById('auth-screen-member').style.display='block';
+  document.getElementById('auth-family-display').textContent=family.familyName;
+  const grid=document.getElementById('auth-member-grid');
+  grid.innerHTML=(family.members||[]).filter(m=>!m.isAdmin).map(m=>{
+    const init=m.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `<div class="member-login-card" onclick="selectMemberLogin('${m.id}')">
+      <div class="member-login-avatar" style="background:${m.color||'#00e5ff'}22;border-color:${m.color||'#00e5ff'};color:${m.color||'#00e5ff'};width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;margin:0 auto 8px;border:2px solid">${init}</div>
+      <div class="member-login-name">${m.name}</div>
+      <div class="member-login-role">${m.role||'Member'}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectMemberLogin(memberId) {
+  const family=getFamilyById(_pendingFamilyId);
+  const member=(family?.members||[]).find(m=>m.id===memberId); if(!member) return;
+  if(!member.pin){startSession(_pendingFamilyId,memberId,member.name,false);return;}
+  _pinTargetMember=member; _pinBuffer=''; updatePinDots();
+  const init=member.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const av=document.getElementById('pin-member-avatar');
+  av.textContent=init;
+  av.style.cssText=`background:${member.color||'#00e5ff'}22;border:2px solid ${member.color||'#00e5ff'};color:${member.color||'#00e5ff'};width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;margin:0 auto 8px`;
+  document.getElementById('pin-member-name').textContent=member.name;
+  document.getElementById('pin-error').classList.remove('show');
+  document.getElementById('auth-screen-member').style.display='none';
+  document.getElementById('auth-screen-pin').style.display='block';
+}
+
+function pinPress(d){if(_pinBuffer.length>=4)return;_pinBuffer+=d;updatePinDots();if(_pinBuffer.length===4)setTimeout(checkPin,150);}
+function pinBack(){_pinBuffer=_pinBuffer.slice(0,-1);updatePinDots();}
+function pinClear(){_pinBuffer='';updatePinDots();}
+function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.classList.toggle('filled',i<_pinBuffer.length);}}
+
+async function checkPin() {
+  if(!_pinTargetMember) return;
+  const hash=await hashPassword(_pinBuffer,_pinTargetMember.id);
+  if(hash===_pinTargetMember.pin){document.getElementById('pin-error').classList.remove('show');startSession(_pendingFamilyId,_pinTargetMember.id,_pinTargetMember.name,false);}
+  else{document.getElementById('pin-error').classList.add('show');_pinBuffer='';updatePinDots();}
+}
+
+function loginAsFamilyAdmin() {
+  if(!_pendingFamilyId) return;
+  const f=getFamilyById(_pendingFamilyId); if(!f) return;
+  startSession(_pendingFamilyId,f.adminId,f.adminName,true);
+}
+
+function startSession(familyId,memberId,memberName,isAdmin) {
+  setSession({familyId,memberId,memberName,isAdmin,loginTime:Date.now()});
+  window._currentFamilyId=familyId;
+  window._currentMemberId=memberId;
+  window._currentMemberName=memberName;
+  window._currentIsAdmin=isAdmin;
+  document.getElementById('auth-overlay').classList.add('hidden');
+  updateSessionUI();
+  bootFamilyApp(familyId);
+}
+
+function updateSessionUI() {
+  const fam=getFamilyById(window._currentFamilyId);
+  const si=document.getElementById('session-info'); if(si) si.style.display='block';
+  const sn=document.getElementById('session-name-display'); if(sn) sn.textContent=window._currentMemberName||'—';
+  const bb=document.getElementById('family-badge-btn'); if(bb) bb.style.display='flex';
+  const bn=document.getElementById('family-badge-name'); if(bn&&fam) bn.textContent=fam.familyName;
+  const ba=document.getElementById('family-badge-avatar'); if(ba&&fam) ba.textContent=fam.familyName.charAt(0).toUpperCase();
+}
+
+async function bootFamilyApp(familyId) {
+  window._familyDbName = FAMILY_DB_PREFIX + familyId;
+  await initFamilyDatabase(familyId);
+  initApp();
+  renderDashboard();
+  setTimeout(runAutoPostEngine, 300);
+}
+
+async function initFamilyDatabase(familyId) {
+  const dbName = FAMILY_DB_PREFIX + familyId;
+  _dbReady = false; _dbError = false;
+  return new Promise(resolve => {
+    const req = indexedDB.open(dbName, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      Object.entries(STORES).forEach(([name, cfg]) => {
+        if(!db.objectStoreNames.contains(name)) {
+          const store = db.createObjectStore(name,{keyPath:cfg.keyPath||'id'});
+          (cfg.indexes||[]).forEach(([idx,kp])=>store.createIndex(idx,kp,{unique:false}));
+        }
+      });
+    };
+    req.onsuccess = e => {
+      _db = e.target.result; _dbReady = true;
+      loadAllFromDB().then(resolve);
+    };
+    req.onerror = () => {
+      _dbError = true;
+      const raw = localStorage.getItem('fv_data_'+familyId);
+      if(raw) try { Object.assign(state,JSON.parse(raw)); } catch(e) {}
+      resolve();
+    };
+  });
+}
+
+// Override saveData to use family-specific storage key
+const _origSaveData = saveData;
+saveData = async function() {
+  const fid = window._currentFamilyId;
+  if(!fid) return;
+  if(_dbReady && !_dbError) {
+    const writes = Object.keys(STORES).filter(s=>s!=='meta'&&s in state).map(name=>idbPutBulk(name,state[name]));
+    await Promise.all(writes);
+    try { localStorage.setItem('fv_members_cache_'+fid, JSON.stringify(state.members)); } catch(e) {}
+  } else {
+    try { localStorage.setItem('fv_data_'+fid, JSON.stringify(state)); } catch(e) {}
+  }
+};
+
+function saveMemberToFamily(member) {
+  if(!window._currentFamilyId) return;
+  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId); if(!fam) return;
+  if(!fam.members) fam.members=[];
+  const idx=fam.members.findIndex(m=>m.id===member.id);
+  const entry={id:member.id,name:member.name,role:member.role,isAdmin:false,pin:null,color:member.color};
+  if(idx>=0) fam.members[idx]={...fam.members[idx],...entry}; else fam.members.push(entry);
+  saveFamilies(fams);
+}
+
+function removeMemberFromFamily(memberId) {
+  if(!window._currentFamilyId) return;
+  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId); if(!fam) return;
+  fam.members=(fam.members||[]).filter(m=>m.id!==memberId||m.isAdmin);
+  saveFamilies(fams);
+}
+
+function openSetPinModal(memberId) {
+  if(!window._currentIsAdmin){toast('Only the family admin can set PINs.','error');return;}
+  const fam=getFamilyById(window._currentFamilyId);
+  const mem=(fam?.members||[]).find(m=>m.id===memberId); if(!mem) return;
+  const modal=document.createElement('div');
+  modal.className='modal-overlay open'; modal.id='pin-set-modal';
+  modal.innerHTML=`<div class="modal">
+    <div class="modal-header"><h3>Set PIN for ${mem.name}</h3><button class="close-btn" onclick="document.getElementById('pin-set-modal').remove()">X</button></div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Set a 4-digit PIN so <strong>${mem.name}</strong> can log in privately.</p>
+    <div class="form-group"><label>New PIN (4 digits)</label><input type="password" inputmode="numeric" maxlength="4" id="pin-new-input" class="auth-input" placeholder="----" style="letter-spacing:8px;font-size:22px;text-align:center"></div>
+    <div class="form-group"><label>Confirm PIN</label><input type="password" inputmode="numeric" maxlength="4" id="pin-confirm-input" class="auth-input" placeholder="----" style="letter-spacing:8px;font-size:22px;text-align:center"></div>
+    <div id="pin-set-error" class="auth-error"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-primary" onclick="confirmSetPin('${memberId}')" style="flex:1">Save PIN</button>
+      ${mem.pin?`<button class="btn btn-danger" onclick="clearMemberPin('${memberId}')" style="flex:1">Remove PIN</button>`:''}
+    </div></div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmSetPin(memberId) {
+  const np=document.getElementById('pin-new-input').value;
+  const cp=document.getElementById('pin-confirm-input').value;
+  const err=document.getElementById('pin-set-error');
+  if(np.length!==4||!/^\d{4}$/.test(np)){err.textContent='PIN must be exactly 4 digits.';err.classList.add('show');return;}
+  if(np!==cp){err.textContent='PINs do not match.';err.classList.add('show');return;}
+  const hash=await hashPassword(np,memberId);
+  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId);
+  const mem=(fam?.members||[]).find(m=>m.id===memberId);
+  if(mem) mem.pin=hash;
+  saveFamilies(fams);
+  document.getElementById('pin-set-modal').remove();
+  toast('PIN set for ' + (mem?.name||'member'));
+}
+
+function clearMemberPin(memberId) {
+  const fams=getFamilies(); const fam=fams.find(f=>f.id===window._currentFamilyId);
+  const mem=(fam?.members||[]).find(m=>m.id===memberId); if(mem) mem.pin=null;
+  saveFamilies(fams);
+  document.getElementById('pin-set-modal').remove();
+  toast('PIN removed');
+}
+
+function showFamilySwitcher() {
+  if(!confirm('Switch user or log out? Your data is saved.')) return;
+  logoutUser();
+}
+
+function logoutUser() {
+  clearSession();
+  window._currentFamilyId=null; window._currentMemberId=null;
+  Object.keys(state).forEach(k=>{if(Array.isArray(state[k]))state[k]=[];});
+  _db=null; _dbReady=false; _dbError=false;
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('auth-screen-main').style.display='block';
+  document.getElementById('auth-screen-member').style.display='none';
+  document.getElementById('auth-screen-pin').style.display='none';
+  const si=document.getElementById('session-info'); if(si) si.style.display='none';
+  const bb=document.getElementById('family-badge-btn'); if(bb) bb.style.display='none';
+  _pendingFamilyId=null; populateFamilySelect(); switchAuthTab('login');
+}
+
+function showAuthScreen() {
+  populateFamilySelect();
+  const fams=getFamilies();
+  if(fams.length===0) switchAuthTab('register'); else switchAuthTab('login');
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+
+// Boot on page load
+(function authBoot() {
+  const session=getSession();
+  if(session&&session.familyId) {
+    window._currentFamilyId=session.familyId;
+    window._currentMemberId=session.memberId;
+    window._currentMemberName=session.memberName;
+    window._currentIsAdmin=session.isAdmin;
+    _pendingFamilyId=session.familyId;
+    updateSessionUI();
+    bootFamilyApp(session.familyId).then(()=>{
+      document.getElementById('auth-overlay').classList.add('hidden');
+    });
+  } else {
+    showAuthScreen();
+  }
+})();
 
 </script>
 </body>
