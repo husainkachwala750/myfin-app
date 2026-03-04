@@ -13939,7 +13939,7 @@ async function doForgotPassword() {
 //  SETUP PANEL (right side) — toggle & routing
 // ══════════════════════════════════════════════
 
-let _setupPanelOpen = false;
+var _setupPanelOpen = false;
 
 function openSetupPanel() {
   _setupPanelOpen = true;
@@ -13976,7 +13976,7 @@ function showSetupPage(page) {
 }
 
 // Pages that belong in the setup panel — auto-open panel when navigated to
-const SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features']);
+var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features']);
 
 // Override showPage to auto-open setup panel for setup pages
 function showPage(pageId) {
