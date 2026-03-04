@@ -240,7 +240,7 @@
 
 /* ==================== AUTH SYSTEM STYLES ==================== */
 #auth-overlay {
-  position: fixed; inset: 0; z-index: 9999;
+  position: fixed; inset: 0; z-index: 999999;
   background: #020f1a;
   background-image:
     radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,180,216,0.15) 0%, transparent 60%),
@@ -3585,7 +3585,8 @@ async function migrateFromLocalStorage() {
 
 // ── Bootstrap: open DB, migrate if needed, load state ─────────────
 async function initDatabase() {
-  const splash = document.getElementById('db-splash');
+  const splash = null; // splash handled by auth system
+  // const _splash = document.getElementById('db-splash');
   const splashMsg = document.getElementById('db-splash-msg');
   const setMsg = m => { if(splashMsg) splashMsg.textContent = m; };
 
@@ -11241,6 +11242,9 @@ function updateSessionUI() {
 }
 
 async function bootFamilyApp(familyId) {
+  // Ensure db-splash is hidden
+  const dbSplash = document.getElementById('db-splash');
+  if (dbSplash) dbSplash.style.display = 'none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
   await initFamilyDatabase(familyId);
   initApp();
@@ -11376,6 +11380,10 @@ function showAuthScreen() {
 
 // Boot on page load
 (function authBoot() {
+  // Hide the original db-splash immediately - auth system takes over
+  const dbSplash = document.getElementById('db-splash');
+  if (dbSplash) { dbSplash.style.display = 'none'; }
+
   const session=getSession();
   if(session&&session.familyId) {
     window._currentFamilyId=session.familyId;
