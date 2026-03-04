@@ -13935,7 +13935,6 @@ async function doForgotPassword() {
   }
 })();
 
-
 // ══════════════════════════════════════════════
 //  SETUP PANEL (right side) — toggle & routing
 // ══════════════════════════════════════════════
@@ -13993,6 +13992,8 @@ function showPage(pageId) {
     document.querySelectorAll('.setup-nav-item').forEach(el => el.classList.remove('active'));
   }
 }
+
+})();
 
 // Handle OAuth redirects from Google Drive / OneDrive / Dropbox
 storageHandleOAuthRedirect();
