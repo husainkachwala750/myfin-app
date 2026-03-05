@@ -4951,6 +4951,7 @@ async function storagePushData(familyId) {
   } catch(e) {
     console.warn('Storage push failed:', e);
     setSyncStatus('error');
+    toast('Sync error: ' + (e.message || 'Could not save to storage'), 'error');
   }
 }
 
@@ -5492,28 +5493,57 @@ function showStoragePicker(familyId, isFirstTime) {
 
 async function storagePickerSelect(providerId, familyId) {
   document.getElementById('storage-picker-overlay')?.remove();
+  // Remember if we already have local data to migrate to the new provider
+  const hasLocalData = state.members.length || state.expenses.length || state.transactions.length || state.investments.length || state.bankAccounts.length;
+  const oldProvider = storageGetProvider();
+
   switch(providerId) {
     case 'supabase':
       storageSetProvider('supabase');
+      // Try pulling existing data from cloud first
       const pulled = await storagePullData(familyId);
-      if (pulled) { renderDashboard(); toast('☁️ MyFin Cloud connected — data loaded!', 'success'); }
-      else { toast('☁️ MyFin Cloud connected! Add data to start saving.', 'success'); }
+      if (pulled) {
+        renderDashboard();
+        toast('☁️ MyFin Cloud connected — data loaded!', 'success');
+      } else if (hasLocalData) {
+        // No cloud data but we have local data — push it to new provider
+        try {
+          await storagePushData(familyId);
+          toast('☁️ MyFin Cloud connected — your data has been uploaded!', 'success');
+        } catch(e) {
+          console.warn('Push to MyFin Cloud failed:', e);
+          toast('☁️ Connected but upload failed: ' + e.message, 'error');
+        }
+      } else {
+        toast('☁️ MyFin Cloud connected! Add data to get started.', 'success');
+      }
+      setSyncStatus('synced');
       break;
     case 'local':
       const ok = await fsRequestRootFolder();
-      if (ok) { storageSetProvider('local'); await storagePullData(familyId); renderDashboard(); }
+      if (ok) {
+        storageSetProvider('local');
+        const lp = await storagePullData(familyId);
+        if (!lp && hasLocalData) { try { await storagePushData(familyId); } catch(e) { console.warn(e); } }
+        renderDashboard();
+        toast('💻 Local folder connected!', 'success');
+        setSyncStatus('synced');
+      }
       break;
     case 'gdrive':
       storageSetProvider('gdrive');
       await gdriveConnect();
+      if (hasLocalData && !oldProvider?.startsWith('gdrive')) { try { await storagePushData(familyId); } catch(e) { console.warn(e); } }
       break;
     case 'onedrive':
       storageSetProvider('onedrive');
       await onedriveConnect();
+      if (hasLocalData && oldProvider !== 'onedrive') { try { await storagePushData(familyId); } catch(e) { console.warn(e); } }
       break;
     case 'dropbox':
       storageSetProvider('dropbox');
       await dropboxConnect();
+      if (hasLocalData && oldProvider !== 'dropbox') { try { await storagePushData(familyId); } catch(e) { console.warn(e); } }
       break;
     case 'webdav':
       showWebDAVSetupModal(familyId);
