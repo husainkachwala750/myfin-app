@@ -4596,8 +4596,27 @@ async function storagePullData(familyId) {
       case 'webdav':   pkg = await storagePullWebDAV(familyId);   break;
     }
     if (!pkg) return false;
+    // Merge cloud data with local data by id instead of replacing
     Object.keys(pkg).forEach(k => {
-      if (k in state) state[k] = pkg[k];
+      if (!(k in state)) return;
+      const cloud = pkg[k];
+      const local = state[k];
+      // For non-array values (settings, primitives), use cloud value
+      if (!Array.isArray(cloud) || !Array.isArray(local)) {
+        state[k] = cloud;
+        return;
+      }
+      // For arrays, merge by id — local wins on conflicts (newer)
+      const merged = new Map();
+      cloud.forEach(item => {
+        const id = item.id || item.name || JSON.stringify(item);
+        merged.set(id, item);
+      });
+      local.forEach(item => {
+        const id = item.id || item.name || JSON.stringify(item);
+        merged.set(id, item); // local overwrites cloud (local is newer)
+      });
+      state[k] = Array.from(merged.values());
     });
     await saveData();
     return true;
