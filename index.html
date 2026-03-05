@@ -4966,6 +4966,13 @@ async function storageBuildPackage(familyId) {
   };
   // Copy all state collections
   Object.keys(state).forEach(k => { pkg[k] = state[k]; });
+  // Strip rawCSV from stmtBatches to keep sync payload small (CSV can be reconstructed from statement rows)
+  if (pkg.stmtBatches?.length) {
+    pkg.stmtBatches = pkg.stmtBatches.map(b => {
+      const { rawCSV, ...rest } = b;
+      return rest;
+    });
+  }
   return pkg;
 }
 
@@ -4989,6 +4996,21 @@ async function storagePushData(familyId) {
     updateStorageStatusBadge();
   } catch(e) {
     console.warn('Storage push failed:', e);
+    // If payload too large, try stripping more data
+    if (e.message?.includes('413') || e.message?.includes('too large') || e.message?.includes('payload')) {
+      console.log('[MyFin Sync] Payload too large — retrying with trimmed data...');
+      try {
+        // Strip statements rawCSV and large description fields
+        if (pkg.statements?.length > 500) pkg.statements = pkg.statements.slice(-500);
+        if (pkg.ccStatements?.length > 500) pkg.ccStatements = pkg.ccStatements.slice(-500);
+        switch(provider) {
+          case 'supabase': await storagePushSupabase(familyId, pkg); break;
+        }
+        setSyncStatus('synced');
+        console.log('[MyFin Sync] Retry succeeded with trimmed data');
+        return;
+      } catch(e2) { console.warn('Storage push retry also failed:', e2); }
+    }
     setSyncStatus('error');
     toast('Sync error: ' + (e.message || 'Could not save to storage'), 'error');
   }
@@ -15623,7 +15645,7 @@ const SESSION_KEY = 'myfin_session';
 const SYNC_STATUS_KEY = 'myfin_sync_status';
 
 // ── Supabase REST helpers ─────────────────────────────────
-async function sbFetch(path, options={}) {
+async function sbFetch(path, options={}, _retried=false) {
   const session = getSession();
   const headers = {
     'Content-Type': 'application/json',
@@ -15633,6 +15655,11 @@ async function sbFetch(path, options={}) {
   };
   const res = await fetch(SUPABASE_URL + path, { ...options, headers });
   if (!res.ok) {
+    // Auto-refresh token on 401 and retry once
+    if ((res.status === 401 || res.status === 403) && !_retried) {
+      const refreshed = await sbRefreshToken();
+      if (refreshed) return sbFetch(path, options, true);
+    }
     const err = await res.text();
     throw new Error(`Supabase ${res.status}: ${err}`);
   }
@@ -15661,6 +15688,26 @@ async function sbSignIn(email, password) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error_description || data.msg || 'Login failed');
   return data;
+}
+
+async function sbRefreshToken() {
+  const session = getSession();
+  if (!session?.refresh_token) return null;
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ refresh_token: session.refresh_token })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      setSession(data);
+      console.log('[MyFin Auth] Token refreshed successfully');
+      return data;
+    }
+    return null;
+  } catch(e) { console.warn('[MyFin Auth] Token refresh failed:', e); return null; }
 }
 
 async function sbSignOut(accessToken) {
@@ -16011,6 +16058,7 @@ async function bootFamilyApp(familyId) {
   fsRestoreFolder(); // restore local folder access if previously granted
   loadExchangeRates(); // load live FX rates on boot
   setInterval(loadExchangeRates, 60*60*1000); // refresh hourly
+  setInterval(sbRefreshToken, 45*60*1000); // refresh auth token every 45 min
   try {
     await initFamilyDatabase(familyId);
     console.log('[MyFin Boot] After IDB load:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
