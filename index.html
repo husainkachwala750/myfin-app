@@ -9633,12 +9633,10 @@ function clearHistory() {
   saveData(); renderDecisionHistory(); toast('History cleared');
 }
 
-// Patch showPage to handle advisor
-const _origShowPage = showPage;
+// Mobile sidebar close on navigation (keep this)
+const _origShowPageMobile = showPage;
 showPage = function(id) {
-  _origShowPage(id);
-  if(id==='advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
-  // Close sidebar on mobile when navigating
+  _origShowPageMobile(id);
   if(window.innerWidth <= 900) closeSidebar();
 };
 
@@ -13355,13 +13353,7 @@ Keep it concise, practical, and India-specific.`;
   }
 }
 
-// =================== PATCH showPage FOR NEW PAGES ===================
-const _origShowPage2 = showPage;
-showPage = function(id) {
-  _origShowPage2(id);
-  if (id === 'aichat') { renderAiChatSnapshot(); }
-  if (id === 'portfolio') { switchPortfolioTab('overview'); }
-};
+// (showPage render hooks moved into main showPage function)
 
 
 
