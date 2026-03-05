@@ -6044,7 +6044,7 @@ function populateModalBankSelect(selId, selectedId) {
   const el = document.getElementById(selId);
   if(!el) return;
   el.innerHTML = '<option value="">— None —</option>' +
-    state.bankAccounts.map(b => `<option value="${b.id}" ${b.id===selectedId?'selected':''}>${b.bankName} ···${b.accountNumber.slice(-4)}</option>`).join('');
+    state.bankAccounts.map(b => `<option value="${b.id}" ${b.id===selectedId?'selected':''}>${b.bankName} ···${(b.accountNumber || b.account_no || '0000').slice(-4)}</option>`).join('');
 }
 function populateModalInsHolderSelect(selId, selectedId) {
   const el = document.getElementById(selId);
@@ -8052,7 +8052,7 @@ function renderFamilyDashboard() {
   if(bankDiv) {
     bankDiv.innerHTML = state.bankAccounts.length ? state.bankAccounts.slice(0,4).map(b=>`
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,150,199,0.1);font-size:13px">
-        <div><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${b.accountNumber.slice(-4)}</div></div>
+        <div><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${(b.accountNumber || b.account_no || '0000').slice(-4)}</div></div>
         <div style="font-family:'DM Mono',monospace;color:var(--seafoam);font-size:13px">${fmt(b.balance)}</div>
       </div>`).join('') + `<div style="text-align:right;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="showPage('bankdetails')">View All</button></div>`
     : '<div style="color:var(--text3);font-size:13px;padding:12px">No accounts added</div>';
@@ -8245,7 +8245,7 @@ function renderMemberDashboard(memberId) {
         <div class="card-title" style="margin-bottom:12px">Bank Accounts</div>
         ${mBanks.map(b=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,150,199,0.1)">
-            <div><div style="font-weight:500;font-size:13px">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">${b.accountType} · ••••${b.accountNumber.slice(-4)}</div></div>
+            <div><div style="font-weight:500;font-size:13px">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">${b.accountType} · ••••${(b.accountNumber || b.account_no || '0000').slice(-4)}</div></div>
             <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--seafoam)">${fmt(b.balance)}</div>
           </div>`).join('')}
       </div>` : '<div></div>'}
@@ -8668,7 +8668,7 @@ function renderMemberReport(memberId) {
         <table>
           <thead><tr><th>Bank</th><th>Type</th><th>Balance</th></tr></thead>
           <tbody>${mBanks.map(b=>`<tr>
-            <td><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${b.accountNumber.slice(-4)}</div></td>
+            <td><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${(b.accountNumber || b.account_no || '0000').slice(-4)}</div></td>
             <td>${b.accountType}</td>
             <td class="amount-credit">${fmt(b.balance)}</td>
           </tr>`).join('')}</tbody>
@@ -9610,14 +9610,7 @@ function clearHistory() {
   saveData(); renderDecisionHistory(); toast('History cleared');
 }
 
-// Patch showPage to handle advisor
-const _origShowPage = showPage;
-showPage = function(id) {
-  _origShowPage(id);
-  if(id==='advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
-  // Close sidebar on mobile when navigating
-  if(window.innerWidth <= 900) closeSidebar();
-};
+// showPage advisor + mobile hooks — consolidated into main showPage function
 
 // =================== MOBILE NAVIGATION ===================
 function toggleSidebar() {
@@ -13331,13 +13324,7 @@ Keep it concise, practical, and India-specific.`;
   }
 }
 
-// =================== PATCH showPage FOR NEW PAGES ===================
-const _origShowPage2 = showPage;
-showPage = function(id) {
-  _origShowPage2(id);
-  if (id === 'aichat') { renderAiChatSnapshot(); }
-  if (id === 'portfolio') { switchPortfolioTab('overview'); }
-};
+// showPage aichat/portfolio hooks — consolidated into main showPage function
 
 
 
@@ -14037,19 +14024,24 @@ function showSetupPage(page) {
 // Pages that belong in the setup panel — auto-open panel when navigated to
 var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features']);
 
-// Override showPage to auto-open setup panel for setup pages
+// Single consolidated showPage — handles all page hooks
 function showPage(pageId) {
   _showPageCore(pageId);
+  // Setup panel
   if (SETUP_PAGES && SETUP_PAGES.has(pageId)) {
     openSetupPanel();
-    // Highlight active item
     document.querySelectorAll('.setup-nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.page === pageId);
     });
   } else {
-    // Clear setup panel highlights when navigating away
     document.querySelectorAll('.setup-nav-item').forEach(el => el.classList.remove('active'));
   }
+  // Page-specific render hooks
+  if (pageId === 'advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
+  if (pageId === 'aichat') { renderAiChatSnapshot(); }
+  if (pageId === 'portfolio') { switchPortfolioTab('overview'); }
+  // Close sidebar on mobile
+  if (window.innerWidth <= 900) closeSidebar();
 }
 
 
