@@ -1552,10 +1552,10 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,150,199,0.04);border:1px solid rgba(0,150,199,0.12);border-radius:12px;padding:10px 16px">
         <span style="font-size:13px;font-weight:600;color:var(--text2)">Period:</span>
         <div style="display:flex;gap:4px;background:rgba(0,150,199,0.08);border-radius:8px;padding:3px">
-          <button class="dash-period-btn active" data-period="month" onclick="setDashPeriod('month')">This Month</button>
+          <button class="dash-period-btn" data-period="month" onclick="setDashPeriod('month')">This Month</button>
           <button class="dash-period-btn" data-period="quarter" onclick="setDashPeriod('quarter')">Quarter</button>
           <button class="dash-period-btn" data-period="year" onclick="setDashPeriod('year')">This Year</button>
-          <button class="dash-period-btn" data-period="all" onclick="setDashPeriod('all')">All Time</button>
+          <button class="dash-period-btn active" data-period="all" onclick="setDashPeriod('all')">All Time</button>
           <button class="dash-period-btn" data-period="custom" onclick="setDashPeriod('custom')">Custom</button>
         </div>
         <div id="dash-custom-range" style="display:none;gap:8px;align-items:center">
@@ -4937,7 +4937,8 @@ async function storagePullData(familyId) {
       case 'dropbox':  pkg = await storagePullDropbox(familyId);  break;
       case 'webdav':   pkg = await storagePullWebDAV(familyId);   break;
     }
-    if (!pkg) return false;
+    if (!pkg) { console.log('[MyFin Sync] Cloud returned null — keeping local data'); return false; }
+    console.log('[MyFin Sync] Cloud data from', provider + ':', Object.keys(pkg).map(k => Array.isArray(pkg[k]) ? k+':'+pkg[k].length : k).join(', '));
     // Merge cloud data with local data by id instead of replacing
     Object.keys(pkg).forEach(k => {
       if (!(k in state)) return;
@@ -9508,7 +9509,7 @@ function loadSampleCCStatement() {
 // =================== DASHBOARD ===================
 let dashView = 'family';
 let activeMemberId = null;
-let dashPeriod = 'month'; // 'month', 'quarter', 'year', 'all', 'custom'
+let dashPeriod = 'all'; // 'month', 'quarter', 'year', 'all', 'custom'
 let dashCustomFrom = null;
 let dashCustomTo = null;
 
@@ -15315,12 +15316,16 @@ async function bootFamilyApp(familyId) {
   setInterval(loadExchangeRates, 60*60*1000); // refresh hourly
   try {
     await initFamilyDatabase(familyId);
+    console.log('[MyFin Boot] After IDB load:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
     // Load data from user's chosen storage provider
     await storageBootLoad(familyId);
+    console.log('[MyFin Boot] After cloud sync:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
     // If state is still empty, try migrating from old generic DB / localStorage
     const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
     if (!hasData) {
+      console.log('[MyFin Boot] No data found — trying migration...');
       await migrateFromOldDB(familyId);
+      console.log('[MyFin Boot] After migration:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
     }
   } catch(e) {
     console.warn('Boot data load error:', e);
