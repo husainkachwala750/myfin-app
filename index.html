@@ -13467,7 +13467,7 @@ function scheduleSyncToCloud() {
 }
 
 async function syncToCloud() {
-  // Legacy no-op kept for compatibility
+  scheduleStorageSync();
 }
 
 
@@ -13657,14 +13657,65 @@ async function bootFamilyApp(familyId) {
   fsRestoreFolder(); // restore local folder access if previously granted
   loadExchangeRates(); // load live FX rates on boot
   setInterval(loadExchangeRates, 60*60*1000); // refresh hourly
-  await initFamilyDatabase(familyId);
-  // Load data from user's chosen storage provider
-  await storageBootLoad(familyId);
+  try {
+    await initFamilyDatabase(familyId);
+    // Load data from user's chosen storage provider
+    await storageBootLoad(familyId);
+    // If state is still empty, try migrating from old generic DB / localStorage
+    const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
+    if (!hasData) {
+      await migrateFromOldDB(familyId);
+    }
+  } catch(e) {
+    console.warn('Boot data load error:', e);
+  }
   initApp();
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
   // Show sync status
   setTimeout(()=>setSyncStatus(navigator.onLine?'synced':'offline'), 500);
+}
+
+// Migrate data from old generic FamilyVaultDB or localStorage into family DB
+async function migrateFromOldDB(familyId) {
+  try {
+    // Try old localStorage blob first
+    const lsRaw = localStorage.getItem('familyvault_data');
+    if (lsRaw) {
+      const old = JSON.parse(lsRaw);
+      const collections = Object.keys(STORES).filter(s => s !== 'meta');
+      let found = false;
+      collections.forEach(k => {
+        if (old[k] && old[k].length) { state[k] = old[k]; found = true; }
+      });
+      if (found) { await saveData(); toast('✅ Restored data from local backup', 'success'); return; }
+    }
+    // Try old generic IndexedDB (FamilyVaultDB without family suffix)
+    await new Promise((resolve) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onsuccess = async (e) => {
+        const oldDb = e.target.result;
+        try {
+          const collections = Object.keys(STORES).filter(s => s !== 'meta');
+          let found = false;
+          for (const name of collections) {
+            if (!oldDb.objectStoreNames.contains(name)) continue;
+            const rows = await new Promise((res, rej) => {
+              const tx = oldDb.transaction(name, 'readonly');
+              const r = tx.objectStore(name).getAll();
+              r.onsuccess = () => res(r.result || []);
+              r.onerror = () => res([]);
+            });
+            if (rows.length) { state[name] = rows; found = true; }
+          }
+          if (found) { await saveData(); toast('✅ Migrated data from previous database', 'success'); }
+        } catch(err) { console.warn('Old DB migration error:', err); }
+        oldDb.close();
+        resolve();
+      };
+      req.onerror = () => resolve();
+    });
+  } catch(e) { console.warn('Migration error:', e); }
 }
 
 async function initFamilyDatabase(familyId) {
