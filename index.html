@@ -1729,8 +1729,9 @@
         </div>
         <div class="card">
           <div class="section-header"><h3>Expense History</h3>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center">
               <select id="exp-filter-cat" style="width:auto;padding:6px 10px;font-size:13px" onchange="renderExpenses()"><option value="">All Categories</option></select>
+              <button class="btn btn-danger btn-sm" onclick="bulkClearExpenses()" style="font-size:12px">🗑 Clear All</button>
             </div>
           </div>
           <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th><th></th></tr></thead>
@@ -2036,7 +2037,11 @@
         </div>
       </div>
       <div class="card">
-        <div class="section-header"><h3>All Transactions</h3></div>
+        <div class="section-header"><h3>All Transactions</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-danger btn-sm" onclick="bulkClearTransactions()" style="font-size:12px">🗑 Clear All</button>
+          </div>
+        </div>
         <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Bank</th><th>Ref</th><th>Type</th><th>Amount</th><th></th></tr></thead>
         <tbody id="transaction-table"></tbody></table>
       </div>
@@ -8915,6 +8920,45 @@ function renderTransactions() {
 }
 
 function deleteTxn(id) { state.transactions = state.transactions.filter(t => t.id !== id); saveData(); renderTransactions(); toast('Transaction deleted'); }
+
+function bulkClearTransactions() {
+  const mid = memberFilters.transactions || '';
+  const scope = mid ? state.members.find(m => m.id === mid)?.name || 'this member' : 'ALL members';
+  const count = mid ? state.transactions.filter(t => t.memberId === mid).length : state.transactions.length;
+  if (!count) return toast('No transactions to clear', 'error');
+  const msg = `Delete ${count} transaction${count!==1?'s':''} for ${scope}?\n\nThis will also remove linked auto-tagged expenses.\n\nThis cannot be undone.`;
+  if (!confirm(msg)) return;
+  if (mid) {
+    const idsToRemove = new Set(state.transactions.filter(t => t.memberId === mid).map(t => t.id));
+    state.transactions = state.transactions.filter(t => t.memberId !== mid);
+    state.expenses = state.expenses.filter(e => !e.txnRef || !idsToRemove.has(e.txnRef));
+  } else {
+    const allTxnIds = new Set(state.transactions.map(t => t.id));
+    state.transactions = [];
+    state.expenses = state.expenses.filter(e => !e.txnRef || !allTxnIds.has(e.txnRef));
+  }
+  saveData();
+  buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions();
+  toast(`Cleared ${count} transactions`);
+}
+
+function bulkClearExpenses() {
+  const mid = memberFilters.expenses || '';
+  const scope = mid ? state.members.find(m => m.id === mid)?.name || 'this member' : 'ALL members';
+  const count = mid ? state.expenses.filter(e => e.memberId === mid).length : state.expenses.length;
+  if (!count) return toast('No expenses to clear', 'error');
+  const msg = `Delete ${count} expense${count!==1?'s':''} for ${scope}?\n\nThis cannot be undone.`;
+  if (!confirm(msg)) return;
+  if (mid) {
+    state.expenses = state.expenses.filter(e => e.memberId !== mid);
+  } else {
+    state.expenses = [];
+  }
+  saveData();
+  buildMemberTabs('exp-member-tabs','expenses',()=>0, id=>state.expenses.filter(e=>!id||e.memberId===id).length);
+  renderExpenses();
+  toast(`Cleared ${count} expenses`);
+}
 
 function populateBankSelects() {
   const el = document.getElementById('txn-bank');
