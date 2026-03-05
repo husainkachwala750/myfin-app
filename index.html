@@ -5450,7 +5450,7 @@ function getCurrency(code) {
 
 // Get base currency from localStorage (not IndexedDB)
 function getBaseCurrency() {
-  try { return JSON.parse(localStorage.getItem('myfin_settings') || '{}').baseCurrency || 'USD'; } catch { return 'USD'; }
+  try { return JSON.parse(localStorage.getItem('myfin_settings') || '{}').baseCurrency || 'INR'; } catch { return 'INR'; }
 }
 
 // Format amount with currency symbol
@@ -13980,7 +13980,7 @@ var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','
 // Override showPage to auto-open setup panel for setup pages
 function showPage(pageId) {
   _showPageCore(pageId);
-  if (SETUP_PAGES.has(pageId)) {
+  if (SETUP_PAGES && SETUP_PAGES.has(pageId)) {
     openSetupPanel();
     // Highlight active item
     document.querySelectorAll('.setup-nav-item').forEach(el => {
