@@ -5622,7 +5622,6 @@ function openDB() {
 
 // ── Low-level IDB helpers ──────────────────────────────────────────
 function idbGetAll(storeName) {
-  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError || !_db) return resolve([]);
     const tx  = _db.transaction(storeName, 'readonly');
@@ -5633,9 +5632,8 @@ function idbGetAll(storeName) {
 }
 
 function idbPut(storeName, record) {
-  const _db = window._db || null;
   return new Promise((resolve, reject) => {
-    if(_dbError) return resolve();
+    if(_dbError || !_db) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
     const req = tx.objectStore(storeName).put(record);
     req.onsuccess = () => resolve();
@@ -5644,7 +5642,6 @@ function idbPut(storeName, record) {
 }
 
 function idbDelete(storeName, key) {
-  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError || !_db) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
@@ -5655,7 +5652,6 @@ function idbDelete(storeName, key) {
 }
 
 function idbClear(storeName) {
-  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError || !_db) return resolve();
     const tx  = _db.transaction(storeName, 'readwrite');
@@ -5666,7 +5662,6 @@ function idbClear(storeName) {
 }
 
 function idbPutBulk(storeName, records) {
-  const _db = window._db || null;
   return new Promise((resolve, reject) => {
     if(_dbError || !_db || !records.length) return resolve();
     const tx    = _db.transaction(storeName, 'readwrite');
