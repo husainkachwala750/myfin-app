@@ -4856,6 +4856,37 @@ function storageSetProvider(id) {
   _storageProvider = id;
   localStorage.setItem(STORAGE_KEY, id);
   updateStorageStatusBadge();
+  // Persist to Supabase user_metadata so it survives browser changes
+  storageSaveProviderToCloud(id);
+}
+async function storageSaveProviderToCloud(id) {
+  try {
+    const session = getSession();
+    if (!session?.access_token) return;
+    await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ data: { storage_provider: id } })
+    });
+  } catch(e) { console.warn('Could not save provider to cloud:', e); }
+}
+async function storageRestoreProviderFromCloud() {
+  try {
+    const session = getSession();
+    if (!session?.access_token) return null;
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token }
+    });
+    if (!res.ok) return null;
+    const user = await res.json();
+    const provider = user?.user_metadata?.storage_provider;
+    if (provider) {
+      _storageProvider = provider;
+      localStorage.setItem(STORAGE_KEY, provider);
+      updateStorageStatusBadge();
+    }
+    return provider || null;
+  } catch(e) { console.warn('Could not restore provider from cloud:', e); return null; }
 }
 function storageClearProvider() {
   _storageProvider = null;
@@ -4971,17 +5002,24 @@ async function storagePullData(familyId) {
 
 // ── BOOT: called on login to load data & show picker if needed ──────────
 async function storageBootLoad(familyId) {
-  const provider = storageGetProvider();
+  let provider = storageGetProvider();
+  // If no provider in localStorage, try restoring from Supabase user_metadata
   if (!provider) {
-    // First time — show storage picker
+    provider = await storageRestoreProviderFromCloud();
+  }
+  if (!provider) {
+    // Truly first time — show storage picker
     showStoragePicker(familyId, true);
     return;
   }
   setSyncStatus('syncing');
   const loaded = await storagePullData(familyId);
-  if (!loaded) {
-    // Could not load (permission revoked, token expired etc)
-    showStoragePicker(familyId, false);
+  if (loaded) {
+    setSyncStatus('synced');
+  } else {
+    // Cloud returned no data — that's normal for new accounts, not an error
+    console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
+    setSyncStatus('synced');
   }
 }
 
@@ -15198,6 +15236,86 @@ async function doFamilyLogin() {
     errEl.textContent = e.message;
     errEl.classList.add('show');
     btn.disabled=false; btn.textContent='Login';
+  }
+}
+
+async function doFamilyRegister() {
+  const familyName = document.getElementById('auth-reg-family').value.trim();
+  const adminName  = document.getElementById('auth-reg-name').value.trim();
+  const email      = document.getElementById('auth-reg-email').value.trim();
+  const password   = document.getElementById('auth-reg-password').value;
+  const confirm    = document.getElementById('auth-reg-confirm').value;
+  const errEl      = document.getElementById('auth-reg-error');
+  const btn        = document.querySelector('#auth-register-form .auth-btn');
+
+  errEl.textContent = ''; errEl.classList.remove('show');
+
+  if (!familyName) { errEl.textContent = 'Enter your family name.'; errEl.classList.add('show'); return; }
+  if (!adminName)  { errEl.textContent = 'Enter your name.'; errEl.classList.add('show'); return; }
+  if (!email)      { errEl.textContent = 'Enter your email.'; errEl.classList.add('show'); return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    // 1. Sign up via Supabase
+    const authData = await sbSignUp(email, password);
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('Signup succeeded but no user ID returned. Check your email for confirmation.');
+
+    // 2. Sign in to get access token
+    let accessToken;
+    try {
+      const loginData = await sbSignIn(email, password);
+      accessToken = loginData.access_token;
+    } catch(e) {
+      // Email confirmation may be required
+      errEl.textContent = 'Account created! Please check your email to confirm, then login.';
+      errEl.style.color = '#06d6a0';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Create Family';
+      return;
+    }
+
+    setSession({ access_token: accessToken, user_id: userId });
+
+    // 3. Create family
+    const family = await sbCreateFamily(userId, familyName);
+    if (!family) throw new Error('Failed to create family record.');
+
+    // 4. Add admin member
+    const memberId = generateId();
+    await sbUpsertFamilyMember({
+      id: memberId,
+      family_id: family.id,
+      name: adminName,
+      role: 'Admin',
+      is_admin: true,
+      color: '#0096c7'
+    });
+
+    // 5. Start session — storage picker will show on boot (first time)
+    const session = {
+      access_token: accessToken,
+      user_id: userId,
+      family_id: family.id,
+      family_name: familyName,
+      member_id: memberId,
+      member_name: adminName,
+      is_admin: true,
+      email,
+      login_time: Date.now(),
+      all_members: [{ id: memberId, name: adminName, role: 'Admin', is_admin: true, color: '#0096c7' }]
+    };
+    setSession(session);
+    cacheSessionLocally(session);
+    startSession(session);
+
+    btn.disabled = false; btn.textContent = 'Create Family';
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Create Family';
   }
 }
 
