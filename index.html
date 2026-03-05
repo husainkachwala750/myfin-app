@@ -2004,6 +2004,13 @@
     <!-- TRANSACTIONS -->
     <div id="page-transactions" class="page">
       <div class="page-header"><h2>Transactions</h2><p>All income & expense transactions</p></div>
+
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="txn-member-tabs"></div>
+
+      <!-- Member Summary Card -->
+      <div id="txn-member-summary" style="margin-bottom:20px"></div>
+
       <div class="section-header"><h3>Add Transaction</h3></div>
       <div class="card" style="margin-bottom:24px">
         <div class="form-row-3">
@@ -2350,6 +2357,12 @@
     <div id="page-statements" class="page">
       <div class="page-header"><h2>Statements</h2><p>Import and manage bank &amp; credit card statements</p></div>
 
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="stmt-member-tabs"></div>
+
+      <!-- Member Summary Card -->
+      <div id="stmt-member-summary" style="margin-bottom:20px"></div>
+
       <!-- Statement Type Tabs -->
       <div class="contract-tabs" style="margin-bottom:20px">
         <button class="contract-tab-btn active" id="stmt-tab-bank" onclick="switchStmtTab('bank')">🏦 Bank Statements</button>
@@ -2373,7 +2386,6 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
-                <div class="form-group"><label>Uploaded By</label><select id="stmt-member"><option value="">Select member</option></select></div>
                 <div class="form-group"><label>Statement Month</label><input type="month" id="stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
@@ -2416,12 +2428,6 @@
           <div class="section-header">
             <h3>Imported Bank Statement History</h3>
             <div style="display:flex;gap:8px;align-items:center">
-              <select id="stmt-history-member-filter" onchange="renderStatementTable()" style="padding:4px 8px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
-                <option value="">All Members</option>
-              </select>
-              <select id="stmt-history-bank-filter" onchange="renderStatementTable()" style="padding:4px 8px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
-                <option value="">All Banks</option>
-              </select>
               <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('bank')" style="font-size:12px">⬇️ Download CSV</button>
               <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
             </div>
@@ -2450,7 +2456,6 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Credit Card</label><select id="stmt-cc"><option value="">Select card</option></select></div>
-                <div class="form-group"><label>Uploaded By</label><select id="cc-stmt-member"><option value="">Select member</option></select></div>
                 <div class="form-group"><label>Statement Month</label><input type="month" id="cc-stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
@@ -6355,11 +6360,11 @@ function _showPageCore(id) {
   if(id==='dashboard') renderDashboard();
   if(id==='members') renderMembers();
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); buildMemberTabs('exp-member-tabs','expenses',()=>0, mid=>state.expenses.filter(e=>!mid||e.memberId===mid).length); renderExpenses(); }
-  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); renderTransactions(); }
+  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length); renderBankAccounts(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
-  if(id==='statements') { populateBankSelects2(); renderStatementTable(); renderStmtBatches(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
+  if(id==='statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
@@ -7573,6 +7578,8 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   if(filterKey === 'investments') { buildMemberTabs('inv-member-tabs','investments',()=>0, id=>state.investments.filter(i=>!id||i.memberId===id).length); renderInvestments(); }
   if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length); renderBankAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
+  if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderCCStatementTable(); renderCCStmtSummary(); }
+  if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
 }
 
 // =================== EXPENSES ===================
@@ -8885,7 +8892,10 @@ function addTransaction() {
 }
 
 function renderTransactions() {
-  const rows = filterByPeriod([...state.transactions]).sort((a,b) => b.date.localeCompare(a.date));
+  const mid = memberFilters.transactions || '';
+  let txns = [...state.transactions];
+  if (mid) txns = txns.filter(t => t.memberId === mid);
+  const rows = filterByPeriod(txns).sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const tbody = document.getElementById('transaction-table');
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">No transactions yet</td></tr>'; return; }
   tbody.innerHTML = rows.map(t => {
@@ -9141,25 +9151,11 @@ function deleteBankAccount(id) {
 // =================== STATEMENTS ===================
 function populateBankSelects2() {
   const el = document.getElementById('stmt-bank');
-  const bankOpts = state.bankAccounts.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  const mid = memberFilters.statements || '';
+  // Show only banks belonging to selected member (or all if no member selected)
+  const filteredBanks = mid ? state.bankAccounts.filter(b => b.memberId === mid) : state.bankAccounts;
+  const bankOpts = filteredBanks.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
   if(el) el.innerHTML = '<option value="">Select account</option>' + bankOpts;
-  // Populate member selects for statement uploads
-  const memberOpts = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-  const stmtMem = document.getElementById('stmt-member');
-  if (stmtMem) {
-    stmtMem.innerHTML = '<option value="">Select member</option>' + memberOpts;
-    if (window._currentMemberId) stmtMem.value = window._currentMemberId;
-  }
-  const ccMem = document.getElementById('cc-stmt-member');
-  if (ccMem) {
-    ccMem.innerHTML = '<option value="">Select member</option>' + memberOpts;
-    if (window._currentMemberId) ccMem.value = window._currentMemberId;
-  }
-  // Populate history filters
-  const histMem = document.getElementById('stmt-history-member-filter');
-  if (histMem) histMem.innerHTML = '<option value="">All Members</option>' + memberOpts;
-  const histBank = document.getElementById('stmt-history-bank-filter');
-  if (histBank) histBank.innerHTML = '<option value="">All Banks</option>' + bankOpts;
 }
 
 function handleStatementUpload(e) {
@@ -9348,7 +9344,7 @@ function importParsedTransactions() {
   if(!parsedRows.length) return;
   const bankId = document.getElementById('stmt-bank').value;
   if(!bankId) return toast('Please select a bank account before importing', 'error');
-  const memberId = document.getElementById('stmt-member')?.value || window._currentMemberId || '';
+  const memberId = memberFilters.statements || window._currentMemberId || '';
   const memberName = memberId ? (state.members.find(m => m.id === memberId)?.name || '') : '';
   const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
@@ -9404,11 +9400,13 @@ function importParsedTransactions() {
 }
 
 function renderStatementTable() {
-  const filterMember = document.getElementById('stmt-history-member-filter')?.value || '';
-  const filterBank = document.getElementById('stmt-history-bank-filter')?.value || '';
+  const mid = memberFilters.statements || '';
   let rows = [...state.statements];
-  if (filterMember) rows = rows.filter(r => r.memberId === filterMember);
-  if (filterBank) rows = rows.filter(r => r.bankId === filterBank);
+  if (mid) {
+    // Filter by member — include statements with matching memberId or matching bankId (bank belongs to member)
+    const memberBankIds = new Set(state.bankAccounts.filter(b => b.memberId === mid).map(b => b.id));
+    rows = rows.filter(r => r.memberId === mid || memberBankIds.has(r.bankId));
+  }
   rows.sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const tbody = document.getElementById('statement-table');
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
@@ -9460,11 +9458,128 @@ function renderStatementTable() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  STATEMENT & TRANSACTION MEMBER TABS + SUMMARY
+// ═══════════════════════════════════════════════════════════════
+
+function buildStmtMemberTabs() {
+  buildMemberTabs('stmt-member-tabs', 'statements', ()=>0, mid => {
+    if (!mid) return state.statements.length + (state.ccStatements||[]).length;
+    const memberBankIds = new Set(state.bankAccounts.filter(b => b.memberId === mid).map(b => b.id));
+    const memberCardIds = new Set((state.creditCards||[]).filter(c => c.memberId === mid).map(c => c.id));
+    return state.statements.filter(r => r.memberId === mid || memberBankIds.has(r.bankId)).length
+         + (state.ccStatements||[]).filter(r => memberCardIds.has(r.cardId)).length;
+  });
+}
+
+function renderStmtMemberSummary() {
+  const div = document.getElementById('stmt-member-summary');
+  if (!div) return;
+  const mid = memberFilters.statements || '';
+  if (!mid) { div.innerHTML = ''; return; }
+
+  const member = state.members.find(m => m.id === mid);
+  if (!member) { div.innerHTML = ''; return; }
+
+  // Member's banks & cards
+  const banks = state.bankAccounts.filter(b => b.memberId === mid);
+  const cards = (state.creditCards||[]).filter(c => c.memberId === mid);
+  const totalBankBal = banks.reduce((a, b) => a + (b.balance||0), 0);
+
+  // Member's statement totals
+  const memberBankIds = new Set(banks.map(b => b.id));
+  const memberCardIds = new Set(cards.map(c => c.id));
+  const stmts = state.statements.filter(r => r.memberId === mid || memberBankIds.has(r.bankId));
+  const ccStmts = (state.ccStatements||[]).filter(r => memberCardIds.has(r.cardId));
+  const totalDebit = stmts.reduce((a,r) => a + (r.debit||0), 0);
+  const totalCredit = stmts.reduce((a,r) => a + (r.credit||0), 0);
+  const totalCCSpend = ccStmts.filter(r => r.type === 'debit').reduce((a,r) => a + (r.amount||0), 0);
+
+  div.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(5,30,47,0.95),rgba(10,45,66,0.85));border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:200px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${member.color||'#00e5ff'}22;border:2px solid ${member.color||'#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:${member.color||'#00e5ff'}">${member.name[0].toUpperCase()}</div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#fff">${member.name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6)">${banks.length} bank account${banks.length!==1?'s':''} · ${cards.length} credit card${cards.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Bank Balance</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace">${fmt(totalBankBal)}</div>
+        </div>
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Total Credits</div>
+          <div style="font-size:18px;font-weight:700;color:var(--seafoam);font-family:'DM Mono',monospace">${fmt(totalCredit)}</div>
+        </div>
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Total Debits</div>
+          <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:'DM Mono',monospace">${fmt(totalDebit)}</div>
+        </div>
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">CC Spend</div>
+          <div style="font-size:18px;font-weight:700;color:#f59e0b;font-family:'DM Mono',monospace">${fmt(totalCCSpend)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildTxnMemberTabs() {
+  buildMemberTabs('txn-member-tabs', 'transactions', ()=>0, mid => {
+    if (!mid) return state.transactions.length;
+    return state.transactions.filter(t => t.memberId === mid).length;
+  });
+}
+
+function renderTxnMemberSummary() {
+  const div = document.getElementById('txn-member-summary');
+  if (!div) return;
+  const mid = memberFilters.transactions || '';
+  if (!mid) { div.innerHTML = ''; return; }
+
+  const member = state.members.find(m => m.id === mid);
+  if (!member) { div.innerHTML = ''; return; }
+
+  const txns = state.transactions.filter(t => t.memberId === mid);
+  const totalIncome = txns.filter(t => t.type === 'credit').reduce((a,t) => a + (t.amount||0), 0);
+  const totalExpense = txns.filter(t => t.type === 'debit').reduce((a,t) => a + (t.amount||0), 0);
+  const netFlow = totalIncome - totalExpense;
+
+  div.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(5,30,47,0.95),rgba(10,45,66,0.85));border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:200px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${member.color||'#00e5ff'}22;border:2px solid ${member.color||'#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:${member.color||'#00e5ff'}">${member.name[0].toUpperCase()}</div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#fff">${member.name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6)">${txns.length} transaction${txns.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Total Income</div>
+          <div style="font-size:18px;font-weight:700;color:var(--seafoam);font-family:'DM Mono',monospace">${fmt(totalIncome)}</div>
+        </div>
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Total Expense</div>
+          <div style="font-size:18px;font-weight:700;color:var(--danger);font-family:'DM Mono',monospace">${fmt(totalExpense)}</div>
+        </div>
+        <div style="text-align:center;min-width:100px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em">Net Flow</div>
+          <div style="font-size:18px;font-weight:700;color:${netFlow>=0?'var(--seafoam)':'var(--danger)'};font-family:'DM Mono',monospace">${netFlow>=0?'+':''}${fmt(netFlow)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  STATEMENT BATCHES — uploaded file storage & download
 // ═══════════════════════════════════════════════════════════════
 
 function renderStmtBatches() {
-  const batches = (state.stmtBatches || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
+  const mid = memberFilters.statements || '';
+  let batches = (state.stmtBatches || []).slice();
+  if (mid) batches = batches.filter(b => b.memberId === mid);
+  batches.sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
   const card = document.getElementById('stmt-batches-card');
   const list = document.getElementById('stmt-batches-list');
   if (!card || !list) return;
@@ -9616,7 +9731,8 @@ function populateCCStmtSelect() {
   const sel = document.getElementById('stmt-cc');
   const filterSel = document.getElementById('cc-stmt-filter');
   if (!sel) return;
-  const cards = state.creditCards || [];
+  const mid = memberFilters.statements || '';
+  const cards = mid ? (state.creditCards||[]).filter(c => c.memberId === mid) : (state.creditCards || []);
   const opts = cards.map(c => `<option value="${c.id}">${c.bankName} ${c.network} ••••${c.last4}</option>`).join('');
   sel.innerHTML = '<option value="">Select card</option>' + opts;
   if (filterSel) filterSel.innerHTML = '<option value="">All Cards</option>' + opts;
@@ -9707,7 +9823,7 @@ function importCCParsedTransactions() {
   if (!ccParsedRows.length) return;
   const cardId = document.getElementById('stmt-cc').value;
   if(!cardId) return toast('Please select a credit card before importing', 'error');
-  const ccMemberId = document.getElementById('cc-stmt-member')?.value || window._currentMemberId || '';
+  const ccMemberId = memberFilters.statements || window._currentMemberId || '';
   const ccMemberName = ccMemberId ? (state.members.find(m => m.id === ccMemberId)?.name || '') : '';
   const ccMonth = document.getElementById('cc-stmt-month')?.value || '';
   const card = (state.creditCards || []).find(c => c.id === cardId);
@@ -9775,8 +9891,14 @@ function importCCParsedTransactions() {
 function renderCCStmtSummary() {
   const div = document.getElementById('cc-stmt-summary');
   if (!div) return;
-  const stmts = state.ccStatements || [];
-  const cards = state.creditCards || [];
+  const mid = memberFilters.statements || '';
+  let stmts = state.ccStatements || [];
+  let cards = state.creditCards || [];
+  if (mid) {
+    const memberCardIds = new Set(cards.filter(c => c.memberId === mid).map(c => c.id));
+    stmts = stmts.filter(r => memberCardIds.has(r.cardId));
+    cards = cards.filter(c => c.memberId === mid);
+  }
   if (!stmts.length) { div.innerHTML = ''; return; }
 
   const totalSpend = stmts.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0);
@@ -9793,7 +9915,12 @@ function renderCCStmtSummary() {
 function renderCCStatementTable() {
   const tbody = document.getElementById('cc-statement-table');
   if (!tbody) return;
-  const stmts = state.ccStatements || [];
+  const mid = memberFilters.statements || '';
+  let stmts = state.ccStatements || [];
+  if (mid) {
+    const memberCardIds = new Set((state.creditCards||[]).filter(c => c.memberId === mid).map(c => c.id));
+    stmts = stmts.filter(r => memberCardIds.has(r.cardId));
+  }
   const filterCard = document.getElementById('cc-stmt-filter')?.value || '';
   let rows = filterCard ? stmts.filter(r => r.cardId === filterCard) : stmts;
   rows = [...rows].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
