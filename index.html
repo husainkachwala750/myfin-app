@@ -9601,14 +9601,7 @@ function clearHistory() {
   saveData(); renderDecisionHistory(); toast('History cleared');
 }
 
-// Patch showPage to handle advisor
-const _origShowPage = showPage;
-showPage = function(id) {
-  _origShowPage(id);
-  if(id==='advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
-  // Close sidebar on mobile when navigating
-  if(window.innerWidth <= 900) closeSidebar();
-};
+// (advisor logic merged into showPage below)
 
 // =================== MOBILE NAVIGATION ===================
 function toggleSidebar() {
@@ -13322,13 +13315,7 @@ Keep it concise, practical, and India-specific.`;
   }
 }
 
-// =================== PATCH showPage FOR NEW PAGES ===================
-const _origShowPage2 = showPage;
-showPage = function(id) {
-  _origShowPage2(id);
-  if (id === 'aichat') { renderAiChatSnapshot(); }
-  if (id === 'portfolio') { switchPortfolioTab('overview'); }
-};
+// (aichat/portfolio logic merged into showPage below)
 
 
 
@@ -13980,16 +13967,24 @@ var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','
 // Override showPage to auto-open setup panel for setup pages
 function showPage(pageId) {
   _showPageCore(pageId);
-  if (SETUP_PAGES.has(pageId)) {
+
+  // Setup panel: auto-open for setup pages, highlight active item
+  if (SETUP_PAGES && SETUP_PAGES.has(pageId)) {
     openSetupPanel();
-    // Highlight active item
     document.querySelectorAll('.setup-nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.page === pageId);
     });
   } else {
-    // Clear setup panel highlights when navigating away
     document.querySelectorAll('.setup-nav-item').forEach(el => el.classList.remove('active'));
   }
+
+  // Page-specific render hooks
+  if (pageId === 'advisor')   { if(typeof renderFamilySnapshot==='function') renderFamilySnapshot(); if(typeof renderDecisionHistory==='function') renderDecisionHistory(); }
+  if (pageId === 'aichat')    { if(typeof renderAiChatSnapshot==='function') renderAiChatSnapshot(); }
+  if (pageId === 'portfolio') { if(typeof switchPortfolioTab==='function') switchPortfolioTab('overview'); }
+
+  // Close sidebar on mobile
+  if (window.innerWidth <= 900 && typeof closeSidebar === 'function') closeSidebar();
 }
 
 
