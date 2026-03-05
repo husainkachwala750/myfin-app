@@ -4584,6 +4584,8 @@ async function storagePullData(familyId) {
       case 'webdav':   pkg = await storagePullWebDAV(familyId);   break;
     }
     if (!pkg) return false;
+    // Only update state if pkg has actual data (prevent overwriting with empty)
+    const hasData = Object.values(pkg).some(v => Array.isArray(v) ? v.length > 0 : (v && typeof v === 'object' ? Object.keys(v).length > 0 : !!v));
     Object.keys(pkg).forEach(k => {
       if (k in state) state[k] = pkg[k];
     });
@@ -4604,10 +4606,18 @@ async function storageBootLoad(familyId) {
     return;
   }
   setSyncStatus('syncing');
+  // First load from local IndexedDB cache so UI shows immediately
+  await loadData();
+  // Then sync from cloud storage provider
   const loaded = await storagePullData(familyId);
   if (!loaded) {
-    // Could not load (permission revoked, token expired etc)
-    showStoragePicker(familyId, false);
+    // Could not sync from cloud - but local cache may still have data
+    if (state.members && state.members.length > 0) {
+      setSyncStatus('offline');
+      renderDashboard();
+    } else {
+      showStoragePicker(familyId, false);
+    }
   }
 }
 
