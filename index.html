@@ -918,7 +918,8 @@
   /* Tablet landscape: 900px – 1200px */
   @media (min-width: 901px) and (max-width: 1200px) {
     .sidebar { width: 200px; }
-    .main { padding: 24px; height: 100vh; overflow-y: auto; }
+    .main { padding: 24px; overflow-y: auto; }
+    .dual-panel-layout { margin-left: 200px; width: calc(100% - 200px); }
     .main::before, .main::after { left: 200px; }
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
     .advisor-scenario-grid { grid-template-columns: repeat(4, 1fr); }
