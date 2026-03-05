@@ -4622,7 +4622,7 @@ async function storageBootLoad(familyId) {
   }
   setSyncStatus('syncing');
   // First load from local IndexedDB cache so UI shows immediately
-  await loadData();
+  if (typeof loadAllFromDB === 'function') await loadAllFromDB();
   // Then sync from cloud storage provider
   const loaded = await storagePullData(familyId);
   if (!loaded) {
