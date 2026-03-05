@@ -1964,10 +1964,38 @@
           </div>
         </div>
 
-        <!-- Recent auto-tagged items -->
+        <!-- Tagging Review & Update -->
         <div class="card">
-          <div class="section-header"><h3>Recently Auto-Tagged</h3></div>
-          <div id="autotag-recent" style="max-height:400px;overflow-y:auto"></div>
+          <div class="section-header">
+            <h3>Review &amp; Update Tags</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="tag-review-filter" onchange="renderTagReview()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
+                <option value="all">All Transactions</option>
+                <option value="untagged">Untagged Only</option>
+                <option value="tagged">Auto-Tagged Only</option>
+                <option value="expense">Expenses Only</option>
+                <option value="income">Income Only</option>
+              </select>
+              <input type="text" id="tag-review-search" placeholder="Search description..." oninput="renderTagReview()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25);width:160px">
+            </div>
+          </div>
+          <div id="tag-review-summary" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"></div>
+          <div style="overflow-x:auto">
+            <table style="min-width:800px">
+              <thead><tr>
+                <th style="width:90px">Date</th>
+                <th>Description</th>
+                <th style="width:100px">Amount</th>
+                <th style="width:70px">Type</th>
+                <th style="width:130px">Category</th>
+                <th style="width:100px">Member</th>
+                <th style="width:80px">Status</th>
+                <th style="width:90px">Actions</th>
+              </tr></thead>
+              <tbody id="tag-review-table"></tbody>
+            </table>
+          </div>
+          <div id="tag-review-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:12px"></div>
         </div>
       </div>
 
@@ -7769,24 +7797,237 @@ function renderAutoTagPanel() {
     }).join('');
   }
 
-  // Recent auto-tagged
-  const recentDiv = document.getElementById('autotag-recent');
-  if (recentDiv) {
-    const recent = state.expenses.filter(e => e.autoTagged).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
-    if (recent.length) {
-      recentDiv.innerHTML = recent.map(e => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:500">${e.description}</div>
-            <div style="font-size:11px;color:var(--text3)">${e.date} &middot; ${e.category} &middot; ${e.mode||''}</div>
-          </div>
-          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--danger)">${fmt(e.amount)}</div>
-        </div>
-      `).join('');
-    } else {
-      recentDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No auto-tagged items yet. Import transactions or click "Tag All Untagged".</div>';
+  // Render the review table
+  renderTagReview();
+}
+
+let tagReviewPage = 0;
+const TAG_REVIEW_PAGE_SIZE = 25;
+
+function getTagReviewRows() {
+  const filter = document.getElementById('tag-review-filter')?.value || 'all';
+  const search = (document.getElementById('tag-review-search')?.value || '').toLowerCase();
+
+  // Build a unified list: each transaction + its linked expense (if any)
+  const expByTxnRef = {};
+  state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
+
+  let rows = state.transactions.map(txn => {
+    const linkedExp = expByTxnRef[txn.id];
+    const isTagged = !!(linkedExp || txn.autoTagged);
+    const category = linkedExp?.category || txn.autoTagCategory || '';
+    const memberId = linkedExp?.memberId || txn.memberId || '';
+    return {
+      txn,
+      linkedExp,
+      isTagged,
+      category,
+      memberId,
+      type: txn.type,
+      date: txn.date,
+      description: txn.description,
+      amount: txn.amount,
+    };
+  });
+
+  // Filter
+  if (filter === 'untagged') rows = rows.filter(r => !r.isTagged);
+  else if (filter === 'tagged') rows = rows.filter(r => r.isTagged);
+  else if (filter === 'expense') rows = rows.filter(r => r.type === 'debit');
+  else if (filter === 'income') rows = rows.filter(r => r.type === 'credit');
+
+  // Search
+  if (search) rows = rows.filter(r => r.description.toLowerCase().includes(search));
+
+  // Sort newest first
+  rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return rows;
+}
+
+function renderTagReview() {
+  const rows = getTagReviewRows();
+  const tbody = document.getElementById('tag-review-table');
+  const summaryDiv = document.getElementById('tag-review-summary');
+  const pagDiv = document.getElementById('tag-review-pagination');
+  if (!tbody) return;
+
+  // Summary
+  const total = rows.length;
+  const tagged = rows.filter(r => r.isTagged).length;
+  const untagged = total - tagged;
+  if (summaryDiv) {
+    summaryDiv.innerHTML = `
+      <span style="font-size:12px;color:var(--text3)">Showing <strong>${total}</strong> transactions</span>
+      <span style="font-size:12px;color:#22c55e">&#9679; ${tagged} tagged</span>
+      <span style="font-size:12px;color:#ef4444">&#9679; ${untagged} untagged</span>
+    `;
+  }
+
+  // Paginate
+  const totalPages = Math.ceil(total / TAG_REVIEW_PAGE_SIZE);
+  if (tagReviewPage >= totalPages) tagReviewPage = Math.max(0, totalPages - 1);
+  const start = tagReviewPage * TAG_REVIEW_PAGE_SIZE;
+  const pageRows = rows.slice(start, start + TAG_REVIEW_PAGE_SIZE);
+
+  const CATS = ['🛒 Groceries','🍕 Food & Dining','🚗 Transport','🏥 Healthcare','📚 Education','🎭 Entertainment','🏠 Housing & Rent','💡 Utilities','👗 Clothing','💊 Medicine','✈️ Travel','🎁 Gifts','💰 Salary','📈 Investment Income','🏦 Interest','💼 Freelance','🏠 Rental Income','📦 Other'];
+  const memberOpts = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+
+  if (!pageRows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">No transactions match the filter</td></tr>';
+  } else {
+    tbody.innerHTML = pageRows.map(r => {
+      const txnId = r.txn.id;
+      const amtColor = r.type === 'credit' ? 'var(--seafoam)' : 'var(--danger)';
+      const typeIcon = r.type === 'credit' ? '↑' : '↓';
+      const statusBadge = r.isTagged
+        ? '<span style="background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600">Tagged</span>'
+        : '<span style="background:rgba(239,68,68,0.1);color:#dc2626;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600">Untagged</span>';
+
+      const catOptions = CATS.map(c => `<option value="${c}" ${c===r.category?'selected':''}>${c}</option>`).join('');
+
+      return `<tr style="border-bottom:1px solid rgba(0,0,0,0.04)">
+        <td style="font-size:12px;white-space:nowrap">${r.date || '—'}</td>
+        <td style="font-size:12px;max-width:200px"><div style="font-weight:500">${r.description}</div>
+          ${r.txn.ref ? `<div style="font-size:10px;color:var(--text3)">Ref: ${r.txn.ref}</div>` : ''}
+        </td>
+        <td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${amtColor}">${typeIcon} ${fmt(r.amount)}</td>
+        <td>
+          <select style="padding:3px 6px;font-size:11px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);width:70px" onchange="updateTagType('${txnId}',this.value)">
+            <option value="debit" ${r.type==='debit'?'selected':''}>Expense</option>
+            <option value="credit" ${r.type==='credit'?'selected':''}>Income</option>
+          </select>
+        </td>
+        <td>
+          <select style="padding:3px 6px;font-size:11px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);width:120px" onchange="updateTagCategory('${txnId}',this.value)">
+            <option value="">— Select —</option>
+            ${catOptions}
+          </select>
+        </td>
+        <td>
+          <select style="padding:3px 4px;font-size:11px;border-radius:6px;border:1px solid rgba(0,0,0,0.1);width:90px" onchange="updateTagMember('${txnId}',this.value)">
+            <option value="">—</option>
+            ${memberOpts.replace(`value="${r.memberId}"`, `value="${r.memberId}" selected`)}
+          </select>
+        </td>
+        <td>${statusBadge}</td>
+        <td style="white-space:nowrap">
+          ${!r.isTagged ? `<button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:11px" onclick="manualTagTransaction('${txnId}')">Tag</button>` : ''}
+          ${r.linkedExp ? `<button class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:11px" onclick="untagTransaction('${txnId}')">Untag</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Pagination
+  if (pagDiv && totalPages > 1) {
+    let pHtml = '';
+    if (tagReviewPage > 0) pHtml += `<button class="btn btn-secondary btn-sm" onclick="tagReviewPage=${tagReviewPage-1};renderTagReview()">&#9664; Prev</button>`;
+    pHtml += `<span style="font-size:12px;color:var(--text3);padding:4px 8px">Page ${tagReviewPage+1} of ${totalPages}</span>`;
+    if (tagReviewPage < totalPages - 1) pHtml += `<button class="btn btn-secondary btn-sm" onclick="tagReviewPage=${tagReviewPage+1};renderTagReview()">Next &#9654;</button>`;
+    pagDiv.innerHTML = pHtml;
+  } else if (pagDiv) {
+    pagDiv.innerHTML = '';
+  }
+}
+
+function updateTagType(txnId, newType) {
+  const txn = state.transactions.find(t => t.id === txnId);
+  if (!txn) return;
+  txn.type = newType;
+  // Also update linked expense if exists
+  const exp = state.expenses.find(e => e.txnRef === txnId);
+  if (exp) {
+    // If changed to credit, remove from expenses (it's income now)
+    if (newType === 'credit') {
+      state.expenses = state.expenses.filter(e => e.txnRef !== txnId);
+      txn.autoTagged = true;
     }
   }
+  saveData();
+  renderTagReview();
+}
+
+function updateTagCategory(txnId, category) {
+  const txn = state.transactions.find(t => t.id === txnId);
+  if (!txn) return;
+
+  // Update linked expense
+  const exp = state.expenses.find(e => e.txnRef === txnId);
+  if (exp) {
+    exp.category = category;
+  } else if (category && txn.type === 'debit') {
+    // Auto-create expense with this category
+    state.expenses.push({
+      id: uid(),
+      date: txn.date || today(),
+      memberId: txn.memberId || '',
+      category: category,
+      description: txn.description,
+      amount: txn.amount,
+      mode: 'Debit Card',
+      notes: 'Manually tagged from transaction',
+      autoTagged: true,
+      txnRef: txn.id,
+    });
+  } else if (category && txn.type === 'credit') {
+    txn.autoTagCategory = category;
+    txn.autoTagged = true;
+  }
+  saveData();
+  renderTagReview();
+}
+
+function updateTagMember(txnId, memberId) {
+  const txn = state.transactions.find(t => t.id === txnId);
+  if (txn) txn.memberId = memberId;
+  const exp = state.expenses.find(e => e.txnRef === txnId);
+  if (exp) exp.memberId = memberId;
+  saveData();
+}
+
+function manualTagTransaction(txnId) {
+  const txn = state.transactions.find(t => t.id === txnId);
+  if (!txn) return;
+
+  // Try auto-tag first
+  const result = autoCreateFromTransaction(txn);
+  if (result) {
+    saveData();
+    renderTagReview();
+    toast(`Tagged as ${result.action}: ${result.item.category || result.item.autoTagCategory}`);
+    return;
+  }
+
+  // No rule matched — create with default "Other" category
+  if (txn.type === 'debit') {
+    state.expenses.push({
+      id: uid(),
+      date: txn.date || today(),
+      memberId: txn.memberId || '',
+      category: '📦 Other',
+      description: txn.description,
+      amount: txn.amount,
+      mode: 'Debit Card',
+      notes: 'Manually tagged from transaction',
+      autoTagged: true,
+      txnRef: txn.id,
+    });
+  } else {
+    txn.autoTagCategory = '📦 Other';
+    txn.autoTagged = true;
+  }
+  saveData();
+  renderTagReview();
+  toast('Transaction tagged. Update the category using the dropdown.');
+}
+
+function untagTransaction(txnId) {
+  state.expenses = state.expenses.filter(e => e.txnRef !== txnId);
+  const txn = state.transactions.find(t => t.id === txnId);
+  if (txn) { delete txn.autoTagged; delete txn.autoTagCategory; }
+  saveData();
+  renderTagReview();
+  toast('Tag removed');
 }
 
 function toggleContractForm() {
