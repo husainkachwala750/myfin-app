@@ -1692,6 +1692,7 @@
       <div class="contract-tabs">
         <button class="contract-tab-btn active" id="exp-tab-regular" onclick="switchExpenseTab('regular')">💸 Regular Expenses</button>
         <button class="contract-tab-btn" id="exp-tab-contracts" onclick="switchExpenseTab('contracts')">📋 Contract / Recurring</button>
+        <button class="contract-tab-btn" id="exp-tab-autotag" onclick="switchExpenseTab('autotag')">🏷️ Auto-Tag Rules</button>
       </div>
 
       <!-- REGULAR EXPENSES PANEL -->
@@ -1913,6 +1914,63 @@
 
         <div id="contracts-list"></div>
       </div>
+
+      <!-- AUTO-TAG RULES PANEL -->
+      <div id="exp-autotag-panel" style="display:none">
+
+        <!-- Settings -->
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+            <div>
+              <div style="font-size:16px;font-weight:700;color:var(--text)">🏷️ Auto-Tag &amp; Classify Transactions</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:4px">Automatically tag bank/credit card transactions as expenses or income based on description keywords</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-size:12px;color:var(--text2);font-weight:600">Auto-tag on import:</label>
+              <label class="feat-toggle">
+                <input type="checkbox" id="autotag-enabled" checked onchange="toggleAutoTag(this.checked)">
+                <div class="feat-toggle-track"><div class="feat-toggle-knob"></div></div>
+              </label>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <button class="btn btn-primary" onclick="openAddRuleModal()">+ Add Custom Rule</button>
+            <button class="btn btn-secondary" onclick="resetToDefaultRules()">↩️ Reset to Defaults</button>
+            <button class="btn btn-secondary" onclick="tagUntaggedTransactions()">🏷️ Tag All Untagged</button>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid-4" id="autotag-stats" style="margin-bottom:16px"></div>
+        </div>
+
+        <!-- Built-in Rules -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="section-header"><h3>Active Tagging Rules</h3>
+            <span id="autotag-rule-count" style="font-size:12px;color:var(--text3)"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th style="min-width:140px">Keywords</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Payment Mode</th>
+                <th style="width:60px">Source</th>
+                <th style="width:60px"></th>
+              </tr></thead>
+              <tbody id="autotag-rules-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent auto-tagged items -->
+        <div class="card">
+          <div class="section-header"><h3>Recently Auto-Tagged</h3></div>
+          <div id="autotag-recent" style="max-height:400px;overflow-y:auto"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- TRANSACTIONS -->
@@ -1934,7 +1992,13 @@
           <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Select Bank</option></select></div>
           <div class="form-group"><label>Reference No.</label><input type="text" id="txn-ref" placeholder="Optional"></div>
         </div>
-        <button class="btn btn-primary" onclick="addTransaction()">➕ Add Transaction</button>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-primary" onclick="addTransaction()">➕ Add Transaction</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer">
+            <input type="checkbox" id="txn-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
+            🏷️ Auto-tag as expense/income
+          </label>
+        </div>
       </div>
       <div class="card">
         <div class="section-header"><h3>All Transactions</h3></div>
@@ -2283,6 +2347,10 @@
             <div class="empty-state"><div class="icon">📊</div><p>Upload or paste your statement to see parsed transactions here</p></div>
           </div>
           <div id="parsed-import-btn" style="display:none;margin-top:16px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
+              <input type="checkbox" id="stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
+              🏷️ Auto-tag imported transactions as expenses/income
+            </label>
             <button class="btn btn-primary" style="width:100%" onclick="importParsedTransactions()">✅ Import All Transactions</button>
           </div>
         </div>
@@ -3303,6 +3371,53 @@
       <div class="form-group"><label>Color Tag</label><select id="m-color"><option value="#4ade80">Green</option><option value="#38bdf8">Blue</option><option value="#fb923c">Orange</option><option value="#a78bfa">Purple</option><option value="#fbbf24">Gold</option><option value="#f87171">Red</option></select></div>
     </div>
     <button class="btn btn-primary" style="width:100%" onclick="addMember()">Add Member</button>
+  </div>
+</div>
+
+<!-- Add Auto-Tag Rule Modal -->
+<div class="modal-overlay" id="add-rule-modal">
+  <div class="modal">
+    <div class="modal-header"><h3>🏷️ Add Auto-Tag Rule</h3><button class="close-btn" onclick="closeModal('add-rule-modal')">&#10005;</button></div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">When a transaction description contains <strong>any</strong> of the keywords below, it will be auto-classified.</p>
+    <div class="form-group">
+      <label>Keywords (comma separated)</label>
+      <input type="text" id="rule-keywords" placeholder="e.g. zomato, swiggy, uber eats">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Case-insensitive. Matches if description contains any keyword.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Type</label>
+        <select id="rule-type">
+          <option value="expense">Expense (Debit)</option>
+          <option value="income">Income (Credit)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Category</label>
+        <select id="rule-category">
+          <option>🛒 Groceries</option><option>🍕 Food & Dining</option><option>🚗 Transport</option>
+          <option>🏥 Healthcare</option><option>📚 Education</option><option>🎭 Entertainment</option>
+          <option>🏠 Housing & Rent</option><option>💡 Utilities</option><option>👗 Clothing</option>
+          <option>💊 Medicine</option><option>✈️ Travel</option><option>🎁 Gifts</option>
+          <option>💰 Salary</option><option>📈 Investment Income</option><option>🏦 Interest</option>
+          <option>💼 Freelance</option><option>🏠 Rental Income</option><option>📦 Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Payment Mode</label>
+        <select id="rule-mode">
+          <option value="">Auto-detect</option>
+          <option>UPI</option><option>Debit Card</option><option>Credit Card</option>
+          <option>Net Banking</option><option>Cash</option><option>Auto-debit</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Assign to Member</label>
+        <select id="rule-member"><option value="">No default member</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('add-rule-modal')">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveAutoTagRule()">Save Rule</button>
+    </div>
   </div>
 </div>
 
@@ -7407,9 +7522,271 @@ function getDaysRemaining(endDate) {
 function switchExpenseTab(tab) {
   document.getElementById('exp-regular-panel').style.display = tab === 'regular' ? 'block' : 'none';
   document.getElementById('exp-contracts-panel').style.display = tab === 'contracts' ? 'block' : 'none';
+  document.getElementById('exp-autotag-panel').style.display = tab === 'autotag' ? 'block' : 'none';
   document.getElementById('exp-tab-regular').classList.toggle('active', tab === 'regular');
   document.getElementById('exp-tab-contracts').classList.toggle('active', tab === 'contracts');
+  document.getElementById('exp-tab-autotag').classList.toggle('active', tab === 'autotag');
   if(tab === 'contracts') renderContracts();
+  if(tab === 'autotag') renderAutoTagPanel();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-TAG RULES ENGINE — classify transactions automatically
+// ═══════════════════════════════════════════════════════════════
+
+const DEFAULT_AUTOTAG_RULES = [
+  // Food & Dining
+  { keywords: ['zomato','swiggy','uber eats','dominos','pizza hut','mcdonalds','kfc','burger king','starbucks','cafe coffee day','haldirams','barbeque nation'], type: 'expense', category: '🍕 Food & Dining', mode: 'UPI', source: 'built-in' },
+  // Groceries
+  { keywords: ['bigbasket','blinkit','zepto','jiomart','dmart','reliance fresh','more supermarket','nature basket','grofers','instamart','dunzo'], type: 'expense', category: '🛒 Groceries', mode: 'UPI', source: 'built-in' },
+  // Transport
+  { keywords: ['uber','ola','rapido','metro','irctc','makemytrip','petrol','diesel','fuel','indian oil','hp petrol','bharat petroleum','fastag','toll'], type: 'expense', category: '🚗 Transport', mode: '', source: 'built-in' },
+  // Shopping
+  { keywords: ['amazon','flipkart','myntra','ajio','nykaa','meesho','tata cliq','snapdeal','shoppers stop','reliance digital','croma','vijay sales'], type: 'expense', category: '👗 Clothing', mode: '', source: 'built-in' },
+  // Utilities
+  { keywords: ['electricity','water bill','gas bill','broadband','wifi','jio fiber','airtel','vodafone','bsnl','tata power','adani electricity','mahanagar gas','piped gas'], type: 'expense', category: '💡 Utilities', mode: 'Auto-debit', source: 'built-in' },
+  // Entertainment
+  { keywords: ['netflix','hotstar','prime video','spotify','youtube premium','apple music','bookmyshow','pvr','inox','gaana','jiocinema','sony liv','zee5'], type: 'expense', category: '🎭 Entertainment', mode: 'Auto-debit', source: 'built-in' },
+  // Healthcare
+  { keywords: ['pharmeasy','1mg','netmeds','apollo pharmacy','medplus','hospital','clinic','diagnostic','pathology','dr.','doctor'], type: 'expense', category: '🏥 Healthcare', mode: '', source: 'built-in' },
+  // Medicine
+  { keywords: ['medicine','tablets','prescription','pharmacy'], type: 'expense', category: '💊 Medicine', mode: '', source: 'built-in' },
+  // Education
+  { keywords: ['school fee','tuition','coaching','udemy','coursera','unacademy','byjus','vedantu','college fee','exam fee','university'], type: 'expense', category: '📚 Education', mode: '', source: 'built-in' },
+  // Housing
+  { keywords: ['rent','house rent','maintenance','society','housing'], type: 'expense', category: '🏠 Housing & Rent', mode: '', source: 'built-in' },
+  // Travel
+  { keywords: ['flight','hotel','goibibo','yatra','cleartrip','oyo','airbnb','booking.com','trivago','visa fee','passport'], type: 'expense', category: '✈️ Travel', mode: '', source: 'built-in' },
+  // Insurance premiums
+  { keywords: ['lic premium','insurance premium','hdfc life','icici pru','sbi life','max life','star health','policy premium'], type: 'expense', category: '📦 Other', mode: 'Auto-debit', source: 'built-in' },
+  // EMI / Loan
+  { keywords: ['emi','loan repayment','home loan','car loan','personal loan','credit card bill','cc payment'], type: 'expense', category: '📦 Other', mode: 'Auto-debit', source: 'built-in' },
+  // Income - Salary
+  { keywords: ['salary','payroll','sal credit','monthly salary','salary credit'], type: 'income', category: '💰 Salary', mode: '', source: 'built-in' },
+  // Income - Interest
+  { keywords: ['interest credit','int credit','interest earned','fd interest','rd interest','savings interest'], type: 'income', category: '🏦 Interest', mode: '', source: 'built-in' },
+  // Income - Dividends
+  { keywords: ['dividend','div credit'], type: 'income', category: '📈 Investment Income', mode: '', source: 'built-in' },
+  // Income - Refunds
+  { keywords: ['refund','cashback','reversal','chargeback'], type: 'income', category: '📦 Other', mode: '', source: 'built-in' },
+  // Income - Rental
+  { keywords: ['rent received','rental income','tenant','lease payment'], type: 'income', category: '🏠 Rental Income', mode: '', source: 'built-in' },
+];
+
+let autoTagEnabled = true;
+
+function getAutoTagRules() {
+  if (!state._autoTagRules || !state._autoTagRules.length) {
+    // Try loading from localStorage
+    try {
+      const saved = localStorage.getItem('myfin_autotag_rules');
+      if (saved) { state._autoTagRules = JSON.parse(saved); return state._autoTagRules; }
+    } catch(e) {}
+    state._autoTagRules = DEFAULT_AUTOTAG_RULES.map((r, i) => ({ ...r, id: 'rule-' + i }));
+    saveAutoTagRules();
+  }
+  return state._autoTagRules;
+}
+
+function saveAutoTagRules() {
+  try { localStorage.setItem('myfin_autotag_rules', JSON.stringify(state._autoTagRules || [])); } catch(e) {}
+}
+
+function toggleAutoTag(enabled) {
+  autoTagEnabled = enabled;
+  localStorage.setItem('myfin_autotag', enabled ? '1' : '0');
+}
+
+function autoTagTransaction(description, txnType) {
+  if (!description) return null;
+  const desc = description.toLowerCase();
+  const rules = getAutoTagRules();
+
+  for (const rule of rules) {
+    const match = rule.keywords.some(kw => desc.includes(kw.toLowerCase()));
+    if (match) {
+      return {
+        type: rule.type,
+        category: rule.category,
+        mode: rule.mode || (txnType === 'debit' ? 'Debit Card' : ''),
+        memberId: rule.memberId || '',
+        ruleName: rule.keywords[0],
+      };
+    }
+  }
+  return null;
+}
+
+function autoCreateFromTransaction(txn) {
+  const tag = autoTagTransaction(txn.description, txn.type);
+  if (!tag) return null;
+
+  if (txn.type === 'debit' && tag.type === 'expense') {
+    const expense = {
+      id: uid(),
+      date: txn.date || today(),
+      memberId: tag.memberId || txn.memberId || '',
+      category: tag.category,
+      description: txn.description,
+      amount: txn.amount,
+      mode: tag.mode || 'Debit Card',
+      notes: 'Auto-tagged from transaction' + (txn.bankId ? ' (Bank: ' + (state.bankAccounts.find(b=>b.id===txn.bankId)?.bankName||'') + ')' : ''),
+      autoTagged: true,
+      txnRef: txn.id,
+    };
+    state.expenses.push(expense);
+    return { action: 'expense', item: expense, rule: tag.ruleName };
+  }
+
+  if (txn.type === 'credit' && tag.type === 'income') {
+    // For income, we just tag the transaction itself — no separate expense needed
+    txn.autoTagCategory = tag.category;
+    txn.autoTagged = true;
+    return { action: 'income', item: txn, rule: tag.ruleName };
+  }
+
+  // Debit that matches income rule or credit that matches expense — skip
+  return null;
+}
+
+function openAddRuleModal() {
+  // Populate member select
+  const sel = document.getElementById('rule-member');
+  sel.innerHTML = '<option value="">No default member</option>' +
+    state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  document.getElementById('rule-keywords').value = '';
+  document.getElementById('rule-type').value = 'expense';
+  document.getElementById('rule-category').value = '📦 Other';
+  document.getElementById('rule-mode').value = '';
+  openModal('add-rule-modal');
+}
+
+function saveAutoTagRule() {
+  const kw = document.getElementById('rule-keywords').value.trim();
+  if (!kw) return toast('Enter at least one keyword', 'error');
+  const keywords = kw.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+  if (!keywords.length) return toast('Enter valid keywords', 'error');
+
+  const rules = getAutoTagRules();
+  rules.push({
+    id: 'rule-' + uid(),
+    keywords,
+    type: document.getElementById('rule-type').value,
+    category: document.getElementById('rule-category').value,
+    mode: document.getElementById('rule-mode').value,
+    memberId: document.getElementById('rule-member').value,
+    source: 'custom',
+  });
+  state._autoTagRules = rules;
+  saveAutoTagRules();
+  closeModal('add-rule-modal');
+  renderAutoTagPanel();
+  toast('Rule saved! New transactions matching these keywords will be auto-tagged.');
+}
+
+function deleteAutoTagRule(ruleId) {
+  state._autoTagRules = getAutoTagRules().filter(r => r.id !== ruleId);
+  saveAutoTagRules();
+  renderAutoTagPanel();
+  toast('Rule deleted');
+}
+
+function resetToDefaultRules() {
+  if (!confirm('Reset all rules to defaults? Custom rules will be lost.')) return;
+  state._autoTagRules = DEFAULT_AUTOTAG_RULES.map((r, i) => ({ ...r, id: 'rule-' + i }));
+  saveAutoTagRules();
+  renderAutoTagPanel();
+  toast('Rules reset to defaults');
+}
+
+function tagUntaggedTransactions() {
+  let tagged = 0;
+  const existingRefs = new Set(state.expenses.filter(e => e.txnRef).map(e => e.txnRef));
+
+  state.transactions.forEach(txn => {
+    if (existingRefs.has(txn.id)) return; // already tagged
+    if (txn.autoTagged) return;
+    const result = autoCreateFromTransaction(txn);
+    if (result) tagged++;
+  });
+
+  if (tagged > 0) {
+    saveData();
+    renderAutoTagPanel();
+    renderExpenses();
+    toast(`Auto-tagged ${tagged} transactions!`);
+  } else {
+    toast('No untagged transactions found matching rules', 'error');
+  }
+}
+
+function renderAutoTagPanel() {
+  const rules = getAutoTagRules();
+  const tbody = document.getElementById('autotag-rules-table');
+  const toggle = document.getElementById('autotag-enabled');
+
+  // Restore toggle state
+  const saved = localStorage.getItem('myfin_autotag');
+  if (saved !== null) autoTagEnabled = saved === '1';
+  if (toggle) toggle.checked = autoTagEnabled;
+
+  // Stats
+  const totalTxn = state.transactions.length;
+  const taggedExpenses = state.expenses.filter(e => e.autoTagged).length;
+  const taggedIncome = state.transactions.filter(t => t.autoTagged).length;
+  const untagged = state.transactions.filter(t => !t.autoTagged && !state.expenses.some(e => e.txnRef === t.id)).length;
+  const statsDiv = document.getElementById('autotag-stats');
+  if (statsDiv) {
+    statsDiv.innerHTML = `
+      <div class="stat-card blue" style="padding:14px"><div class="stat-label">Total Transactions</div><div class="stat-value" style="font-size:20px">${totalTxn}</div></div>
+      <div class="stat-card green" style="padding:14px"><div class="stat-label">Auto-Tagged Expenses</div><div class="stat-value" style="font-size:20px;color:var(--seafoam)">${taggedExpenses}</div></div>
+      <div class="stat-card purple" style="padding:14px"><div class="stat-label">Tagged Income</div><div class="stat-value" style="font-size:20px;color:var(--accent4)">${taggedIncome}</div></div>
+      <div class="stat-card orange" style="padding:14px"><div class="stat-label">Untagged</div><div class="stat-value" style="font-size:20px;color:var(--danger)">${untagged}</div></div>
+    `;
+  }
+
+  // Rule count
+  const countEl = document.getElementById('autotag-rule-count');
+  if (countEl) countEl.textContent = `${rules.length} rules (${rules.filter(r=>r.source==='built-in').length} built-in, ${rules.filter(r=>r.source==='custom').length} custom)`;
+
+  // Rules table
+  if (tbody) {
+    tbody.innerHTML = rules.map(r => {
+      const typeBadge = r.type === 'expense'
+        ? '<span style="color:#ef4444;font-weight:600;font-size:12px">Expense</span>'
+        : '<span style="color:#22c55e;font-weight:600;font-size:12px">Income</span>';
+      const srcBadge = r.source === 'custom'
+        ? '<span style="background:rgba(139,92,246,0.12);color:#8b5cf6;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Custom</span>'
+        : '<span style="background:rgba(0,180,216,0.12);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Built-in</span>';
+      return `<tr>
+        <td style="font-size:12px;max-width:200px;word-break:break-word">${r.keywords.map(k=>`<span style="background:rgba(0,180,216,0.08);padding:1px 6px;border-radius:4px;font-size:11px;margin:1px">${k}</span>`).join(' ')}</td>
+        <td>${typeBadge}</td>
+        <td style="font-size:12px">${r.category}</td>
+        <td style="font-size:12px;color:var(--text3)">${r.mode || 'Auto'}</td>
+        <td>${srcBadge}</td>
+        <td><button class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:11px" onclick="deleteAutoTagRule('${r.id}')">&#10005;</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Recent auto-tagged
+  const recentDiv = document.getElementById('autotag-recent');
+  if (recentDiv) {
+    const recent = state.expenses.filter(e => e.autoTagged).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+    if (recent.length) {
+      recentDiv.innerHTML = recent.map(e => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${e.description}</div>
+            <div style="font-size:11px;color:var(--text3)">${e.date} &middot; ${e.category} &middot; ${e.mode||''}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--danger)">${fmt(e.amount)}</div>
+        </div>
+      `).join('');
+    } else {
+      recentDiv.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No auto-tagged items yet. Import transactions or click "Tag All Untagged".</div>';
+    }
+  }
 }
 
 function toggleContractForm() {
@@ -8060,7 +8437,7 @@ function populateContractMemberSelect() {
 function addTransaction() {
   const amount = parseFloat(document.getElementById('txn-amount').value);
   if(!amount || amount <= 0) return toast('Enter valid amount', 'error');
-  state.transactions.push({
+  const txn = {
     id: uid(),
     date: document.getElementById('txn-date').value || today(),
     type: document.getElementById('txn-type').value,
@@ -8069,8 +8446,20 @@ function addTransaction() {
     amount,
     bankId: document.getElementById('txn-bank').value,
     ref: document.getElementById('txn-ref').value
-  });
-  saveData(); renderTransactions(); toast('Transaction added!');
+  };
+  state.transactions.push(txn);
+
+  // Auto-tag if enabled
+  const shouldTag = document.getElementById('txn-auto-tag')?.checked && autoTagEnabled;
+  let tagMsg = '';
+  if (shouldTag) {
+    const result = autoCreateFromTransaction(txn);
+    if (result) {
+      tagMsg = ` (auto-tagged as ${result.action}: ${result.item.autoTagCategory || result.item.category})`;
+    }
+  }
+
+  saveData(); renderTransactions(); toast('Transaction added!' + tagMsg);
   document.getElementById('txn-amount').value='';
   document.getElementById('txn-desc').value='';
   document.getElementById('txn-ref').value='';
@@ -8416,15 +8805,26 @@ function parseStatement() {
 function importParsedTransactions() {
   if(!parsedRows.length) return;
   const bankId = document.getElementById('stmt-bank').value;
+  const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
+  let tagCount = 0;
+
   parsedRows.forEach(r => {
     state.statements.push({ id: uid(), bankId, ...r });
     // Also add to transactions
-    if(r.credit > 0) state.transactions.push({ id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '' });
-    if(r.debit > 0) state.transactions.push({ id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '' });
+    if(r.credit > 0) {
+      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '' };
+      state.transactions.push(txn);
+      if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
+    }
+    if(r.debit > 0) {
+      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '' };
+      state.transactions.push(txn);
+      if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
+    }
   });
   saveData();
   renderStatementTable();
-  toast(`Imported ${parsedRows.length} transactions!`);
+  toast(`Imported ${parsedRows.length} transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses/income.` : ''));
   parsedRows = [];
   document.getElementById('parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All transactions imported successfully!</p></div>';
   document.getElementById('parsed-import-btn').style.display = 'none';
