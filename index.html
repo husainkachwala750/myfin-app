@@ -9633,12 +9633,7 @@ function clearHistory() {
   saveData(); renderDecisionHistory(); toast('History cleared');
 }
 
-// Mobile sidebar close on navigation (keep this)
-const _origShowPageMobile = showPage;
-showPage = function(id) {
-  _origShowPageMobile(id);
-  if(window.innerWidth <= 900) closeSidebar();
-};
+// (mobile sidebar close moved into showPage function)
 
 // =================== MOBILE NAVIGATION ===================
 function toggleSidebar() {
@@ -14030,7 +14025,9 @@ function showPage(pageId) {
     const sym = (typeof getCurrency==='function') ? getCurrency(getBaseCurrency()).symbol : '₹';
     document.querySelectorAll('[id$="-amount-label"]').forEach(el => el.textContent = 'Amount (' + sym + ')');
   } catch {}
-  if (SETUP_PAGES.has(pageId)) {
+  // Mobile sidebar close
+  if(window.innerWidth <= 900) { try { closeSidebar(); } catch {} }
+  if (typeof SETUP_PAGES !== 'undefined' && SETUP_PAGES.has(pageId)) {
     openSetupPanel();
     // Highlight active item
     document.querySelectorAll('.setup-nav-item').forEach(el => {
