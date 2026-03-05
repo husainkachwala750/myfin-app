@@ -1485,10 +1485,10 @@
 
     <div class="sidebar-footer">
       <div id="storage-status-badge" onclick="showStoragePicker(window._currentFamilyId, false)" style="font-size:11px;padding:3px 10px;margin-bottom:2px;text-align:center;cursor:pointer;color:#9ca3af">📁 No storage set</div>
-      <div id="sync-status-badge" style="color:rgba(241,245,249,0.7)!important" style="font-size:11px;padding:5px 10px;margin-bottom:6px;text-align:center">
+      <div id="sync-status-badge" style="color:rgba(241,245,249,0.7)!important;font-size:11px;padding:5px 10px;margin-bottom:6px;text-align:center">
         <span style="color:#94a3b8">☁️ Checking sync…</span>
       </div>
-      <div id="fx-rate-badge" style="color:rgba(96,165,250,0.9)!important" style="font-size:11px;color:#06d6a0;padding:2px 8px;opacity:0.8">💱 Loading rates…</div>
+      <div id="fx-rate-badge" style="color:rgba(96,165,250,0.9)!important;font-size:11px;padding:2px 8px;opacity:0.8">💱 Loading rates…</div>
       <div style="display:flex;gap:6px;margin-bottom:6px">
         <button onclick="exportDataJSON()" title="Export backup" style="flex:1;padding:6px;background:rgba(26,115,232,0.08);border:1px solid rgba(26,115,232,0.2);border-radius:6px;font-size:11px;color:var(--accent);cursor:pointer;font-family:DM Sans,sans-serif">⬇ Export</button>
         <label title="Import backup" style="flex:1;padding:6px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:6px;font-size:11px;color:#06d6a0;cursor:pointer;font-family:DM Sans,sans-serif;text-align:center">⬆ Import<input type="file" accept=".json" style="display:none" onchange="importDataJSON(this.files[0])"></label>
@@ -4518,6 +4518,20 @@ function storageClearProvider() {
   localStorage.removeItem(STORAGE_TOKEN_KEY);
   localStorage.removeItem(STORAGE_META_KEY);
   updateStorageStatusBadge();
+}
+
+// ── Update sync status badge in sidebar ──────────────────────────────────
+function setSyncStatus(status) {
+  const badge = document.getElementById('sync-status-badge');
+  if (!badge) return;
+  const map = {
+    syncing: { icon: '🔄', text: 'Syncing…',  color: '#f59e0b' },
+    synced:  { icon: '☁️', text: 'Synced',     color: '#22c55e' },
+    error:   { icon: '⚠️', text: 'Sync error', color: '#ef4444' },
+    offline: { icon: '📴', text: 'Offline',     color: '#94a3b8' },
+  };
+  const s = map[status] || map.offline;
+  badge.innerHTML = `<span style="color:${s.color}">${s.icon} ${s.text}</span>`;
 }
 
 // ── Schedule debounced sync (500ms) ─────────────────────────────────────
