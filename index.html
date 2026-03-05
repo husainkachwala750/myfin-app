@@ -3022,6 +3022,29 @@
       </div>
 
       <div id="features-grid"></div>
+
+      <!-- Developer / Testing Tools -->
+      <div style="background:#ffffff;border:1.5px solid rgba(239,68,68,0.35);border-radius:18px;padding:24px;margin-top:32px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <span style="font-size:28px">🧪</span>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text)">Developer &amp; Testing Tools</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">Scalability testing — inject dummy data to stress-test UI performance</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <button onclick="runScalabilityTest()" style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px">
+            🚀 Inject 50 Records Each
+          </button>
+          <button onclick="undoScalabilityTest()" style="padding:10px 20px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px">
+            🗑️ Remove Test Data
+          </button>
+          <button onclick="runScalabilityTest(200)" style="padding:10px 20px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px">
+            💥 Stress Test (200 Each)
+          </button>
+        </div>
+        <div id="scalability-results" style="margin-top:16px;font-family:monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;display:none;background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0;max-height:400px;overflow-y:auto"></div>
+      </div>
     </div>
 
   </main>
@@ -7428,6 +7451,179 @@ function triggerManualAutoPost() {
     ? `✅ Posted ${added} new expense entr${added>1?'ies':'y'} from ${autoContracts.length} contract${autoContracts.length>1?'s':''}. Last run: ${today()}`
     : `✓ All up to date — no new entries needed. ${autoContracts.length} contract${autoContracts.length>1?'s':''} checked. Last run: ${today()}`;
   renderContracts();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCALABILITY TEST — inject dummy data to stress-test UI
+// ═══════════════════════════════════════════════════════════════
+window._scalabilityTestIds = {};
+
+function runScalabilityTest(count) {
+  const N = count || 50;
+  const log = [];
+  const out = document.getElementById('scalability-results');
+  function lg(msg) { log.push(msg); if(out) { out.style.display='block'; out.textContent = log.join('\n'); out.scrollTop = out.scrollHeight; } console.log(msg); }
+
+  function pastDate(d) { const dt=new Date(); dt.setDate(dt.getDate()-d); return dt.toISOString().slice(0,10); }
+  function futureDate(d) { const dt=new Date(); dt.setDate(dt.getDate()+d); return dt.toISOString().slice(0,10); }
+  function rnd(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
+  function pick(arr) { return arr[rnd(0,arr.length-1)]; }
+
+  const names=['Aarav','Vivaan','Aditya','Vihaan','Arjun','Reyansh','Mohammed','Sai','Arnav','Dhruv',
+    'Kabir','Ritvik','Aarush','Shaurya','Advait','Atharv','Ayaan','Ishaan','Kiaan','Laksh',
+    'Ananya','Diya','Myra','Sara','Aanya','Aadhya','Aaradhya','Anvi','Prisha','Riya',
+    'Isha','Nisha','Pooja','Kavya','Tanvi','Meera','Neha','Divya','Kriti','Sneha',
+    'Rahul','Rohit','Vikram','Karan','Suresh','Mahesh','Ganesh','Rajesh','Dinesh','Nilesh'];
+  const surnames=['Kumar','Sharma','Singh','Patel','Gupta','Joshi','Verma','Reddy','Nair','Shah','Iyer','Menon','Das','Roy','Bose'];
+  const banks=['HDFC Bank','ICICI Bank','SBI','Axis Bank','Kotak Mahindra','PNB','Bank of Baroda','Canara Bank','Union Bank','IDBI Bank','Yes Bank','IndusInd Bank','Federal Bank','RBL Bank','South Indian Bank'];
+  const expCats=['🍽️ Food','🏠 Rent','🚗 Transport','📱 Mobile','💡 Utilities','🛒 Shopping','🏥 Medical','📚 Education','🎬 Entertainment','✈️ Travel','👕 Clothing','🏋️ Fitness','🐾 Pets','🎁 Gifts','📦 Other'];
+  const invTypes=['Mutual Fund','Stocks','FD','PPF','NPS','Gold','Bonds','Real Estate','ELSS','SGB','RD','LIC'];
+  const invNames=['Nifty 50 Index','Sensex ETF','HDFC Top 100','SBI Bluechip','Axis Midcap','Parag Parikh Flexi','Mirae Asset Large Cap','ICICI Pru Value','Kotak Flexi Cap','Tata Digital India','Nippon Small Cap','Motilal S&P 500','UTI Nifty Next 50','DSP Tax Saver','Canara Robeco Equity'];
+  const ccNets=['Visa','Mastercard','Rupay','Amex','Diners'];
+  const ccVars=['Platinum','Gold','Silver','Titanium','Signature','Regalia','Millennia','Infinia','SimplyCLICK','Amazon Pay'];
+  const insCo=['LIC','HDFC Life','ICICI Prudential','SBI Life','Max Life','Tata AIA','Bajaj Allianz','Kotak Life','PNB MetLife','Star Health','NIVA Bupa','Care Health','New India Assurance','IFFCO Tokio','ACKO'];
+  const insCats=['life','health','motor','home','travel'];
+  const insEmoji={life:'🛡️',health:'🏥',motor:'🚗',home:'🏠',travel:'✈️'};
+  const bizTypes=['IT Services','Retail','Manufacturing','Consulting','Real Estate','Food & Beverage','Education','Healthcare','Finance','Logistics','Agriculture','E-commerce','Media','Tourism','Construction'];
+  const currencies=['INR','USD','EUR','GBP','AED','SGD','JPY','CAD','AUD','CHF'];
+  const payModes=['Cash','UPI','Card','NetBanking','Cheque','Auto-debit','Wallet'];
+
+  lg(`🚀 Generating ${N} records for each category...`);
+
+  // Members
+  const members=[];
+  for(let i=0;i<N;i++) members.push({ id:uid(), name:pick(names)+' '+pick(surnames), role:i===0?'admin':'member', email:pick(names).toLowerCase()+i+'@test.com', phone:'9'+rnd(100000000,999999999) });
+
+  // Bank Accounts
+  const bankAccounts=[];
+  for(let i=0;i<N;i++) bankAccounts.push({ id:uid(), memberId:pick(members).id, bankName:pick(banks), accountType:pick(['savings','current','salary','NRE','NRO']), accountNumber:String(rnd(1000000000,9999999999))+rnd(10,99), ifsc:pick(['HDFC','ICIC','SBIN','UTIB','KKBK'])+'0'+rnd(100000,999999), branch:pick(['Mumbai Main','Delhi CP','Bangalore MG Road','Chennai Anna Nagar','Pune FC Road','Hyderabad Banjara Hills','Kolkata Park Street','Ahmedabad CG Road','Jaipur MI Road','Lucknow Hazratganj']), cif:String(rnd(10000000,99999999)), balance:rnd(1000,5000000), currency:pick(currencies), mobile:'9'+rnd(100000000,999999999), email:'bank'+i+'@test.com', notes:'Test account #'+(i+1) });
+
+  // Expenses
+  const expenses=[];
+  for(let i=0;i<N;i++) expenses.push({ id:uid(), date:pastDate(rnd(1,365)), memberId:pick(members).id, category:pick(expCats), description:pick(['Groceries','Fuel','Electricity Bill','Internet','Dinner','Movie Tickets','Medicine','Books','Gym','Uber','Zomato','Swiggy','Amazon','Flipkart','BigBasket','Phone Recharge','Gas Cylinder','Water Bill','Subscription','Insurance Premium']), amount:rnd(50,50000), mode:pick(payModes), notes:'Test expense #'+(i+1) });
+
+  // Transactions
+  const transactions=[];
+  for(let i=0;i<N;i++) transactions.push({ id:uid(), date:pastDate(rnd(1,365)), type:pick(['credit','debit']), memberId:pick(members).id, description:pick(['Salary','Freelance','Dividend','Rent Received','Interest','Refund','EMI Payment','Credit Card Bill','Loan Repayment','Transfer','Investment','Withdrawal','Cashback','Gift','Bonus']), amount:rnd(100,500000), bankId:pick(bankAccounts).id, ref:'TXN'+rnd(100000000,999999999) });
+
+  // Investments
+  const investments=[];
+  for(let i=0;i<N;i++) { const a=rnd(5000,1000000); investments.push({ id:uid(), memberId:pick(members).id, type:pick(invTypes), name:pick(invNames)+' #'+(i+1), amount:a, currentValue:Math.round(a*(1+rnd(-20,60)/100)), date:pastDate(rnd(30,1825)), maturity:futureDate(rnd(365,3650)), folio:'FOL'+rnd(1000000,9999999), notes:'Test investment #'+(i+1) }); }
+
+  // Credit Cards
+  const creditCards=[];
+  for(let i=0;i<N;i++) { const lim=rnd(50000,2000000); creditCards.push({ id:uid(), memberId:pick(members).id, network:pick(ccNets), bankName:pick(banks), variant:pick(ccVars), last4:String(rnd(1000,9999)), holderName:pick(names).toUpperCase()+' '+pick(surnames).toUpperCase(), expiry:'0'+rnd(1,9)+'/'+rnd(27,32), limit:lim, outstanding:rnd(0,Math.floor(lim*0.8)), statementDay:String(rnd(1,28)), dueDay:String(rnd(1,28)), annualFee:pick([0,0,0,499,999,2499,4999]), benefits:pick(['Lounge access','Cashback 2%','Reward points','Fuel surcharge waiver','Airport pickup','Golf access']), theme:pick(['dark','blue','gold','red','green','purple']) }); }
+
+  // Insurances
+  const insurances=[];
+  for(let i=0;i<N;i++) { const cat=pick(insCats); insurances.push({ id:uid(), category:cat, emoji:insEmoji[cat]||'📋', planName:pick(['Term Plan','Endowment','ULIP','Super Top Up','Comprehensive','Third Party','Floater Plan','Individual Plan','Family Plan','Senior Citizen Plan'])+' #'+(i+1), company:pick(insCo), policyNo:'POL'+rnd(10000000,99999999), holderId:pick(members).id, premium:rnd(1000,100000), frequency:pick(['annual','halfyearly','quarterly','monthly']), startDate:pastDate(rnd(30,1095)), endDate:futureDate(rnd(365,3650)), coverAmount:rnd(100000,50000000), agent:pick(names)+' (Agent)', autoRenew:pick(['yes','no']), alertDays:pick([7,15,30,60]), notes:'Test policy #'+(i+1), docLink:'', docAvail:pick(['yes','no']), nominee:pick(names), nomineeRel:pick(['Spouse','Parent','Child','Sibling']), status:pick(['active','active','active','expired','pending']), extra:{}, createdOn:today() }); }
+
+  // Contracts
+  const contracts=[];
+  for(let i=0;i<N;i++) { const amt=rnd(200,50000); const freq=pick(['monthly','quarterly','halfyearly','yearly']); contracts.push({ id:uid(), name:pick(['Netflix','Spotify','Amazon Prime','Disney+','Jio','Airtel','ACT Fibernet','Tata Play','Adobe CC','Microsoft 365','GitHub','AWS','Google Cloud','Zoom','Slack','Gym Membership','House Rent','Car EMI','Home Loan EMI','Office Rent'])+' #'+(i+1), type:pick(['subscription','emi','rent','utility','insurance']), memberId:pick(members).id, amount:amt, freq:freq, monthlyAmount:freq==='monthly'?amt:freq==='quarterly'?Math.round(amt/3):freq==='halfyearly'?Math.round(amt/6):Math.round(amt/12), paymentMode:pick(payModes), startDate:pastDate(rnd(30,730)), endDate:futureDate(rnd(30,1095)), vendor:pick(['Google','Amazon','Apple','Microsoft','Reliance','Airtel','Tata','Netflix','Adobe','Spotify']), refNumber:'REF'+rnd(100000,999999), coverageType:'', coverAmount:0, coveredMembers:'', nominee:'', nomineeRel:'', alertDays:String(pick([3,5,7,15])), autoRenew:pick(['yes','no']), notes:'Test contract #'+(i+1) }); }
+
+  // Businesses
+  const businesses=[];
+  for(let i=0;i<N;i++) businesses.push({ id:uid(), name:pick(['TechSoft','GreenLeaf','BlueStar','QuickServ','MegaTrade','PrimeBuild','FreshMart','DataWise','CloudNine','EcoFarm','SmartEdu','HealthPlus','LogiMove','FoodKing','UrbanCraft'])+' '+pick(['Solutions','Pvt Ltd','LLP','Corp','Enterprises','Industries','Group','Ventures']), type:pick(bizTypes), structure:pick(['Sole Proprietorship','Partnership','LLP','Pvt Ltd','Public Ltd','HUF']), ownership:rnd(10,100), ownerId:pick(members).id, stakes:[], status:pick(['active','active','active','dormant','closed']), regNumber:'CIN'+rnd(10000000,99999999), gst:rnd(10,99)+pick(['AAAC','BBBC','CCCD'])+rnd(1000,9999)+pick(['A','B'])+'1Z'+rnd(1,9), pan:pick(['AAAC','BBBC','CCCD'])+rnd(1000,9999)+pick(['A','B','C']), founded:pastDate(rnd(365,7300)).slice(0,4), address:rnd(1,999)+' '+pick(['MG Road','Station Road','Ring Road','Nehru Place'])+', '+pick(['Mumbai','Delhi','Bangalore','Chennai','Hyderabad']), phone:'9'+rnd(100000000,999999999), email:'biz'+i+'@test.com', website:'https://biz'+i+'.test.com', msme:pick(['yes','no']), udyam:'UDYAM-'+pick(['MH','DL','KA'])+'-00-'+rnd(1000000,9999999), notes:'Test business #'+(i+1), color:pick(['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#ec4899']), icon:pick(['🏢','🏭','🏪','🏗️','💻','🌾','📚','🏥','🚚','🍔']) });
+
+  const data = { members, bankAccounts, expenses, transactions, investments, creditCards, insurances, contracts, businesses };
+
+  // Track IDs for undo
+  window._scalabilityTestIds = {};
+  Object.keys(data).forEach(k => {
+    window._scalabilityTestIds[k] = new Set(data[k].map(item => item.id));
+  });
+
+  // Inject into state
+  let totalRecords = 0;
+  Object.keys(data).forEach(k => {
+    if (Array.isArray(state[k])) {
+      state[k] = state[k].concat(data[k]);
+      lg(`  ✅ ${k}: +${data[k].length} → ${state[k].length} total`);
+      totalRecords += data[k].length;
+    }
+  });
+  lg(`\n📊 Injected ${totalRecords} records total\n`);
+
+  // Save to IDB
+  saveData();
+  lg('💾 Data saved to IndexedDB\n');
+
+  // Render all pages and measure timing
+  lg('⏱️  Render performance:');
+  const renderers = [
+    ['renderDashboard','Dashboard'],
+    ['renderExpenses','Expenses'],
+    ['renderTransactions','Transactions'],
+    ['renderInvestments','Investments'],
+    ['renderBankAccounts','Bank Accounts'],
+    ['renderCreditCards','Credit Cards'],
+    ['renderContracts','Contracts/Subscriptions'],
+    ['populateInsPage','Insurance'],
+    ['renderBusinesses','Businesses']
+  ];
+
+  let totalMs = 0;
+  renderers.forEach(([fn, label]) => {
+    if (typeof window[fn] === 'function') {
+      try {
+        const t0 = performance.now();
+        window[fn]();
+        const ms = performance.now() - t0;
+        totalMs += ms;
+        const bar = '█'.repeat(Math.min(Math.ceil(ms / 50), 30));
+        const rating = ms < 100 ? '⚡' : ms < 500 ? '✅' : ms < 2000 ? '⚠️' : '🔴';
+        lg(`  ${rating} ${label.padEnd(24)} ${ms.toFixed(1).padStart(8)}ms  ${bar}`);
+      } catch(e) {
+        lg(`  ❌ ${label.padEnd(24)} CRASHED: ${e.message}`);
+      }
+    } else {
+      lg(`  ⏭️  ${label.padEnd(24)} (renderer not found)`);
+    }
+  });
+
+  lg(`\n  📈 Total render time: ${totalMs.toFixed(1)}ms`);
+  lg(totalMs < 1000 ? '  🟢 EXCELLENT — under 1 second' :
+     totalMs < 3000 ? '  🟡 GOOD — under 3 seconds' :
+     totalMs < 5000 ? '  🟠 ACCEPTABLE — under 5 seconds' :
+                      '  🔴 SLOW — over 5 seconds, needs optimization');
+
+  lg('\n✅ Scalability test complete!');
+  lg('Click "Remove Test Data" to clean up.');
+  toast('Scalability test: ' + totalRecords + ' records injected!', 'success');
+}
+
+function undoScalabilityTest() {
+  const ids = window._scalabilityTestIds;
+  const out = document.getElementById('scalability-results');
+  if (!ids || !Object.keys(ids).length) {
+    toast('No test data to remove', 'error');
+    if(out) { out.style.display='block'; out.textContent='No test data found. Run the test first.'; }
+    return;
+  }
+
+  const log = [];
+  function lg(msg) { log.push(msg); if(out) { out.style.display='block'; out.textContent=log.join('\n'); } console.log(msg); }
+
+  lg('🗑️  Removing scalability test data...\n');
+  Object.keys(ids).forEach(k => {
+    if (Array.isArray(state[k])) {
+      const before = state[k].length;
+      state[k] = state[k].filter(item => !ids[k].has(item.id));
+      lg(`  ${k}: ${before} → ${state[k].length} (removed ${before - state[k].length})`);
+    }
+  });
+
+  saveData();
+  window._scalabilityTestIds = {};
+
+  // Re-render
+  ['renderDashboard','renderExpenses','renderTransactions','renderInvestments','renderBankAccounts','renderCreditCards','renderContracts','populateInsPage','renderBusinesses'].forEach(fn => {
+    try { if(typeof window[fn]==='function') window[fn](); } catch(e) {}
+  });
+
+  lg('\n✅ All test data removed and UI refreshed!');
+  toast('Test data removed!', 'success');
 }
 
 function runAutoPostEngine() {
