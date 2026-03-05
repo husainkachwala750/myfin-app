@@ -2405,13 +2405,22 @@
             </div>
           </div>
         </div>
+        <!-- Uploaded Statements Batches -->
+        <div class="card" id="stmt-batches-card" style="display:none">
+          <div class="section-header"><h3>Uploaded Statements</h3></div>
+          <div id="stmt-batches-list"></div>
+        </div>
+
         <div class="card">
           <div class="section-header">
             <h3>Imported Bank Statement History</h3>
-            <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('bank')" style="font-size:12px">⬇️ Download CSV</button>
+              <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+            </div>
           </div>
           <div style="overflow-x:auto">
-          <table style="min-width:700px"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th><th style="width:130px">Tag</th></tr></thead>
+          <table style="min-width:800px"><thead><tr><th>Date</th><th style="width:120px">Bank</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th><th style="width:130px">Tag</th></tr></thead>
           <tbody id="statement-table"></tbody></table>
           </div>
         </div>
@@ -2466,6 +2475,7 @@
               <select id="cc-stmt-filter" onchange="renderCCStatementTable()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
                 <option value="">All Cards</option>
               </select>
+              <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('cc')" style="font-size:12px">⬇️ Download CSV</button>
               <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
             </div>
           </div>
@@ -4357,7 +4367,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 // All collections (object stores) and their key paths
 
@@ -5730,6 +5740,7 @@ const STORES = {
   businesses:   { keyPath: 'id' },
   invStatements:{ keyPath: 'id' },
   ccStatements: { keyPath: 'id', indexes: [['cardId','cardId'],['date','date']] },
+  stmtBatches:  { keyPath: 'id', indexes: [['type','type']] },
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
@@ -6040,7 +6051,7 @@ let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
   businesses:[], invStatements:[], insurances:[], insClaims:[],
-  ccStatements:[]
+  ccStatements:[], stmtBatches:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -6340,7 +6351,7 @@ function _showPageCore(id) {
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length); renderBankAccounts(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
-  if(id==='statements') { populateBankSelects2(); renderStatementTable(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
+  if(id==='statements') { populateBankSelects2(); renderStatementTable(); renderStmtBatches(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
@@ -9253,9 +9264,12 @@ function loadSampleStatement(bank) {
   toast(`Sample ${label} statement loaded! Click "Parse Statement" to preview.`);
 }
 
+let _lastParsedRawCSV = ''; // store raw CSV for saving with batch
+
 function parseStatement() {
   const text = document.getElementById('statement-paste').value.trim();
   if(!text) return toast('Paste statement text or upload a file', 'error');
+  _lastParsedRawCSV = text;
   const lines = text.split('\n').filter(l => l.trim());
   parsedRows = [];
 
@@ -9308,31 +9322,53 @@ function parseStatement() {
 function importParsedTransactions() {
   if(!parsedRows.length) return;
   const bankId = document.getElementById('stmt-bank').value;
+  if(!bankId) return toast('Please select a bank account before importing', 'error');
+  const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
+  const batchId = uid();
+  const bank = state.bankAccounts.find(b => b.id === bankId);
+  const bankLabel = bank ? bank.bankName + ' (...' + (bank.accountNumber||'').slice(-4) + ')' : 'Unknown Bank';
 
   parsedRows.forEach(r => {
     const stmtId = uid();
     const txnIds = [];
-    // Also add to transactions
     if(r.credit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '', stmtId };
+      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
     if(r.debit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '', stmtId };
+      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
-    state.statements.push({ id: stmtId, bankId, txnIds, ...r });
+    state.statements.push({ id: stmtId, bankId, txnIds, batchId, ...r });
   });
+
+  // Save the uploaded batch with raw CSV
+  if (!state.stmtBatches) state.stmtBatches = [];
+  state.stmtBatches.push({
+    id: batchId,
+    type: 'bank',
+    bankId,
+    bankLabel,
+    month: stmtMonth,
+    rowCount: parsedRows.length,
+    totalDebit: parsedRows.reduce((a,r) => a + r.debit, 0),
+    totalCredit: parsedRows.reduce((a,r) => a + r.credit, 0),
+    uploadedAt: new Date().toISOString(),
+    rawCSV: _lastParsedRawCSV || ''
+  });
+
   saveData();
   renderStatementTable();
+  renderStmtBatches();
   toast(`Imported ${parsedRows.length} transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses/income.` : ''));
   parsedRows = [];
+  _lastParsedRawCSV = '';
   document.getElementById('parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All transactions imported successfully!</p></div>';
   document.getElementById('parsed-import-btn').style.display = 'none';
   document.getElementById('statement-paste').value = '';
@@ -9341,7 +9377,7 @@ function importParsedTransactions() {
 function renderStatementTable() {
   const rows = [...state.statements].sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const tbody = document.getElementById('statement-table');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
 
   // Build lookups for tag display
   const expByTxnRef = {};
@@ -9355,7 +9391,14 @@ function renderStatementTable() {
     if (cat) txnTagByDesc[t.description?.toLowerCase()] = cat;
   });
 
+  // Bank lookup
+  const bankMap = {};
+  state.bankAccounts.forEach(b => { bankMap[b.id] = b; });
+
   tbody.innerHTML = rows.slice(0,200).map(r => {
+    // Bank label
+    const bank = bankMap[r.bankId];
+    const bankLabel = bank ? `<span style="font-size:11px;font-weight:600">${bank.bankName}</span><br><span style="font-size:10px;color:var(--text3)">...${(bank.accountNumber||'').slice(-4)}</span>` : '<span style="color:var(--text3);font-size:11px">—</span>';
     // Try direct link first, then fallback to description match
     let tag = '';
     if (r.txnIds?.length) {
@@ -9372,6 +9415,7 @@ function renderStatementTable() {
       : `<span style="color:var(--text3);font-size:11px">—</span>`;
     return `<tr>
       <td style="white-space:nowrap">${r.date}</td>
+      <td>${bankLabel}</td>
       <td>${r.description}</td>
       <td class="amount-debit">${r.debit>0?fmt(r.debit):'—'}</td>
       <td class="amount-credit">${r.credit>0?fmt(r.credit):'—'}</td>
@@ -9379,6 +9423,147 @@ function renderStatementTable() {
       <td>${tagBadge}</td>
     </tr>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATEMENT BATCHES — uploaded file storage & download
+// ═══════════════════════════════════════════════════════════════
+
+function renderStmtBatches() {
+  const batches = (state.stmtBatches || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
+  const card = document.getElementById('stmt-batches-card');
+  const list = document.getElementById('stmt-batches-list');
+  if (!card || !list) return;
+  if (!batches.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  list.innerHTML = batches.map(b => {
+    const d = new Date(b.uploadedAt);
+    const dateStr = d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    const timeStr = d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+    const icon = b.type === 'cc' ? '💳' : '🏦';
+    const label = b.type === 'cc' ? (b.cardLabel || 'Credit Card') : (b.bankLabel || 'Bank');
+    const monthLabel = b.month ? ` — ${b.month}` : '';
+    const summary = b.type === 'cc'
+      ? `Spend: ${fmt(b.totalSpend||0)} | Payments: ${fmt(b.totalPayment||0)}`
+      : `Debit: ${fmt(b.totalDebit||0)} | Credit: ${fmt(b.totalCredit||0)}`;
+
+    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
+      <div style="font-size:28px">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;color:var(--text)">${label}${monthLabel}</div>
+        <div style="font-size:12px;color:var(--text3)">${b.rowCount} rows — ${summary}</div>
+        <div style="font-size:11px;color:var(--text3)">Uploaded ${dateStr} ${timeStr}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary btn-sm" onclick="downloadBatchCSV('${b.id}')" style="font-size:11px;padding:4px 10px">⬇️ Download</button>
+        <button class="btn btn-sm" onclick="if(confirm('Delete this uploaded statement and its transactions?'))deleteBatch('${b.id}')" style="font-size:11px;padding:4px 10px;color:#dc2626;border:1px solid #fca5a5;background:#fff">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function downloadBatchCSV(batchId) {
+  const batch = (state.stmtBatches || []).find(b => b.id === batchId);
+  if (!batch) return toast('Batch not found', 'error');
+
+  let csv = '';
+  if (batch.rawCSV) {
+    csv = batch.rawCSV;
+  } else {
+    // Reconstruct from stored data
+    if (batch.type === 'cc') {
+      csv = 'Date,Description,Amount,Type\n';
+      (state.ccStatements||[]).filter(r => r.batchId === batchId).forEach(r => {
+        csv += `${r.date},"${(r.description||'').replace(/"/g,'""')}",${r.amount},${r.type}\n`;
+      });
+    } else {
+      csv = 'Date,Description,Debit,Credit,Balance\n';
+      state.statements.filter(r => r.batchId === batchId).forEach(r => {
+        csv += `${r.date},"${(r.description||'').replace(/"/g,'""')}",${r.debit||0},${r.credit||0},${r.balance||0}\n`;
+      });
+    }
+  }
+  const label = (batch.type === 'cc' ? batch.cardLabel : batch.bankLabel) || 'Statement';
+  const fname = label.replace(/[^a-zA-Z0-9]/g, '_') + (batch.month ? '_' + batch.month : '') + '.csv';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Statement downloaded!');
+}
+
+function downloadStatementCSV(type) {
+  let csv = '';
+  let fname = '';
+  if (type === 'cc') {
+    const rows = (state.ccStatements||[]).slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    if (!rows.length) return toast('No CC statements to download', 'error');
+    csv = 'Date,Card,Description,Amount,Type,Tag\n';
+    const expByTxnRef = {};
+    state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
+    const txnById = {};
+    state.transactions.forEach(t => { txnById[t.id] = t; });
+    const cards = state.creditCards || [];
+    rows.forEach(r => {
+      const card = cards.find(c => c.id === r.cardId);
+      const cardLabel = card ? card.bankName + ' ....' + card.last4 : '';
+      let tag = '';
+      if (r.txnId) { const exp = expByTxnRef[r.txnId]; tag = exp?.category || txnById[r.txnId]?.autoTagCategory || ''; }
+      csv += `${r.date},"${cardLabel}","${(r.description||'').replace(/"/g,'""')}",${r.amount},${r.type},"${tag}"\n`;
+    });
+    fname = 'CC_Statements_' + new Date().toISOString().slice(0,10) + '.csv';
+  } else {
+    const rows = [...state.statements].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    if (!rows.length) return toast('No bank statements to download', 'error');
+    csv = 'Date,Description,Debit,Credit,Balance,Bank,Tag\n';
+    const expByTxnRef = {};
+    state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
+    const txnById = {};
+    state.transactions.forEach(t => { txnById[t.id] = t; });
+    rows.forEach(r => {
+      const bank = state.bankAccounts.find(b => b.id === r.bankId);
+      const bankLabel = bank ? bank.bankName + ' ...' + (bank.accountNumber||'').slice(-4) : '';
+      let tag = '';
+      if (r.txnIds?.length) {
+        for (const tid of r.txnIds) {
+          const exp = expByTxnRef[tid];
+          if (exp?.category) { tag = exp.category; break; }
+          if (txnById[tid]?.autoTagCategory) { tag = txnById[tid].autoTagCategory; break; }
+        }
+      }
+      csv += `${r.date},"${(r.description||'').replace(/"/g,'""')}",${r.debit||0},${r.credit||0},${r.balance||0},"${bankLabel}","${tag}"\n`;
+    });
+    fname = 'Bank_Statements_' + new Date().toISOString().slice(0,10) + '.csv';
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Statement downloaded!');
+}
+
+function deleteBatch(batchId) {
+  // Remove batch record
+  state.stmtBatches = (state.stmtBatches||[]).filter(b => b.id !== batchId);
+  // Remove associated statements
+  state.statements = state.statements.filter(r => r.batchId !== batchId);
+  state.ccStatements = (state.ccStatements||[]).filter(r => r.batchId !== batchId);
+  // Remove associated transactions and their expenses
+  const txnsToRemove = new Set();
+  state.transactions.filter(t => t.batchId === batchId).forEach(t => txnsToRemove.add(t.id));
+  state.transactions = state.transactions.filter(t => t.batchId !== batchId);
+  state.expenses = state.expenses.filter(e => !e.txnRef || !txnsToRemove.has(e.txnRef));
+  saveData();
+  renderStatementTable();
+  renderCCStatementTable();
+  renderCCStmtSummary();
+  renderStmtBatches();
+  toast('Statement batch deleted');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -9431,9 +9616,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+let _lastCCParsedRawCSV = '';
+
 function parseCCStatement() {
   const text = document.getElementById('cc-statement-paste').value.trim();
   if (!text) return toast('Paste CC statement text or upload a file', 'error');
+  _lastCCParsedRawCSV = text;
   const lines = text.split('\n').filter(l => l.trim());
   ccParsedRows = [];
 
@@ -9484,42 +9672,63 @@ function parseCCStatement() {
 function importCCParsedTransactions() {
   if (!ccParsedRows.length) return;
   const cardId = document.getElementById('stmt-cc').value;
+  if(!cardId) return toast('Please select a credit card before importing', 'error');
+  const ccMonth = document.getElementById('cc-stmt-month')?.value || '';
   const card = (state.creditCards || []).find(c => c.id === cardId);
   const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
+  const batchId = uid();
+  const cardLabel = card ? card.bankName + ' ' + card.network + ' .....' + card.last4 : 'Unknown Card';
 
   if (!state.ccStatements) state.ccStatements = [];
 
   ccParsedRows.forEach(r => {
     const stmtId = uid();
-    // Also add to transactions
     const txn = {
       id: uid(),
       date: r.date,
       type: r.type === 'credit' ? 'credit' : 'debit',
       memberId: card?.memberId || '',
-      description: r.description + (card ? ` [${card.bankName} ${card.network} ••••${card.last4}]` : ''),
+      description: r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : ''),
       amount: r.amount,
       bankId: '',
       ref: '',
       cardId: cardId,
       source: 'credit_card',
       stmtId,
+      batchId,
     };
     state.transactions.push(txn);
     if (shouldTag && r.type === 'debit') {
       const res = autoCreateFromTransaction(txn);
       if (res) tagCount++;
     }
-    const stmtRow = { id: stmtId, cardId, txnId: txn.id, ...r };
+    const stmtRow = { id: stmtId, cardId, txnId: txn.id, batchId, ...r };
     state.ccStatements.push(stmtRow);
+  });
+
+  // Save batch with raw CSV
+  if (!state.stmtBatches) state.stmtBatches = [];
+  state.stmtBatches.push({
+    id: batchId,
+    type: 'cc',
+    cardId,
+    cardLabel,
+    month: ccMonth,
+    rowCount: ccParsedRows.length,
+    totalSpend: ccParsedRows.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0),
+    totalPayment: ccParsedRows.filter(r => r.type === 'credit').reduce((a, r) => a + r.amount, 0),
+    uploadedAt: new Date().toISOString(),
+    rawCSV: _lastCCParsedRawCSV || ''
   });
 
   saveData();
   renderCCStatementTable();
   renderCCStmtSummary();
+  renderStmtBatches();
   toast(`Imported ${ccParsedRows.length} CC transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses.` : ''));
   ccParsedRows = [];
+  _lastCCParsedRawCSV = '';
   document.getElementById('cc-parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All CC transactions imported!</p></div>';
   document.getElementById('cc-parsed-import-btn').style.display = 'none';
   document.getElementById('cc-statement-paste').value = '';
