@@ -258,7 +258,7 @@
   /* ── DUAL PANEL LAYOUT ── */
 .dual-panel-layout {
   display: flex;
-  position: relative;
+  margin-left: 240px;
   min-height: 100vh;
 }
 
@@ -13438,8 +13438,8 @@ async function sbUpsertFamilyMember(member) {
   });
 }
 
-async // sbGetFamilyData: Supabase is auth-only — data lives in user's storage provider
-function sbGetFamilyData(familyId) {
+// sbGetFamilyData: Supabase is auth-only — data lives in user's storage provider
+async function sbGetFamilyData(familyId) {
   return Promise.resolve(null); // No-op: use storagePullData() instead
 }
 // sbUpsertFamilyData: Supabase is auth-only — data lives in user's storage provider
