@@ -9312,18 +9312,22 @@ function importParsedTransactions() {
   let tagCount = 0;
 
   parsedRows.forEach(r => {
-    state.statements.push({ id: uid(), bankId, ...r });
+    const stmtId = uid();
+    const txnIds = [];
     // Also add to transactions
     if(r.credit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '' };
+      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '', stmtId };
       state.transactions.push(txn);
+      txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
     if(r.debit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '' };
+      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '', stmtId };
       state.transactions.push(txn);
+      txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
+    state.statements.push({ id: stmtId, bankId, txnIds, ...r });
   });
   saveData();
   renderStatementTable();
@@ -9335,22 +9339,34 @@ function importParsedTransactions() {
 }
 
 function renderStatementTable() {
-  const rows = [...state.statements].sort((a,b) => b.date.localeCompare(a.date));
+  const rows = [...state.statements].sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const tbody = document.getElementById('statement-table');
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
 
-  // Build lookup: description → linked transaction → linked expense tag
+  // Build lookups for tag display
   const expByTxnRef = {};
   state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
-  const txnTagMap = {};
+  const txnById = {};
+  const txnTagByDesc = {};
   state.transactions.forEach(t => {
+    txnById[t.id] = t;
     const exp = expByTxnRef[t.id];
-    if (exp) txnTagMap[t.description?.toLowerCase()] = exp.category;
-    else if (t.autoTagCategory) txnTagMap[t.description?.toLowerCase()] = t.autoTagCategory;
+    const cat = exp?.category || t.autoTagCategory || '';
+    if (cat) txnTagByDesc[t.description?.toLowerCase()] = cat;
   });
 
   tbody.innerHTML = rows.slice(0,200).map(r => {
-    const tag = txnTagMap[r.description?.toLowerCase()] || '';
+    // Try direct link first, then fallback to description match
+    let tag = '';
+    if (r.txnIds?.length) {
+      for (const tid of r.txnIds) {
+        const exp = expByTxnRef[tid];
+        if (exp?.category) { tag = exp.category; break; }
+        const txn = txnById[tid];
+        if (txn?.autoTagCategory) { tag = txn.autoTagCategory; break; }
+      }
+    }
+    if (!tag) tag = txnTagByDesc[r.description?.toLowerCase()] || '';
     const tagBadge = tag
       ? `<span style="background:rgba(34,197,94,0.1);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${tag}</span>`
       : `<span style="color:var(--text3);font-size:11px">—</span>`;
@@ -9475,9 +9491,7 @@ function importCCParsedTransactions() {
   if (!state.ccStatements) state.ccStatements = [];
 
   ccParsedRows.forEach(r => {
-    const stmtRow = { id: uid(), cardId, ...r };
-    state.ccStatements.push(stmtRow);
-
+    const stmtId = uid();
     // Also add to transactions
     const txn = {
       id: uid(),
@@ -9490,12 +9504,15 @@ function importCCParsedTransactions() {
       ref: '',
       cardId: cardId,
       source: 'credit_card',
+      stmtId,
     };
     state.transactions.push(txn);
     if (shouldTag && r.type === 'debit') {
       const res = autoCreateFromTransaction(txn);
       if (res) tagCount++;
     }
+    const stmtRow = { id: stmtId, cardId, txnId: txn.id, ...r };
+    state.ccStatements.push(stmtRow);
   });
 
   saveData();
@@ -9539,14 +9556,16 @@ function renderCCStatementTable() {
     return;
   }
 
-  // Build tag lookup from transactions → expenses
+  // Build tag lookups
   const expByTxnRef = {};
   state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
-  const txnTagMap = {};
+  const txnById = {};
+  const txnTagByDesc = {};
   state.transactions.forEach(t => {
+    txnById[t.id] = t;
     const exp = expByTxnRef[t.id];
-    if (exp) txnTagMap[t.description?.toLowerCase()] = exp.category;
-    else if (t.autoTagCategory) txnTagMap[t.description?.toLowerCase()] = t.autoTagCategory;
+    const cat = exp?.category || t.autoTagCategory || '';
+    if (cat) txnTagByDesc[t.description?.toLowerCase()] = cat;
   });
 
   const cards = state.creditCards || [];
@@ -9555,7 +9574,14 @@ function renderCCStatementTable() {
     const cardLabel = card ? `${card.bankName} ••••${card.last4}` : '—';
     const amtColor = r.type === 'credit' ? 'var(--seafoam)' : 'var(--danger)';
     const typeLabel = r.type === 'credit' ? '<span style="color:var(--seafoam)">Payment</span>' : '<span style="color:var(--danger)">Spend</span>';
-    const tag = txnTagMap[r.description?.toLowerCase()] || '';
+    // Direct ID lookup first, then description fallback
+    let tag = '';
+    if (r.txnId) {
+      const exp = expByTxnRef[r.txnId];
+      if (exp?.category) tag = exp.category;
+      else if (txnById[r.txnId]?.autoTagCategory) tag = txnById[r.txnId].autoTagCategory;
+    }
+    if (!tag) tag = txnTagByDesc[r.description?.toLowerCase()] || '';
     const tagBadge = tag
       ? `<span style="background:rgba(34,197,94,0.1);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${tag}</span>`
       : `<span style="color:var(--text3);font-size:11px">—</span>`;
