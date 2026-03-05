@@ -4507,6 +4507,21 @@ let _storageSyncTimer = null;
 let _storageReady     = false;
 
 // ── Get/set active provider ──────────────────────────────────────────────
+// ── SYNC STATUS UI ──────────────────────────────────────────────────────────
+function setSyncStatus(status) {
+  const badge = document.getElementById('sync-status-badge');
+  if (!badge) return;
+  const map = {
+    syncing: { text: '⟳ Syncing…',  color: '#f59e0b' },
+    synced:  { text: '✅ Synced',    color: '#10b981' },
+    offline: { text: '📴 Offline',   color: '#6b7280' },
+    error:   { text: '⚠️ Sync error', color: '#ef4444' },
+  };
+  const s = map[status] || map.offline;
+  badge.textContent = s.text;
+  badge.style.color = s.color;
+}
+
 function storageGetProvider() {
   if (_storageProvider) return _storageProvider;
   _storageProvider = localStorage.getItem(STORAGE_KEY) || null;
