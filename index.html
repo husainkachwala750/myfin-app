@@ -269,7 +269,6 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  height: 100vh;
   transition: margin-right 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
@@ -1572,7 +1571,7 @@
 
         <div class="card">
           <div class="section-header"><h3>Recent Transactions</h3><button class="btn btn-secondary btn-sm" onclick="showPage('transactions')">View All</button></div>
-          <div id="recent-txn-wrapper" style="overflow:hidden;border-radius:10px;border:1px solid #e4e9f0">
+          <div id="recent-txn-wrapper" style="overflow:hidden;border-radius:10px;border:1px solid #e4e9f0;display:none">
           <table style="background:#ffffff;width:100%"><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
           <tbody id="recent-txn-table"></tbody></table>
           </div>
@@ -3433,33 +3432,27 @@
           <span style="font-size:28px">💱</span>
           <div>
             <div style="font-size:16px;font-weight:700;color:var(--text)">Currency Settings</div>
-            <div style="font-size:12px;color:var(--text3);margin-top:2px">Set your base currency — all totals &amp; amounts will display in this currency</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">Set your base currency — all totals & dashboard will display in this currency</div>
           </div>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:200px">
-            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Base Currency (Default for all amounts)</label>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Base Currency</label>
             <div id="base-currency-select-wrap" style="width:100%"></div>
           </div>
-          <button onclick="saveBaseCurrency()" style="padding:10px 22px;background:linear-gradient(135deg,#00e5ff,#0088ff);border:none;border-radius:10px;color:#000;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">
+          <button onclick="saveBaseCurrency()" style="padding:10px 22px;background:linear-gradient(135deg,#00e5ff,#0088ff);border:none;border-radius:10px;color:#000;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;margin-top:18px">
             💾 Save Currency
           </button>
         </div>
-        <div id="currency-save-msg" style="font-size:12px;margin-top:6px;display:none"></div>
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.07)">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🌍 Additional Currencies</div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Add extra currencies your family uses. Expenses &amp; transactions can be logged in any of these.</div>
-          <div id="extra-currencies-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <div id="add-currency-wrap" style="min-width:220px;flex:1"></div>
-            <button onclick="addExtraCurrency()" style="padding:8px 18px;background:var(--seafoam,#00e5ff);border:none;border-radius:10px;color:#000;font-weight:700;font-size:12px;cursor:pointer">+ Add Currency</button>
-          </div>
-        </div>
-        <div style="margin-top:14px;padding:10px 14px;background:rgba(26,115,232,0.06);border:1px solid rgba(26,115,232,0.15);border-radius:10px;font-size:12px;color:var(--text2)">
-          💡 <strong>Tip:</strong> All dashboard totals show in your base currency. Each expense/transaction also shows its original currency when different.
+        <div id="currency-save-msg" style="font-size:12px;margin-top:10px;display:none"></div>
+        <div style="margin-top:14px;padding:10px 14px;background:rgba(26,115,232,0.06);border:1px solid rgba(26,115,232,0.15);border-radius:10px;font-size:12px;color:var(--text3);line-height:1.6">
+          <span style="color:var(--accent)">💡 Auto Conversion:</span> All dashboard totals, expense summaries, and investment values are automatically converted to your base currency using live exchange rates (updated hourly). Each entry also shows the original amount for reference.
+          <div style="margin-top:6px"><span id="fx-rate-badge-settings" style="color:#06d6a0">💱 Loading rates…</span>
+          <button onclick="loadExchangeRates(true).then(()=>toast('Rates refreshed!','success'))" style="margin-left:10px;padding:3px 10px;background:rgba(26,115,232,0.1);border:1px solid rgba(26,115,232,0.2);border-radius:6px;color:var(--accent);font-size:11px;cursor:pointer">🔄 Refresh Rates</button></div>
         </div>
       </div>
-<!-- Storage Provider Section -->
+
+      <!-- Storage Provider Section -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
           <div style="display:flex;align-items:center;gap:10px">
@@ -4508,20 +4501,6 @@ let _storageSyncTimer = null;
 let _storageReady     = false;
 
 // ── Get/set active provider ──────────────────────────────────────────────
-function setSyncStatus(status) {
-  const badge = document.getElementById('sync-badge');
-  if (!badge) return;
-  const map = {
-    syncing: {text:'⟳ Syncing…', color:'#fbbf24'},
-    synced:  {text:'✅ Synced',   color:'#06d6a0'},
-    offline: {text:'⚡ Offline',  color:'#94a3b8'},
-    error:   {text:'⚠ Error',    color:'#ff4444'},
-  };
-  const s = map[status] || map.offline;
-  badge.textContent = s.text;
-  badge.style.color = s.color;
-}
-
 function storageGetProvider() {
   if (_storageProvider) return _storageProvider;
   _storageProvider = localStorage.getItem(STORAGE_KEY) || null;
@@ -5061,7 +5040,7 @@ function showStoragePicker(familyId, isFirstTime) {
     : 'Your storage connection needs to be reconnected. Choose a provider to load your data:';
 
   const html = `
-    <div id="storage-picker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div id="storage-picker-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:20px;padding:32px;max-width:520px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
         <div style="font-size:22px;font-weight:800;color:#111827;margin-bottom:6px">${title}</div>
         <div style="font-size:13px;color:#6b7a90;margin-bottom:24px;line-height:1.5">${subtitle}</div>
@@ -5127,7 +5106,7 @@ async function storagePickerSelect(providerId, familyId) {
 // ── WebDAV setup modal ───────────────────────────────────────────────────
 function showWebDAVSetupModal(familyId) {
   const html = `
-    <div id="webdav-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div id="webdav-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:18px;padding:28px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
         <div style="font-size:18px;font-weight:800;margin-bottom:4px">🖥️ WebDAV Server Setup</div>
         <div style="font-size:12px;color:#6b7a90;margin-bottom:20px">Connect to Nextcloud, ownCloud, or any WebDAV server</div>
@@ -5164,7 +5143,7 @@ async function saveWebDAVConfig(familyId) {
 // ── Google Drive setup modal (for Client ID entry) ───────────────────────
 function showGDriveSetup() {
   const html = `
-    <div id="gdrive-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div id="gdrive-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
         <div style="font-size:18px;font-weight:800;margin-bottom:4px">🟢 Google Drive Setup</div>
         <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">You need a Google OAuth Client ID. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#059669">Get one here →</a></div>
@@ -5195,7 +5174,7 @@ async function saveGDriveClientId() {
 
 function showOneDriveSetup() {
   const html = `
-    <div id="onedrive-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div id="onedrive-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
         <div style="font-size:18px;font-weight:800;margin-bottom:4px">🔵 OneDrive Setup</div>
         <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">Register an app at <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" style="color:#0078d4">Azure App Registrations →</a></div>
@@ -5226,7 +5205,7 @@ async function saveOneDriveClientId() {
 
 function showDropboxSetup() {
   const html = `
-    <div id="dropbox-setup-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div id="dropbox-setup-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:18px;padding:28px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.2)">
         <div style="font-size:18px;font-weight:800;margin-bottom:4px">📦 Dropbox Setup</div>
         <div style="font-size:12px;color:#6b7a90;margin-bottom:16px">Create an app at <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color:#0061ff">Dropbox App Console →</a></div>
@@ -5471,8 +5450,7 @@ function getCurrency(code) {
 
 // Get base currency from localStorage (not IndexedDB)
 function getBaseCurrency() {
-  if (typeof state !== 'undefined' && state && state.settings && state.settings.baseCurrency) return state.settings.baseCurrency;
-  try { return JSON.parse(localStorage.getItem('myfin_settings') || '{}').baseCurrency || 'INR'; } catch { return 'INR'; }
+  try { return JSON.parse(localStorage.getItem('myfin_settings') || '{}').baseCurrency || 'USD'; } catch { return 'USD'; }
 }
 
 // Format amount with currency symbol
@@ -5849,18 +5827,8 @@ async function getDBStats() {
 let parsedRows = [];
 
 // =================== UTILS ===================
-function fmt(n, currencyCode) {
-  const code = currencyCode || getBaseCurrency();
-  const c = (typeof getCurrency === 'function') ? getCurrency(code) : {symbol: '₹'};
-  const sym = c.symbol || code;
-  const locale = code === 'INR' ? 'en-IN' : 'en-US';
-  return sym + parseFloat(n||0).toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
-}
-function fmtNum(n, currencyCode) {
-  const code = currencyCode || getBaseCurrency();
-  const locale = code === 'INR' ? 'en-IN' : 'en-US';
-  return parseFloat(n||0).toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
-}
+function fmt(n) { return '₹' + parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtNum(n) { return parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function today() { return new Date().toISOString().split('T')[0]; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function getMember(id) { return state.members.find(m => m.id === id) || {}; }
@@ -8075,7 +8043,7 @@ function renderFamilyDashboard() {
   if(bankDiv) {
     bankDiv.innerHTML = state.bankAccounts.length ? state.bankAccounts.slice(0,4).map(b=>`
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,150,199,0.1);font-size:13px">
-        <div><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${(b.accountNumber||b.account_no||'????').slice(-4)}</div></div>
+        <div><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${b.accountNumber.slice(-4)}</div></div>
         <div style="font-family:'DM Mono',monospace;color:var(--seafoam);font-size:13px">${fmt(b.balance)}</div>
       </div>`).join('') + `<div style="text-align:right;margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="showPage('bankdetails')">View All</button></div>`
     : '<div style="color:var(--text3);font-size:13px;padding:12px">No accounts added</div>';
@@ -8268,7 +8236,7 @@ function renderMemberDashboard(memberId) {
         <div class="card-title" style="margin-bottom:12px">Bank Accounts</div>
         ${mBanks.map(b=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,150,199,0.1)">
-            <div><div style="font-weight:500;font-size:13px">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">${b.accountType} · ••••${(b.accountNumber||b.account_no||'????').slice(-4)}</div></div>
+            <div><div style="font-weight:500;font-size:13px">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">${b.accountType} · ••••${b.accountNumber.slice(-4)}</div></div>
             <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--seafoam)">${fmt(b.balance)}</div>
           </div>`).join('')}
       </div>` : '<div></div>'}
@@ -8691,7 +8659,7 @@ function renderMemberReport(memberId) {
         <table>
           <thead><tr><th>Bank</th><th>Type</th><th>Balance</th></tr></thead>
           <tbody>${mBanks.map(b=>`<tr>
-            <td><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${(b.accountNumber||b.account_no||'????').slice(-4)}</div></td>
+            <td><div style="font-weight:500">${b.bankName}</div><div style="font-size:11px;color:var(--text3)">••••${b.accountNumber.slice(-4)}</div></td>
             <td>${b.accountType}</td>
             <td class="amount-credit">${fmt(b.balance)}</td>
           </tr>`).join('')}</tbody>
@@ -9633,7 +9601,14 @@ function clearHistory() {
   saveData(); renderDecisionHistory(); toast('History cleared');
 }
 
-// (mobile sidebar close moved into showPage function)
+// Patch showPage to handle advisor
+const _origShowPage = showPage;
+showPage = function(id) {
+  _origShowPage(id);
+  if(id==='advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
+  // Close sidebar on mobile when navigating
+  if(window.innerWidth <= 900) closeSidebar();
+};
 
 // =================== MOBILE NAVIGATION ===================
 function toggleSidebar() {
@@ -9843,7 +9818,6 @@ function saveBaseCurrency() {
 function renderFeaturesGrid() {
   const el = document.getElementById('features-grid');
   if(!el) return;
-  setTimeout(() => { initAddCurrencySelect(); }, 100);
 
   const enabledOptional = FEATURE_DEFS.filter(f => !f.core && isFeatureEnabled(f.id)).length;
   const totalOptional   = FEATURE_DEFS.filter(f => !f.core).length;
@@ -13348,7 +13322,13 @@ Keep it concise, practical, and India-specific.`;
   }
 }
 
-// (showPage render hooks moved into main showPage function)
+// =================== PATCH showPage FOR NEW PAGES ===================
+const _origShowPage2 = showPage;
+showPage = function(id) {
+  _origShowPage2(id);
+  if (id === 'aichat') { renderAiChatSnapshot(); }
+  if (id === 'portfolio') { switchPortfolioTab('overview'); }
+};
 
 
 
@@ -13458,8 +13438,8 @@ async function sbUpsertFamilyMember(member) {
   });
 }
 
-async // sbGetFamilyData: Supabase is auth-only — data lives in user's storage provider
-function sbGetFamilyData(familyId) {
+// sbGetFamilyData: Supabase is auth-only — data lives in user's storage provider
+async function sbGetFamilyData(familyId) {
   return Promise.resolve(null); // No-op: use storagePullData() instead
 }
 // sbUpsertFamilyData: Supabase is auth-only — data lives in user's storage provider
@@ -14000,34 +13980,7 @@ var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','
 // Override showPage to auto-open setup panel for setup pages
 function showPage(pageId) {
   _showPageCore(pageId);
-  // Render hooks for each page
-  const call = (fn, ...args) => { if(typeof fn==='function') try{fn(...args)}catch(e){} };
-  switch(pageId) {
-    case 'dashboard':    call(renderDashboard); break;
-    case 'bankdetails':  call(renderBankAccounts); break;
-    case 'creditcards':  call(renderCreditCards); break;
-    case 'members':      call(renderMembers); break;
-    case 'expenses':     call(renderExpenses); break;
-    case 'transactions': call(renderTransactions); break;
-    case 'investments':  call(renderInvestments); break;
-    case 'statements':   call(renderStatementTable); break;
-    case 'reports':      call(renderReports); break;
-    case 'insurance':    call(renderInsOverview); call(renderInsClaims); call(renderInsRenewals); break;
-    case 'business':     call(renderBizOverview); break;
-    case 'portfolio':    call(switchPortfolioTab, 'overview'); break;
-    case 'advisor':      call(renderFamilySnapshot); call(renderDecisionHistory); break;
-    case 'aichat':       call(renderAiChatSnapshot); break;
-    case 'features':     call(renderFeaturesGrid); break;
-  }
-  call(initCurrencySelectsForPage, pageId);
-  // Update amount labels
-  try {
-    const sym = (typeof getCurrency==='function') ? getCurrency(getBaseCurrency()).symbol : '₹';
-    document.querySelectorAll('[id$="-amount-label"]').forEach(el => el.textContent = 'Amount (' + sym + ')');
-  } catch {}
-  // Mobile sidebar close
-  if(window.innerWidth <= 900) { try { closeSidebar(); } catch {} }
-  if (typeof SETUP_PAGES !== 'undefined' && SETUP_PAGES.has(pageId)) {
+  if (SETUP_PAGES.has(pageId)) {
     openSetupPanel();
     // Highlight active item
     document.querySelectorAll('.setup-nav-item').forEach(el => {
