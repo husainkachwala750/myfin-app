@@ -2373,6 +2373,7 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
+                <div class="form-group"><label>Uploaded By</label><select id="stmt-member"><option value="">Select member</option></select></div>
                 <div class="form-group"><label>Statement Month</label><input type="month" id="stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
@@ -2415,6 +2416,12 @@
           <div class="section-header">
             <h3>Imported Bank Statement History</h3>
             <div style="display:flex;gap:8px;align-items:center">
+              <select id="stmt-history-member-filter" onchange="renderStatementTable()" style="padding:4px 8px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
+                <option value="">All Members</option>
+              </select>
+              <select id="stmt-history-bank-filter" onchange="renderStatementTable()" style="padding:4px 8px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
+                <option value="">All Banks</option>
+              </select>
               <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('bank')" style="font-size:12px">⬇️ Download CSV</button>
               <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
             </div>
@@ -2443,6 +2450,7 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Credit Card</label><select id="stmt-cc"><option value="">Select card</option></select></div>
+                <div class="form-group"><label>Uploaded By</label><select id="cc-stmt-member"><option value="">Select member</option></select></div>
                 <div class="form-group"><label>Statement Month</label><input type="month" id="cc-stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
@@ -9133,8 +9141,25 @@ function deleteBankAccount(id) {
 // =================== STATEMENTS ===================
 function populateBankSelects2() {
   const el = document.getElementById('stmt-bank');
-  if(!el) return;
-  el.innerHTML = '<option value="">Select account</option>' + state.bankAccounts.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  const bankOpts = state.bankAccounts.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  if(el) el.innerHTML = '<option value="">Select account</option>' + bankOpts;
+  // Populate member selects for statement uploads
+  const memberOpts = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  const stmtMem = document.getElementById('stmt-member');
+  if (stmtMem) {
+    stmtMem.innerHTML = '<option value="">Select member</option>' + memberOpts;
+    if (window._currentMemberId) stmtMem.value = window._currentMemberId;
+  }
+  const ccMem = document.getElementById('cc-stmt-member');
+  if (ccMem) {
+    ccMem.innerHTML = '<option value="">Select member</option>' + memberOpts;
+    if (window._currentMemberId) ccMem.value = window._currentMemberId;
+  }
+  // Populate history filters
+  const histMem = document.getElementById('stmt-history-member-filter');
+  if (histMem) histMem.innerHTML = '<option value="">All Members</option>' + memberOpts;
+  const histBank = document.getElementById('stmt-history-bank-filter');
+  if (histBank) histBank.innerHTML = '<option value="">All Banks</option>' + bankOpts;
 }
 
 function handleStatementUpload(e) {
@@ -9323,6 +9348,8 @@ function importParsedTransactions() {
   if(!parsedRows.length) return;
   const bankId = document.getElementById('stmt-bank').value;
   if(!bankId) return toast('Please select a bank account before importing', 'error');
+  const memberId = document.getElementById('stmt-member')?.value || window._currentMemberId || '';
+  const memberName = memberId ? (state.members.find(m => m.id === memberId)?.name || '') : '';
   const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
@@ -9334,18 +9361,18 @@ function importParsedTransactions() {
     const stmtId = uid();
     const txnIds = [];
     if(r.credit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'credit', memberId: '', description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
+      const txn = { id: uid(), date: r.date, type: 'credit', memberId, description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
     if(r.debit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'debit', memberId: '', description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
+      const txn = { id: uid(), date: r.date, type: 'debit', memberId, description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
-    state.statements.push({ id: stmtId, bankId, txnIds, batchId, ...r });
+    state.statements.push({ id: stmtId, bankId, memberId, txnIds, batchId, ...r });
   });
 
   // Save the uploaded batch with raw CSV
@@ -9355,6 +9382,8 @@ function importParsedTransactions() {
     type: 'bank',
     bankId,
     bankLabel,
+    memberId,
+    memberName,
     month: stmtMonth,
     rowCount: parsedRows.length,
     totalDebit: parsedRows.reduce((a,r) => a + r.debit, 0),
@@ -9375,7 +9404,12 @@ function importParsedTransactions() {
 }
 
 function renderStatementTable() {
-  const rows = [...state.statements].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const filterMember = document.getElementById('stmt-history-member-filter')?.value || '';
+  const filterBank = document.getElementById('stmt-history-bank-filter')?.value || '';
+  let rows = [...state.statements];
+  if (filterMember) rows = rows.filter(r => r.memberId === filterMember);
+  if (filterBank) rows = rows.filter(r => r.bankId === filterBank);
+  rows.sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const tbody = document.getElementById('statement-table');
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
 
@@ -9453,7 +9487,7 @@ function renderStmtBatches() {
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px;color:var(--text)">${label}${monthLabel}</div>
         <div style="font-size:12px;color:var(--text3)">${b.rowCount} rows — ${summary}</div>
-        <div style="font-size:11px;color:var(--text3)">Uploaded ${dateStr} ${timeStr}</div>
+        <div style="font-size:11px;color:var(--text3)">Uploaded ${dateStr} ${timeStr}${b.memberName ? ` by <strong>${b.memberName}</strong>` : ''}</div>
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-secondary btn-sm" onclick="downloadBatchCSV('${b.id}')" style="font-size:11px;padding:4px 10px">⬇️ Download</button>
@@ -9673,6 +9707,8 @@ function importCCParsedTransactions() {
   if (!ccParsedRows.length) return;
   const cardId = document.getElementById('stmt-cc').value;
   if(!cardId) return toast('Please select a credit card before importing', 'error');
+  const ccMemberId = document.getElementById('cc-stmt-member')?.value || window._currentMemberId || '';
+  const ccMemberName = ccMemberId ? (state.members.find(m => m.id === ccMemberId)?.name || '') : '';
   const ccMonth = document.getElementById('cc-stmt-month')?.value || '';
   const card = (state.creditCards || []).find(c => c.id === cardId);
   const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
@@ -9688,7 +9724,7 @@ function importCCParsedTransactions() {
       id: uid(),
       date: r.date,
       type: r.type === 'credit' ? 'credit' : 'debit',
-      memberId: card?.memberId || '',
+      memberId: ccMemberId || card?.memberId || '',
       description: r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : ''),
       amount: r.amount,
       bankId: '',
@@ -9714,6 +9750,8 @@ function importCCParsedTransactions() {
     type: 'cc',
     cardId,
     cardLabel,
+    memberId: ccMemberId,
+    memberName: ccMemberName,
     month: ccMonth,
     rowCount: ccParsedRows.length,
     totalSpend: ccParsedRows.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0),
