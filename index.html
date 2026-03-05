@@ -576,7 +576,8 @@
   .close-btn { width: 30px; height: 30px; border-radius: 6px; background: #f9fafb; border: none; color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
   /* Notification */
-  .toast { position: fixed; bottom: 24px; right: 24px; background: linear-gradient(135deg, #031525, #051e2f); border: 1px solid rgba(0,180,216,0.3); border-left: 3px solid var(--accent); border-radius: 12px; padding: 14px 18px; font-size: 14px; z-index: 2000; animation: toastIn 0.3s ease; max-width: 320px; box-shadow: 0 8px 24px rgba(0,100,160,0.4); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #15803d; border: 1px solid #86efac; border-left: 4px solid #22c55e; border-radius: 12px; padding: 14px 18px; font-size: 14px; font-weight: 600; z-index: 2000; animation: toastIn 0.3s ease; max-width: 360px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .toast.toast-error { background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #dc2626; border: 1px solid #fca5a5; border-left: 4px solid #ef4444; }
   @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 
 
@@ -6319,8 +6320,7 @@ function getMember(id) { return state.members.find(m => m.id === id) || {}; }
 
 function toast(msg, type='success') {
   const el = document.createElement('div');
-  el.className = 'toast';
-  el.style.borderLeftColor = type === 'error' ? 'var(--danger)' : 'var(--accent)';
+  el.className = 'toast' + (type === 'error' ? ' toast-error' : '');
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3000);
