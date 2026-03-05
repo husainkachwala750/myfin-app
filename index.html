@@ -2348,49 +2348,124 @@
 
     <!-- BANK STATEMENTS -->
     <div id="page-statements" class="page">
-      <div class="page-header"><h2>Bank Statements</h2><p>Upload and parse bank statements</p></div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Upload Statement (CSV / Text)</div>
-          <div class="upload-zone" id="statement-dropzone" onclick="document.getElementById('statement-file').click()">
-            <div class="icon">📄</div>
-            <p>Drop your bank statement here</p>
-            <small>CSV, TXT formats supported · Max 10MB</small>
+      <div class="page-header"><h2>Statements</h2><p>Import and manage bank &amp; credit card statements</p></div>
+
+      <!-- Statement Type Tabs -->
+      <div class="contract-tabs" style="margin-bottom:20px">
+        <button class="contract-tab-btn active" id="stmt-tab-bank" onclick="switchStmtTab('bank')">🏦 Bank Statements</button>
+        <button class="contract-tab-btn" id="stmt-tab-cc" onclick="switchStmtTab('cc')">💳 Credit Card Statements</button>
+      </div>
+
+      <!-- ====== BANK STATEMENTS SECTION ====== -->
+      <div id="stmt-bank-panel">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Upload Bank Statement (CSV / Text)</div>
+            <div class="upload-zone" id="statement-dropzone" onclick="document.getElementById('statement-file').click()">
+              <div class="icon">📄</div>
+              <p>Drop your bank statement here</p>
+              <small>CSV, TXT formats supported · Max 10MB</small>
+            </div>
+            <input type="file" id="statement-file" accept=".csv,.txt,.tsv" onchange="handleStatementUpload(event)">
+            <div style="margin-top:16px">
+              <div class="form-group"><label>Or Paste Statement Text</label>
+                <textarea id="statement-paste" rows="6" placeholder="Paste CSV rows here:&#10;Date,Description,Debit,Credit,Balance&#10;01-03-2025,NEFT Transfer,0,50000,150000&#10;02-03-2025,Grocery Payment,2500,0,147500"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
+                <div class="form-group"><label>Statement Month</label><input type="month" id="stmt-month"></div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" style="flex:2" onclick="parseStatement()">⚡ Parse Statement</button>
+                <div style="position:relative;flex:1">
+                  <button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('sample-bank-menu').style.display=document.getElementById('sample-bank-menu').style.display==='block'?'none':'block'">📋 Sample Data ▾</button>
+                  <div id="sample-bank-menu" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(0,180,216,0.25);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:10;margin-top:4px;overflow:hidden">
+                    <div onclick="loadSampleStatement('hdfc');document.getElementById('sample-bank-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(0,180,216,0.06)'" onmouseout="this.style.background=''">
+                      <span style="font-size:16px">🏦</span> HDFC Bank Statement (50 rows)
+                    </div>
+                    <div onclick="loadSampleStatement('sbi');document.getElementById('sample-bank-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(0,180,216,0.06)'" onmouseout="this.style.background=''">
+                      <span style="font-size:16px">🏛️</span> SBI Statement (40 rows)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <input type="file" id="statement-file" accept=".csv,.txt,.tsv" onchange="handleStatementUpload(event)">
-          <div style="margin-top:16px">
-            <div class="form-group"><label>Or Paste Statement Text</label>
-              <textarea id="statement-paste" rows="6" placeholder="Paste CSV rows here:&#10;Date,Description,Debit,Credit,Balance&#10;01-03-2025,NEFT Transfer,0,50000,150000&#10;02-03-2025,Grocery Payment,2500,0,147500"></textarea>
+          <div class="card">
+            <div class="card-title">Parsed Transactions Preview</div>
+            <div id="parsed-preview">
+              <div class="empty-state"><div class="icon">📊</div><p>Upload or paste your statement to see parsed transactions here</p></div>
             </div>
-            <div class="form-row">
-              <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
-              <div class="form-group"><label>Statement Month</label><input type="month" id="stmt-month"></div>
-            </div>
-            <div style="display:flex;gap:10px">
-              <button class="btn btn-primary" style="flex:2" onclick="parseStatement()">⚡ Parse Statement</button>
-              <button class="btn btn-secondary" style="flex:1" onclick="loadSampleStatement()">📋 Load Sample Data</button>
+            <div id="parsed-import-btn" style="display:none;margin-top:16px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
+                <input type="checkbox" id="stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
+                🏷️ Auto-tag imported transactions as expenses/income
+              </label>
+              <button class="btn btn-primary" style="width:100%" onclick="importParsedTransactions()">✅ Import All Transactions</button>
             </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Parsed Transactions Preview</div>
-          <div id="parsed-preview">
-            <div class="empty-state"><div class="icon">📊</div><p>Upload or paste your statement to see parsed transactions here</p></div>
-          </div>
-          <div id="parsed-import-btn" style="display:none;margin-top:16px">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
-              <input type="checkbox" id="stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
-              🏷️ Auto-tag imported transactions as expenses/income
-            </label>
-            <button class="btn btn-primary" style="width:100%" onclick="importParsedTransactions()">✅ Import All Transactions</button>
-          </div>
+          <div class="section-header"><h3>Imported Bank Statement History</h3></div>
+          <table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+          <tbody id="statement-table"></tbody></table>
         </div>
       </div>
-      <div class="card">
-        <div class="section-header"><h3>Imported Statement History</h3></div>
-        <table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
-        <tbody id="statement-table"></tbody></table>
+
+      <!-- ====== CREDIT CARD STATEMENTS SECTION ====== -->
+      <div id="stmt-cc-panel" style="display:none">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Upload Credit Card Statement (CSV / Text)</div>
+            <div class="upload-zone" id="cc-statement-dropzone" onclick="document.getElementById('cc-statement-file').click()">
+              <div class="icon">💳</div>
+              <p>Drop your credit card statement here</p>
+              <small>CSV, TXT formats supported · Max 10MB</small>
+            </div>
+            <input type="file" id="cc-statement-file" accept=".csv,.txt,.tsv" onchange="handleCCStatementUpload(event)" style="display:none">
+            <div style="margin-top:16px">
+              <div class="form-group"><label>Or Paste CC Statement Text</label>
+                <textarea id="cc-statement-paste" rows="6" placeholder="Paste CSV rows here:&#10;Date,Description,Amount,Type&#10;01-03-2026,Amazon Purchase,2999,debit&#10;05-03-2026,Payment Received,15000,credit"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Select Credit Card</label><select id="stmt-cc"><option value="">Select card</option></select></div>
+                <div class="form-group"><label>Statement Month</label><input type="month" id="cc-stmt-month"></div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" style="flex:2" onclick="parseCCStatement()">⚡ Parse CC Statement</button>
+                <button class="btn btn-secondary" style="flex:1" onclick="loadSampleCCStatement()">📋 Sample CC Data</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Parsed CC Transactions Preview</div>
+            <div id="cc-parsed-preview">
+              <div class="empty-state"><div class="icon">💳</div><p>Upload or paste your credit card statement to preview</p></div>
+            </div>
+            <div id="cc-parsed-import-btn" style="display:none;margin-top:16px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
+                <input type="checkbox" id="cc-stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
+                🏷️ Auto-tag imported CC transactions as expenses
+              </label>
+              <button class="btn btn-primary" style="width:100%" onclick="importCCParsedTransactions()">✅ Import CC Transactions</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CC Statement Summary Cards -->
+        <div class="grid-3" id="cc-stmt-summary" style="margin-bottom:20px"></div>
+
+        <div class="card">
+          <div class="section-header"><h3>Credit Card Statement History</h3>
+            <select id="cc-stmt-filter" onchange="renderCCStatementTable()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
+              <option value="">All Cards</option>
+            </select>
+          </div>
+          <table><thead><tr><th>Date</th><th>Card</th><th>Description</th><th>Amount</th><th>Type</th></tr></thead>
+          <tbody id="cc-statement-table"></tbody></table>
+        </div>
       </div>
+
     </div>
 
     <!-- REPORTS -->
@@ -4272,7 +4347,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 // All collections (object stores) and their key paths
 
@@ -5575,6 +5650,7 @@ const STORES = {
   contracts:    { keyPath: 'id', indexes: [['memberId','memberId'],['status','status']] },
   businesses:   { keyPath: 'id' },
   invStatements:{ keyPath: 'id' },
+  ccStatements: { keyPath: 'id', indexes: [['cardId','cardId'],['date','date']] },
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
@@ -5884,7 +5960,8 @@ function totalIncomeInBase() {
 let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
-  businesses:[], invStatements:[], insurances:[], insClaims:[]
+  businesses:[], invStatements:[], insurances:[], insClaims:[],
+  ccStatements:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -6184,7 +6261,7 @@ function _showPageCore(id) {
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length); renderBankAccounts(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
-  if(id==='statements') { populateBankSelects2(); renderStatementTable(); }
+  if(id==='statements') { populateBankSelects2(); renderStatementTable(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
@@ -8994,8 +9071,9 @@ dz.addEventListener('drop', e => {
   reader.readAsText(file);
 });
 
-function loadSampleStatement() {
-  const sample = `Date,Description,Debit,Credit,Balance
+function loadSampleStatement(bank) {
+  const samples = {
+    hdfc: `Date,Description,Debit,Credit,Balance
 2026-03-01,NEFT-SALARY CREDIT-INTELLICORE CG PVT LTD,0,125000,625000
 2026-03-01,UPI-ZOMATO-ORDER#ZMT982341,589,0,624411
 2026-03-02,UPI-SWIGGY-INSTAMART-GROCERIES,1247,0,623164
@@ -9045,10 +9123,55 @@ function loadSampleStatement() {
 2026-03-24,UPI-1MG-TABLET ORDER,675,0,552582
 2026-03-24,POS-SHOPPERS STOP-FESTIVAL SHOPPING,4200,0,548382
 2026-03-25,NEFT-CASHBACK-HDFC CREDITCARD REWARD,0,1500,549882
-2026-03-25,UPI-DR. SHARMA-CLINIC CONSULTATION,800,0,549082`;
+2026-03-25,UPI-DR. SHARMA-CLINIC CONSULTATION,800,0,549082`,
 
-  document.getElementById('statement-paste').value = sample;
-  toast('Sample HDFC Bank statement loaded with 50 transactions! Click "Parse Statement" to preview.');
+    sbi: `Date,Description,Debit,Credit,Balance
+2026-03-01,NEFT/SALARY/MAR26-TATA CONSULTANCY SERVICES,0,95000,345000
+2026-03-01,UPI/SWIGGY/ORDER-SW881234,478,0,344522
+2026-03-02,NEFT/HOUSE RENT MARCH-MR RAJESH KUMAR,25000,0,319522
+2026-03-02,UPI/DMART POWAI-GROCERY PURCHASE,3870,0,315652
+2026-03-03,AUTOPAY/VODAFONE POSTPAID MAR26,749,0,314903
+2026-03-03,UPI/PETROL-HP PETROL PUMP POWAI,3200,0,311703
+2026-03-04,UPI/BLINKIT-QUICK COMMERCE ORDER,562,0,311141
+2026-03-04,AUTOPAY/HOTSTAR PREMIUM ANNUAL,1499,0,309642
+2026-03-05,UPI/UBER-CAB POWAI TO BKC,285,0,309357
+2026-03-05,NEFT/RD INTEREST CREDIT MAR26,0,3200,312557
+2026-03-06,POS/RELIANCE DIGITAL-MOBILE CHARGER,1299,0,311258
+2026-03-06,UPI/ZOMATO-LUNCH ORDER#ZMT112,425,0,310833
+2026-03-07,EMI/CAR LOAN SBI MAR26,18500,0,292333
+2026-03-07,AUTOPAY/ADANI ELECTRICITY MAR26,1850,0,290483
+2026-03-08,UPI/BIGBASKET-FRUITS AND VEG,1680,0,288803
+2026-03-08,UPI/HALDIRAMS-NAMKEEN ORDER,350,0,288453
+2026-03-09,POS/AJIO-CLOTHING PURCHASE,1799,0,286654
+2026-03-09,AUTOPAY/GAANA PLUS SUBSCRIPTION,99,0,286555
+2026-03-10,UPI/OLA-AUTO RIDE DADAR,125,0,286430
+2026-03-10,NEFT/REFUND-FLIPKART RETURN,0,2499,288929
+2026-03-11,UPI/GROFERS-MONTHLY ESSENTIALS,2340,0,286589
+2026-03-11,UPI/NYKAA-SKINCARE PRODUCTS,1450,0,285139
+2026-03-12,NEFT/FREELANCE-DESIGN PROJECT CLIENT,0,35000,320139
+2026-03-12,UPI/MEESHO-HOUSEHOLD ITEMS,890,0,319249
+2026-03-13,AUTOPAY/BSNL BROADBAND MAR26,699,0,318550
+2026-03-13,UPI/CLINIC-DR. PATEL CONSULTATION,700,0,317850
+2026-03-14,UPI/NETMEDS-PRESCRIPTION ORDER,1120,0,316730
+2026-03-14,POS/INOX-MOVIE 3TICKETS,1050,0,315680
+2026-03-15,NEFT/SALARY BONUS-TCS Q4,0,25000,340680
+2026-03-15,UPI/UNACADEMY-COACHING FEE APR,2999,0,337681
+2026-03-16,UPI/DUNZO-DELIVERY CHARGE,189,0,337492
+2026-03-16,AUTOPAY/WATER BILL BMC MAR26,450,0,337042
+2026-03-17,UPI/PIZZA HUT-DINNER ORDER,780,0,336262
+2026-03-17,POS/VIJAY SALES-HEADPHONES,2999,0,333263
+2026-03-18,NEFT/DIVIDEND-SBI MUTUAL FUND,0,4500,337763
+2026-03-18,UPI/CLEARTRIP-HOTEL BANGALORE,4200,0,333563
+2026-03-19,UPI/RAPIDO-BIKE SION TO KURLA,85,0,333478
+2026-03-19,AUTOPAY/GAS CYLINDER INDANE MAR26,950,0,332528
+2026-03-20,UPI/BURGER KING-LUNCH,375,0,332153
+2026-03-20,NEFT/INT CREDIT-SAVINGS A/C MAR26,0,1250,333403`
+  };
+
+  const data = samples[bank] || samples.hdfc;
+  const label = bank === 'sbi' ? 'SBI (40 rows)' : 'HDFC Bank (50 rows)';
+  document.getElementById('statement-paste').value = data;
+  toast(`Sample ${label} statement loaded! Click "Parse Statement" to preview.`);
 }
 
 function parseStatement() {
@@ -9143,6 +9266,243 @@ function renderStatementTable() {
     <td class="amount-credit">${r.credit>0?fmt(r.credit):'—'}</td>
     <td class="amount-neutral">${r.balance?fmt(r.balance):'—'}</td>
   </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATEMENT TABS + CREDIT CARD STATEMENTS
+// ═══════════════════════════════════════════════════════════════
+
+function switchStmtTab(tab) {
+  document.getElementById('stmt-bank-panel').style.display = tab === 'bank' ? 'block' : 'none';
+  document.getElementById('stmt-cc-panel').style.display = tab === 'cc' ? 'block' : 'none';
+  document.getElementById('stmt-tab-bank').classList.toggle('active', tab === 'bank');
+  document.getElementById('stmt-tab-cc').classList.toggle('active', tab === 'cc');
+  if (tab === 'cc') { populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
+}
+
+function populateCCStmtSelect() {
+  const sel = document.getElementById('stmt-cc');
+  const filterSel = document.getElementById('cc-stmt-filter');
+  if (!sel) return;
+  const cards = state.creditCards || [];
+  const opts = cards.map(c => `<option value="${c.id}">${c.bankName} ${c.network} ••••${c.last4}</option>`).join('');
+  sel.innerHTML = '<option value="">Select card</option>' + opts;
+  if (filterSel) filterSel.innerHTML = '<option value="">All Cards</option>' + opts;
+}
+
+let ccParsedRows = [];
+
+function handleCCStatementUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('cc-statement-paste').value = ev.target.result;
+    toast('CC statement file loaded. Click Parse.');
+  };
+  reader.readAsText(file);
+}
+
+// CC Drag and drop
+document.addEventListener('DOMContentLoaded', () => {
+  const ccdz = document.getElementById('cc-statement-dropzone');
+  if (!ccdz) return;
+  ccdz.addEventListener('dragover', e => { e.preventDefault(); ccdz.classList.add('dragover'); });
+  ccdz.addEventListener('dragleave', () => ccdz.classList.remove('dragover'));
+  ccdz.addEventListener('drop', e => {
+    e.preventDefault(); ccdz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { document.getElementById('cc-statement-paste').value = ev.target.result; toast('CC statement dropped. Click Parse.'); };
+    reader.readAsText(file);
+  });
+});
+
+function parseCCStatement() {
+  const text = document.getElementById('cc-statement-paste').value.trim();
+  if (!text) return toast('Paste CC statement text or upload a file', 'error');
+  const lines = text.split('\n').filter(l => l.trim());
+  ccParsedRows = [];
+
+  lines.forEach((line, idx) => {
+    if (idx === 0) return; // skip header
+    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 3) return;
+
+    let date = cols[0], desc = cols[1], amount = 0, type = 'debit';
+
+    if (cols.length >= 4) {
+      // Date, Description, Amount, Type format
+      amount = Math.abs(parseFloat(cols[2]) || 0);
+      type = (cols[3] || '').toLowerCase().includes('credit') ? 'credit' : 'debit';
+    } else if (cols.length === 3) {
+      const amt = parseFloat(cols[2]) || 0;
+      if (amt < 0) { amount = Math.abs(amt); type = 'credit'; }
+      else { amount = amt; type = 'debit'; }
+    }
+
+    if (date && desc && amount > 0) ccParsedRows.push({ date, description: desc, amount, type });
+  });
+
+  if (!ccParsedRows.length) { toast('Could not parse. Check format: Date,Description,Amount,Type', 'error'); return; }
+
+  const totalSpend = ccParsedRows.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0);
+  const totalPayment = ccParsedRows.filter(r => r.type === 'credit').reduce((a, r) => a + r.amount, 0);
+  const preview = document.getElementById('cc-parsed-preview');
+  preview.innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:14px">
+      <div class="stat-card orange" style="flex:1;padding:12px"><div class="stat-label">Total Spends</div><div class="stat-value" style="font-size:16px;color:var(--danger)">${fmt(totalSpend)}</div></div>
+      <div class="stat-card green" style="flex:1;padding:12px"><div class="stat-label">Payments/Refunds</div><div class="stat-value" style="font-size:16px;color:var(--seafoam)">${fmt(totalPayment)}</div></div>
+    </div>
+    <div style="max-height:300px;overflow-y:auto">
+    ${ccParsedRows.slice(0, 25).map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+        <div style="font-size:12px;color:var(--text3);width:80px">${r.date}</div>
+        <div style="flex:1;font-size:13px;padding:0 8px">${r.description}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${r.type==='credit'?'var(--seafoam)':'var(--danger)'}">${r.type==='credit'?'+':''}${fmt(r.amount)}</div>
+      </div>
+    `).join('')}
+    ${ccParsedRows.length > 25 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--text3)">+ ${ccParsedRows.length - 25} more rows...</div>` : ''}
+    </div>`;
+  document.getElementById('cc-parsed-import-btn').style.display = 'block';
+  toast(`Parsed ${ccParsedRows.length} CC transactions!`);
+}
+
+function importCCParsedTransactions() {
+  if (!ccParsedRows.length) return;
+  const cardId = document.getElementById('stmt-cc').value;
+  const card = (state.creditCards || []).find(c => c.id === cardId);
+  const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
+  let tagCount = 0;
+
+  if (!state.ccStatements) state.ccStatements = [];
+
+  ccParsedRows.forEach(r => {
+    const stmtRow = { id: uid(), cardId, ...r };
+    state.ccStatements.push(stmtRow);
+
+    // Also add to transactions
+    const txn = {
+      id: uid(),
+      date: r.date,
+      type: r.type === 'credit' ? 'credit' : 'debit',
+      memberId: card?.memberId || '',
+      description: r.description + (card ? ` [${card.bankName} ${card.network} ••••${card.last4}]` : ''),
+      amount: r.amount,
+      bankId: '',
+      ref: '',
+      cardId: cardId,
+      source: 'credit_card',
+    };
+    state.transactions.push(txn);
+    if (shouldTag && r.type === 'debit') {
+      const res = autoCreateFromTransaction(txn);
+      if (res) tagCount++;
+    }
+  });
+
+  saveData();
+  renderCCStatementTable();
+  renderCCStmtSummary();
+  toast(`Imported ${ccParsedRows.length} CC transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses.` : ''));
+  ccParsedRows = [];
+  document.getElementById('cc-parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All CC transactions imported!</p></div>';
+  document.getElementById('cc-parsed-import-btn').style.display = 'none';
+  document.getElementById('cc-statement-paste').value = '';
+}
+
+function renderCCStmtSummary() {
+  const div = document.getElementById('cc-stmt-summary');
+  if (!div) return;
+  const stmts = state.ccStatements || [];
+  const cards = state.creditCards || [];
+  if (!stmts.length) { div.innerHTML = ''; return; }
+
+  const totalSpend = stmts.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0);
+  const totalPay = stmts.filter(r => r.type === 'credit').reduce((a, r) => a + r.amount, 0);
+  const cardCount = new Set(stmts.map(r => r.cardId).filter(Boolean)).size;
+
+  div.innerHTML = `
+    <div class="stat-card orange" style="padding:14px"><div class="stat-label">Total CC Spends</div><div class="stat-value" style="font-size:18px;color:var(--danger)">${fmt(totalSpend)}</div><div class="stat-change">${stmts.filter(r=>r.type==='debit').length} transactions</div></div>
+    <div class="stat-card green" style="padding:14px"><div class="stat-label">Payments & Refunds</div><div class="stat-value" style="font-size:18px;color:var(--seafoam)">${fmt(totalPay)}</div></div>
+    <div class="stat-card blue" style="padding:14px"><div class="stat-label">Cards with Statements</div><div class="stat-value" style="font-size:18px">${cardCount} / ${cards.length}</div></div>
+  `;
+}
+
+function renderCCStatementTable() {
+  const tbody = document.getElementById('cc-statement-table');
+  if (!tbody) return;
+  const stmts = state.ccStatements || [];
+  const filterCard = document.getElementById('cc-stmt-filter')?.value || '';
+  let rows = filterCard ? stmts.filter(r => r.cardId === filterCard) : stmts;
+  rows = [...rows].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">No credit card statements imported yet</td></tr>';
+    return;
+  }
+
+  const cards = state.creditCards || [];
+  tbody.innerHTML = rows.slice(0, 100).map(r => {
+    const card = cards.find(c => c.id === r.cardId);
+    const cardLabel = card ? `${card.bankName} ••••${card.last4}` : '—';
+    const amtColor = r.type === 'credit' ? 'var(--seafoam)' : 'var(--danger)';
+    const typeLabel = r.type === 'credit' ? '<span style="color:var(--seafoam)">Payment</span>' : '<span style="color:var(--danger)">Spend</span>';
+    return `<tr>
+      <td style="font-size:12px">${r.date}</td>
+      <td style="font-size:12px">${cardLabel}</td>
+      <td style="font-size:12px">${r.description}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${amtColor}">${fmt(r.amount)}</td>
+      <td>${typeLabel}</td>
+    </tr>`;
+  }).join('');
+}
+
+function loadSampleCCStatement() {
+  const sample = `Date,Description,Amount,Type
+2026-03-01,AMAZON.IN - Order #AMZ992834,4299,debit
+2026-03-01,SWIGGY - Food Delivery Order,687,debit
+2026-03-02,FLIPKART - Electronics Purchase,12999,debit
+2026-03-02,ZOMATO GOLD - Restaurant Bill,1850,debit
+2026-03-03,UBER INDIA - Trip Fare,425,debit
+2026-03-03,NETFLIX.COM - Monthly Subscription,649,debit
+2026-03-04,MAKEMYTRIP - Flight Booking DEL-BOM,9850,debit
+2026-03-04,SHELL PETROL PUMP - Fuel,3500,debit
+2026-03-05,RELIANCE DIGITAL - Headphones,2499,debit
+2026-03-05,SPOTIFY PREMIUM - Annual Plan,1189,debit
+2026-03-06,MYNTRA - Fashion Purchase,3299,debit
+2026-03-06,BOOKMYSHOW - PVR 2 Tickets,850,debit
+2026-03-07,NYKAA - Beauty Products,1899,debit
+2026-03-07,DOMINOS - Pizza Order,745,debit
+2026-03-08,OYO ROOMS - Hotel Delhi,4200,debit
+2026-03-08,PHARMEASY - Medicine Order,1350,debit
+2026-03-09,PAYMENT RECEIVED - THANK YOU,25000,credit
+2026-03-09,STARBUCKS - Coffee,520,debit
+2026-03-10,AJIO - Clothing Purchase,2150,debit
+2026-03-10,CLEARTRIP - Hotel Booking,5500,debit
+2026-03-11,CROMA - Smart Watch,8999,debit
+2026-03-11,UDEMY - Online Course,499,debit
+2026-03-12,APPLE.COM/BILL - iCloud Storage,75,debit
+2026-03-12,SWIGGY INSTAMART - Groceries,945,debit
+2026-03-13,REFUND - AMAZON RETURN,0,credit
+2026-03-13,AMAZON REFUND - Order Cancel,4299,credit
+2026-03-14,KFC - Order#KF8821,380,debit
+2026-03-14,UBER - Airport Transfer,1250,debit
+2026-03-15,TATA CLIQ - Electronics,6799,debit
+2026-03-15,CAFE COFFEE DAY - Beverages,280,debit
+2026-03-16,BURGER KING - Lunch,425,debit
+2026-03-16,IRCTC - Train Ticket MUM-PUNE,980,debit
+2026-03-17,HOTSTAR - Subscription,299,debit
+2026-03-17,BLINKIT - Quick Delivery,385,debit
+2026-03-18,MEDPLUS - Pharmacy,890,debit
+2026-03-18,CASHBACK REVERSAL - REWARD POINTS,0,credit
+2026-03-18,CASHBACK - March Spends Reward,750,credit
+2026-03-19,VIJAY SALES - Home Appliance,15990,debit
+2026-03-19,RAPIDO - Bike Ride,120,debit
+2026-03-20,PAYMENT RECEIVED - ONLINE TRANSFER,35000,credit`;
+
+  document.getElementById('cc-statement-paste').value = sample;
+  toast('Sample HDFC Regalia CC statement loaded (40 rows)! Click "Parse CC Statement" to preview.');
 }
 
 // =================== DASHBOARD ===================
