@@ -2406,9 +2406,14 @@
           </div>
         </div>
         <div class="card">
-          <div class="section-header"><h3>Imported Bank Statement History</h3></div>
-          <table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+          <div class="section-header">
+            <h3>Imported Bank Statement History</h3>
+            <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+          </div>
+          <div style="overflow-x:auto">
+          <table style="min-width:700px"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th><th style="width:130px">Tag</th></tr></thead>
           <tbody id="statement-table"></tbody></table>
+          </div>
         </div>
       </div>
 
@@ -2457,12 +2462,17 @@
 
         <div class="card">
           <div class="section-header"><h3>Credit Card Statement History</h3>
-            <select id="cc-stmt-filter" onchange="renderCCStatementTable()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
-              <option value="">All Cards</option>
-            </select>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="cc-stmt-filter" onchange="renderCCStatementTable()" style="padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid rgba(0,180,216,0.25)">
+                <option value="">All Cards</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+            </div>
           </div>
-          <table><thead><tr><th>Date</th><th>Card</th><th>Description</th><th>Amount</th><th>Type</th></tr></thead>
+          <div style="overflow-x:auto">
+          <table style="min-width:700px"><thead><tr><th>Date</th><th>Card</th><th>Description</th><th>Amount</th><th>Type</th><th style="width:130px">Tag</th></tr></thead>
           <tbody id="cc-statement-table"></tbody></table>
+          </div>
         </div>
       </div>
 
@@ -9327,14 +9337,32 @@ function importParsedTransactions() {
 function renderStatementTable() {
   const rows = [...state.statements].sort((a,b) => b.date.localeCompare(a.date));
   const tbody = document.getElementById('statement-table');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
-  tbody.innerHTML = rows.slice(0,100).map(r => `<tr>
-    <td>${r.date}</td>
-    <td>${r.description}</td>
-    <td class="amount-debit">${r.debit>0?fmt(r.debit):'—'}</td>
-    <td class="amount-credit">${r.credit>0?fmt(r.credit):'—'}</td>
-    <td class="amount-neutral">${r.balance?fmt(r.balance):'—'}</td>
-  </tr>`).join('');
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No statements imported yet</td></tr>'; return; }
+
+  // Build lookup: description → linked transaction → linked expense tag
+  const expByTxnRef = {};
+  state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
+  const txnTagMap = {};
+  state.transactions.forEach(t => {
+    const exp = expByTxnRef[t.id];
+    if (exp) txnTagMap[t.description?.toLowerCase()] = exp.category;
+    else if (t.autoTagCategory) txnTagMap[t.description?.toLowerCase()] = t.autoTagCategory;
+  });
+
+  tbody.innerHTML = rows.slice(0,200).map(r => {
+    const tag = txnTagMap[r.description?.toLowerCase()] || '';
+    const tagBadge = tag
+      ? `<span style="background:rgba(34,197,94,0.1);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${tag}</span>`
+      : `<span style="color:var(--text3);font-size:11px">—</span>`;
+    return `<tr>
+      <td style="white-space:nowrap">${r.date}</td>
+      <td>${r.description}</td>
+      <td class="amount-debit">${r.debit>0?fmt(r.debit):'—'}</td>
+      <td class="amount-credit">${r.credit>0?fmt(r.credit):'—'}</td>
+      <td class="amount-neutral">${r.balance?fmt(r.balance):'—'}</td>
+      <td>${tagBadge}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -9507,22 +9535,37 @@ function renderCCStatementTable() {
   rows = [...rows].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:32px">No credit card statements imported yet</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No credit card statements imported yet</td></tr>';
     return;
   }
 
+  // Build tag lookup from transactions → expenses
+  const expByTxnRef = {};
+  state.expenses.forEach(e => { if (e.txnRef) expByTxnRef[e.txnRef] = e; });
+  const txnTagMap = {};
+  state.transactions.forEach(t => {
+    const exp = expByTxnRef[t.id];
+    if (exp) txnTagMap[t.description?.toLowerCase()] = exp.category;
+    else if (t.autoTagCategory) txnTagMap[t.description?.toLowerCase()] = t.autoTagCategory;
+  });
+
   const cards = state.creditCards || [];
-  tbody.innerHTML = rows.slice(0, 100).map(r => {
+  tbody.innerHTML = rows.slice(0, 200).map(r => {
     const card = cards.find(c => c.id === r.cardId);
     const cardLabel = card ? `${card.bankName} ••••${card.last4}` : '—';
     const amtColor = r.type === 'credit' ? 'var(--seafoam)' : 'var(--danger)';
     const typeLabel = r.type === 'credit' ? '<span style="color:var(--seafoam)">Payment</span>' : '<span style="color:var(--danger)">Spend</span>';
+    const tag = txnTagMap[r.description?.toLowerCase()] || '';
+    const tagBadge = tag
+      ? `<span style="background:rgba(34,197,94,0.1);color:#16a34a;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">${tag}</span>`
+      : `<span style="color:var(--text3);font-size:11px">—</span>`;
     return `<tr>
-      <td style="font-size:12px">${r.date}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.date}</td>
       <td style="font-size:12px">${cardLabel}</td>
       <td style="font-size:12px">${r.description}</td>
       <td style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${amtColor}">${fmt(r.amount)}</td>
       <td>${typeLabel}</td>
+      <td>${tagBadge}</td>
     </tr>`;
   }).join('');
 }
