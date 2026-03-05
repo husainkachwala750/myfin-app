@@ -982,6 +982,25 @@
   .history-item { background: #f9fafb; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
   .history-item:hover { border-color: var(--accent2); }
 
+  /* ── Family Access Management ── */
+  .access-member-card { background:#fff; border:1.5px solid rgba(0,180,216,0.18); border-radius:16px; padding:20px; position:relative; }
+  .access-member-card .member-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .access-member-card .member-avatar { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; flex-shrink:0; border:2.5px solid; }
+  .access-member-card .member-info { flex:1; }
+  .access-member-card .member-name { font-weight:700; font-size:14px; }
+  .access-member-card .member-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+  .access-perm-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.04); }
+  .access-perm-row:last-child { border-bottom:none; }
+  .access-perm-label { font-size:13px; color:var(--text2); display:flex; align-items:center; gap:6px; }
+  .access-perm-select { padding:4px 8px; font-size:12px; border-radius:8px; border:1px solid rgba(0,180,216,0.25); background:#f8fafc; cursor:pointer; min-width:80px; }
+  .access-perm-select.perm-edit { border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.06); color:#16a34a; }
+  .access-perm-select.perm-view { border-color:rgba(59,130,246,0.4); background:rgba(59,130,246,0.06); color:#2563eb; }
+  .access-perm-select.perm-none { border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.04); color:#dc2626; }
+  .access-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; }
+  .access-badge.admin { background:rgba(0,229,255,0.12); color:var(--accent); }
+  .access-badge.member { background:rgba(6,214,160,0.12); color:var(--seafoam); }
+  .access-badge.viewer { background:rgba(245,158,11,0.12); color:#f59e0b; }
+
   /* ── Features & Settings ── */
   .feature-card { background:#ffffff; border:1.5px solid rgba(0,180,216,0.18); border-radius:18px; padding:22px; transition:all .25s; position:relative; overflow:hidden; }
   .feature-card.enabled  { border-color:rgba(26,115,232,0.4); box-shadow:0 0 20px rgba(0,229,255,0.07); }
@@ -1591,6 +1610,54 @@
         <button class="btn btn-primary" onclick="openModal('add-member-modal')">+ Add Member</button>
       </div>
       <div class="grid-3" id="members-grid"></div>
+    </div>
+
+    <!-- FAMILY ACCESS MANAGEMENT -->
+    <div id="page-family-access" class="page">
+      <div class="page-header">
+        <h2>👨‍👩‍👧‍👦 Family User Management</h2>
+        <p>Control which family members can view or edit each section of MyFin</p>
+      </div>
+
+      <!-- Admin Notice -->
+      <div id="family-access-admin-notice" style="background:rgba(0,229,255,0.07);border:1.5px solid rgba(0,229,255,0.25);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">🔐</span>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--accent)">Family Owner Controls</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">Only the family admin can manage access permissions. Members with <strong>Edit</strong> access can add/modify data. <strong>View</strong> access is read-only. <strong>None</strong> hides the section entirely.</div>
+        </div>
+      </div>
+
+      <!-- Invite / Add Supabase Member -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header">
+          <h3>Family Members &amp; Access</h3>
+          <button class="btn btn-primary" onclick="openAddFamilyUserModal()">+ Add Member Login</button>
+        </div>
+        <div id="family-access-grid" class="grid-2" style="gap:16px"></div>
+      </div>
+
+      <!-- Quick Permission Presets -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header"><h3>Quick Presets</h3></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="applyAccessPreset('full')">🟢 Full Access (all edit)</button>
+          <button class="btn btn-secondary" onclick="applyAccessPreset('readonly')">👁️ View Only (all view)</button>
+          <button class="btn btn-secondary" onclick="applyAccessPreset('basic')">📊 Basic (expenses + bank only)</button>
+          <button class="btn btn-secondary" onclick="applyAccessPreset('private')">🔒 Private (no access)</button>
+        </div>
+      </div>
+
+      <!-- Permissions Matrix -->
+      <div class="card">
+        <div class="section-header"><h3>Detailed Permissions Matrix</h3></div>
+        <div style="overflow-x:auto">
+          <table id="access-matrix-table" style="min-width:700px">
+            <thead id="access-matrix-head"></thead>
+            <tbody id="access-matrix-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- EXPENSES -->
@@ -3074,6 +3141,13 @@
             <div class="setup-nav-desc">Add & manage members</div>
           </div>
         </div>
+        <div class="setup-nav-item" onclick="showSetupPage('family-access')" data-page="family-access">
+          <span class="setup-nav-icon">🔐</span>
+          <div>
+            <div class="setup-nav-title">User Management</div>
+            <div class="setup-nav-desc">Access & permissions</div>
+          </div>
+        </div>
       </div>
 
       <div class="setup-nav-section">
@@ -3172,6 +3246,7 @@
   <div class="more-drawer" id="more-drawer">
     <div class="more-drawer-handle"></div>
     <div class="more-drawer-item" onclick="showPage('members');closeMoreDrawer()" data-page="members"><span class="icon">👨‍👩‍👧‍👦</span> Family Members</div>
+    <div class="more-drawer-item" onclick="showPage('family-access');closeMoreDrawer()" data-page="family-access"><span class="icon">🔐</span> User Management</div>
     <div class="more-drawer-item" onclick="showPage('transactions');closeMoreDrawer()" data-page="transactions"><span class="icon">🔄</span> Transactions</div>
     <div class="more-drawer-item" onclick="showPage('bankdetails');closeMoreDrawer()" data-page="bankdetails"><span class="icon">🏛️</span> Bank Details</div>
     <div class="more-drawer-item" onclick="showPage('creditcards');closeMoreDrawer()" data-page="creditcards"><span class="icon">💳</span> Credit Cards</div>
@@ -5944,6 +6019,7 @@ function _showPageCore(id) {
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
+  if(id==='family-access') { renderFamilyAccessPage(); }
   if(id==='features') { renderFeaturesGrid(); initCurrencySettings(); }
   initCurrencySelectsForPage(id);
   // Always scroll to top when switching pages
@@ -6079,6 +6155,235 @@ function saveEditMember() {
   closeModal('edit-member-modal');
   toast(`✅ ${m.name}'s details updated`);
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  FAMILY USER MANAGEMENT — Access & Permissions
+// ═══════════════════════════════════════════════════════════════
+
+const ACCESS_SECTIONS = [
+  { key: 'dashboard',    emoji: '📊', label: 'Dashboard' },
+  { key: 'expenses',     emoji: '💸', label: 'Expenses' },
+  { key: 'transactions', emoji: '🔄', label: 'Transactions' },
+  { key: 'investments',  emoji: '📈', label: 'Investments' },
+  { key: 'bankAccounts', emoji: '🏦', label: 'Bank Accounts' },
+  { key: 'creditCards',  emoji: '💳', label: 'Credit Cards' },
+  { key: 'insurance',    emoji: '🛡️', label: 'Insurance' },
+  { key: 'contracts',    emoji: '📋', label: 'Contracts' },
+  { key: 'businesses',   emoji: '🏢', label: 'Businesses' },
+  { key: 'reports',      emoji: '📑', label: 'Reports' },
+  { key: 'advisor',      emoji: '🤖', label: 'AI Advisor' },
+  { key: 'portfolio',    emoji: '💼', label: 'Portfolio' },
+];
+
+function getMemberPermissions(memberId) {
+  const m = state.members.find(x => x.id === memberId);
+  return m?.permissions || {};
+}
+
+function setMemberPermission(memberId, sectionKey, level) {
+  const m = state.members.find(x => x.id === memberId);
+  if (!m) return;
+  if (!m.permissions) m.permissions = {};
+  m.permissions[sectionKey] = level;
+  saveData();
+}
+
+function getMemberAccessLevel(memberId, sectionKey) {
+  const m = state.members.find(x => x.id === memberId);
+  if (!m) return 'none';
+  if (m.accessRole === 'admin') return 'edit';
+  return m.permissions?.[sectionKey] || 'view';
+}
+
+function renderFamilyAccessPage() {
+  const grid = document.getElementById('family-access-grid');
+  if (!grid) return;
+
+  const isAdmin = window._currentIsAdmin;
+  if (!isAdmin) {
+    document.getElementById('family-access-admin-notice').innerHTML = `
+      <span style="font-size:24px">🔒</span>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--danger)">Admin Only</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Only the family admin/owner can manage access permissions.</div>
+      </div>`;
+  }
+
+  if (!state.members.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">👨‍👩‍👧‍👦</div><p>No family members yet. Add members first from the Family Members page.</p><button class="btn btn-primary" style="margin-top:12px" onclick="showSetupPage(\'members\')">Go to Members</button></div>';
+    return;
+  }
+
+  grid.innerHTML = state.members.map(m => {
+    const init = m.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const accessRole = m.accessRole || 'member';
+    const roleBadge = accessRole === 'admin' ? '<span class="access-badge admin">Admin</span>' :
+                      accessRole === 'viewer' ? '<span class="access-badge viewer">Viewer</span>' :
+                      '<span class="access-badge member">Member</span>';
+    const hasPin = false; // PIN is in Supabase, not local state
+    const perms = m.permissions || {};
+
+    return `<div class="access-member-card">
+      <div class="member-header">
+        <div class="member-avatar" style="background:${m.color||'#4ade80'}22;border-color:${m.color||'#4ade80'};color:${m.color||'#4ade80'}">${init}</div>
+        <div class="member-info">
+          <div class="member-name">${m.name} ${roleBadge}</div>
+          <div class="member-meta">${m.role||'Member'} · ${m.occupation||'—'}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${accessRole !== 'admin' ? `
+            <select onchange="changeMemberAccessRole('${m.id}', this.value)" style="padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid rgba(0,180,216,0.25);background:#f8fafc">
+              <option value="member" ${accessRole==='member'?'selected':''}>Member</option>
+              <option value="viewer" ${accessRole==='viewer'?'selected':''}>Viewer</option>
+              <option value="admin" ${accessRole==='admin'?'selected':''}>Admin</option>
+            </select>
+          ` : '<span style="font-size:11px;color:var(--accent);font-weight:600">Owner</span>'}
+        </div>
+      </div>
+
+      ${accessRole === 'admin' ? `
+        <div style="background:rgba(0,229,255,0.05);border-radius:10px;padding:12px;text-align:center;color:var(--text3);font-size:12px">
+          Admin has full access to all sections
+        </div>
+      ` : `
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Section Permissions</div>
+        ${ACCESS_SECTIONS.map(s => {
+          const level = perms[s.key] || 'view';
+          const selClass = level === 'edit' ? 'perm-edit' : level === 'view' ? 'perm-view' : 'perm-none';
+          return `<div class="access-perm-row">
+            <span class="access-perm-label">${s.emoji} ${s.label}</span>
+            <select class="access-perm-select ${selClass}" onchange="updatePermission('${m.id}','${s.key}',this.value);this.className='access-perm-select perm-'+this.value" ${!isAdmin?'disabled':''}>
+              <option value="edit" ${level==='edit'?'selected':''}>Edit</option>
+              <option value="view" ${level==='view'?'selected':''}>View</option>
+              <option value="none" ${level==='none'?'selected':''}>None</option>
+            </select>
+          </div>`;
+        }).join('')}
+      `}
+
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openSetPinModal('${m.id}')" ${!isAdmin?'disabled':''}>🔑 Set PIN</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="resetMemberPermissions('${m.id}')" ${!isAdmin?'disabled':''}>↩️ Reset</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render permissions matrix table
+  renderAccessMatrix();
+}
+
+function updatePermission(memberId, sectionKey, level) {
+  setMemberPermission(memberId, sectionKey, level);
+  renderAccessMatrix();
+  toast(`Permission updated`, 'success');
+}
+
+function changeMemberAccessRole(memberId, role) {
+  const m = state.members.find(x => x.id === memberId);
+  if (!m) return;
+  m.accessRole = role;
+  if (role === 'admin') {
+    m.permissions = {};
+    ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'edit');
+  } else if (role === 'viewer') {
+    m.permissions = {};
+    ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'view');
+  }
+  saveData();
+  renderFamilyAccessPage();
+  toast(`${m.name} is now ${role}`, 'success');
+}
+
+function resetMemberPermissions(memberId) {
+  const m = state.members.find(x => x.id === memberId);
+  if (!m) return;
+  m.permissions = {};
+  ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'view');
+  m.accessRole = 'member';
+  saveData();
+  renderFamilyAccessPage();
+  toast(`${m.name}'s permissions reset to default`);
+}
+
+function applyAccessPreset(preset) {
+  if (!window._currentIsAdmin) { toast('Only admin can change permissions', 'error'); return; }
+  const nonAdmins = state.members.filter(m => m.accessRole !== 'admin');
+  if (!nonAdmins.length) { toast('No non-admin members to update', 'error'); return; }
+
+  nonAdmins.forEach(m => {
+    if (!m.permissions) m.permissions = {};
+    switch (preset) {
+      case 'full':
+        ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'edit');
+        break;
+      case 'readonly':
+        ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'view');
+        break;
+      case 'basic':
+        ACCESS_SECTIONS.forEach(s => {
+          m.permissions[s.key] = ['dashboard', 'expenses', 'bankAccounts'].includes(s.key) ? 'edit' : 'view';
+        });
+        break;
+      case 'private':
+        ACCESS_SECTIONS.forEach(s => m.permissions[s.key] = 'none');
+        break;
+    }
+  });
+  saveData();
+  renderFamilyAccessPage();
+  const labels = { full: 'Full Access', readonly: 'View Only', basic: 'Basic', private: 'Private' };
+  toast(`Applied "${labels[preset]}" preset to ${nonAdmins.length} member(s)`);
+}
+
+function renderAccessMatrix() {
+  const thead = document.getElementById('access-matrix-head');
+  const tbody = document.getElementById('access-matrix-body');
+  if (!thead || !tbody) return;
+
+  const members = state.members.filter(m => m.accessRole !== 'admin');
+  if (!members.length) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="1" style="text-align:center;padding:20px;color:var(--text3)">No non-admin members to show</td></tr>';
+    return;
+  }
+
+  thead.innerHTML = `<tr>
+    <th style="text-align:left;padding:10px;min-width:140px">Section</th>
+    ${members.map(m => `<th style="text-align:center;padding:10px;font-size:12px;min-width:80px">
+      <div style="width:30px;height:30px;border-radius:50%;background:${m.color||'#4ade80'}22;border:2px solid ${m.color||'#4ade80'};color:${m.color||'#4ade80'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin:0 auto 4px">${m.name[0]}</div>
+      ${m.name.split(' ')[0]}
+    </th>`).join('')}
+  </tr>`;
+
+  tbody.innerHTML = ACCESS_SECTIONS.map(s => {
+    return `<tr>
+      <td style="padding:8px 10px;font-size:13px">${s.emoji} ${s.label}</td>
+      ${members.map(m => {
+        const level = m.permissions?.[s.key] || 'view';
+        const dot = level === 'edit' ? '🟢' : level === 'view' ? '🔵' : '🔴';
+        const label = level === 'edit' ? 'Edit' : level === 'view' ? 'View' : 'None';
+        return `<td style="text-align:center;padding:8px;font-size:12px">${dot} ${label}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+}
+
+function openAddFamilyUserModal() {
+  if (!window._currentIsAdmin) { toast('Only admin can add members', 'error'); return; }
+  openModal('add-member-modal');
+}
+
+function checkAccess(sectionKey) {
+  if (window._currentIsAdmin) return 'edit';
+  const session = getSession();
+  if (!session?.member_id) return 'edit';
+  const m = state.members.find(x => x.id === session.member_id);
+  if (!m) return 'edit';
+  return m.permissions?.[sectionKey] || 'view';
+}
+
+function canEdit(sectionKey) { return checkAccess(sectionKey) === 'edit'; }
+function canView(sectionKey) { return checkAccess(sectionKey) !== 'none'; }
 
 // ── Populate member select inside a modal ──────────────────────────
 function populateModalMemberSelect(selId, selectedId) {
@@ -14247,7 +14552,7 @@ function showSetupPage(page) {
 }
 
 // Pages that belong in the setup panel — auto-open panel when navigated to
-var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features']);
+var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features','family-access']);
 
 // Single consolidated showPage — handles all page hooks
 function showPage(pageId) {
