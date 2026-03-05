@@ -982,6 +982,11 @@
   .history-item { background: #f9fafb; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
   .history-item:hover { border-color: var(--accent2); }
 
+  /* ── Dashboard Period Filter ── */
+  .dash-period-btn { padding:5px 12px; border:none; background:transparent; border-radius:6px; font-size:12px; font-weight:600; color:var(--text3); cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .dash-period-btn.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(0,229,255,0.25); }
+  .dash-period-btn:hover:not(.active) { background:rgba(0,180,216,0.1); color:var(--text); }
+
   /* ── Family Access Management ── */
   .access-member-card { background:#fff; border:1.5px solid rgba(0,180,216,0.18); border-radius:16px; padding:20px; position:relative; }
   .access-member-card .member-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
@@ -1541,6 +1546,24 @@
         <div id="member-selector-wrap" style="display:none">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="member-avatar-bar"></div>
         </div>
+      </div>
+
+      <!-- Period Filter Bar -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;background:rgba(0,150,199,0.04);border:1px solid rgba(0,150,199,0.12);border-radius:12px;padding:10px 16px">
+        <span style="font-size:13px;font-weight:600;color:var(--text2)">Period:</span>
+        <div style="display:flex;gap:4px;background:rgba(0,150,199,0.08);border-radius:8px;padding:3px">
+          <button class="dash-period-btn active" data-period="month" onclick="setDashPeriod('month')">This Month</button>
+          <button class="dash-period-btn" data-period="quarter" onclick="setDashPeriod('quarter')">Quarter</button>
+          <button class="dash-period-btn" data-period="year" onclick="setDashPeriod('year')">This Year</button>
+          <button class="dash-period-btn" data-period="all" onclick="setDashPeriod('all')">All Time</button>
+          <button class="dash-period-btn" data-period="custom" onclick="setDashPeriod('custom')">Custom</button>
+        </div>
+        <div id="dash-custom-range" style="display:none;gap:8px;align-items:center">
+          <input type="month" id="dash-from-month" style="padding:5px 8px;border-radius:8px;border:1px solid rgba(0,150,199,0.25);font-size:12px" onchange="applyCustomPeriod()">
+          <span style="font-size:12px;color:var(--text3)">to</span>
+          <input type="month" id="dash-to-month" style="padding:5px 8px;border-radius:8px;border:1px solid rgba(0,150,199,0.25);font-size:12px" onchange="applyCustomPeriod()">
+        </div>
+        <div id="dash-period-label" style="margin-left:auto;font-size:12px;color:var(--text3);font-family:'DM Mono',monospace"></div>
       </div>
 
       <!-- ====== FAMILY VIEW ====== -->
@@ -7254,7 +7277,7 @@ function addExpense() {
 function renderExpenses() {
   const filterMember = memberFilters.expenses || '';
   const filterCat = document.getElementById('exp-filter-cat')?.value || '';
-  let rows = [...state.expenses].sort((a,b) => b.date.localeCompare(a.date));
+  let rows = filterByPeriod([...state.expenses]).sort((a,b) => b.date.localeCompare(a.date));
   if(filterMember) rows = rows.filter(e => e.memberId === filterMember);
   if(filterCat) rows = rows.filter(e => e.category === filterCat);
 
@@ -8054,7 +8077,7 @@ function addTransaction() {
 }
 
 function renderTransactions() {
-  const rows = [...state.transactions].sort((a,b) => b.date.localeCompare(a.date));
+  const rows = filterByPeriod([...state.transactions]).sort((a,b) => b.date.localeCompare(a.date));
   const tbody = document.getElementById('transaction-table');
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">No transactions yet</td></tr>'; return; }
   tbody.innerHTML = rows.map(t => {
@@ -8424,6 +8447,56 @@ function renderStatementTable() {
 // =================== DASHBOARD ===================
 let dashView = 'family';
 let activeMemberId = null;
+let dashPeriod = 'month'; // 'month', 'quarter', 'year', 'all', 'custom'
+let dashCustomFrom = null;
+let dashCustomTo = null;
+
+function getDashDateRange() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  switch (dashPeriod) {
+    case 'month': return { from: new Date(y, m, 1).toISOString().slice(0,10), to: new Date(y, m+1, 0).toISOString().slice(0,10), label: now.toLocaleDateString('en-IN', {month:'long', year:'numeric'}) };
+    case 'quarter': { const qm = Math.floor(m/3)*3; return { from: new Date(y, qm, 1).toISOString().slice(0,10), to: new Date(y, qm+3, 0).toISOString().slice(0,10), label: `Q${Math.floor(m/3)+1} ${y}` }; }
+    case 'year': return { from: `${y}-01-01`, to: `${y}-12-31`, label: String(y) };
+    case 'custom': {
+      const f = dashCustomFrom || `${y}-${String(m+1).padStart(2,'0')}`;
+      const t = dashCustomTo || f;
+      return { from: f + '-01', to: t + '-31', label: `${f} to ${t}` };
+    }
+    default: return { from: '2000-01-01', to: '2099-12-31', label: 'All Time' };
+  }
+}
+
+function filterByPeriod(arr, dateField) {
+  if (dashPeriod === 'all') return arr;
+  const { from, to } = getDashDateRange();
+  return arr.filter(item => {
+    const d = item[dateField || 'date'];
+    return d && d >= from && d <= to;
+  });
+}
+
+function setDashPeriod(period) {
+  dashPeriod = period;
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+  document.getElementById('dash-custom-range').style.display = period === 'custom' ? 'flex' : 'none';
+  updatePeriodLabel();
+  renderDashboard();
+  // Also re-render expenses if on that page
+  if (document.getElementById('page-expenses')?.classList.contains('active')) renderExpenses();
+}
+
+function applyCustomPeriod() {
+  dashCustomFrom = document.getElementById('dash-from-month')?.value;
+  dashCustomTo = document.getElementById('dash-to-month')?.value;
+  updatePeriodLabel();
+  renderDashboard();
+}
+
+function updatePeriodLabel() {
+  const label = document.getElementById('dash-period-label');
+  if (label) label.textContent = getDashDateRange().label;
+}
 
 function switchDashView(view) {
   dashView = view;
@@ -8468,11 +8541,15 @@ function selectMemberDash(id) {
 }
 
 function renderFamilyDashboard() {
-  const totalExpenses = state.expenses.reduce((a,e) => a+e.amount, 0);
+  updatePeriodLabel();
+  const periodExpenses = filterByPeriod(state.expenses);
+  const periodTransactions = filterByPeriod(state.transactions);
+  const totalExpenses = periodExpenses.reduce((a,e) => a+e.amount, 0);
   const totalInvested = state.investments.reduce((a,i) => a + toBase(i.amount, i.currency), 0);
   const currentPortfolio = state.investments.reduce((a,i) => a+i.currentValue, 0);
   const totalBalance = state.bankAccounts.reduce((a,b) => a+toBase(b.balance, b.currency), 0);
   const totalIncome = totalIncomeInBase();
+  const periodIncome = periodTransactions.filter(t=>t.type==='credit').reduce((a,t)=>a+t.amount, 0);
   const totalCCLimit = (state.creditCards||[]).reduce((a,c)=>a+c.limit,0);
   const totalCCOutstanding = (state.creditCards||[]).reduce((a,c)=>a+c.outstanding,0);
   const netWorth = totalBalance + currentPortfolio;
@@ -8485,14 +8562,14 @@ function renderFamilyDashboard() {
       <div class="stat-change">Banks + Investments</div>
     </div>
     <div class="stat-card blue">
-      <div class="stat-label">Monthly Income</div>
-      <div class="stat-value" style="color:var(--accent)">${fmt(totalIncome)}</div>
-      <div class="stat-change">${state.members.length} earning members</div>
+      <div class="stat-label">${dashPeriod==='all'?'Monthly Income':'Period Income'}</div>
+      <div class="stat-value" style="color:var(--accent)">${fmt(dashPeriod==='all'?totalIncome:(periodIncome||totalIncome))}</div>
+      <div class="stat-change">${dashPeriod==='all'?state.members.length+' earning members':getDashDateRange().label}</div>
     </div>
     <div class="stat-card orange">
-      <div class="stat-label">Total Expenses</div>
+      <div class="stat-label">${dashPeriod==='all'?'Total':'Period'} Expenses</div>
       <div class="stat-value" style="color:var(--danger)">${fmt(totalExpenses)}</div>
-      <div class="stat-change">${state.expenses.length} entries logged</div>
+      <div class="stat-change">${periodExpenses.length} entries${dashPeriod!=='all'?' in '+getDashDateRange().label:''}</div>
     </div>
     <div class="stat-card purple">
       <div class="stat-label">Portfolio Value</div>
@@ -8501,11 +8578,11 @@ function renderFamilyDashboard() {
     </div>
   `;
 
-  // Income vs Expense month chart
+  // Income vs Expense month chart (always show all months for trend, not filtered)
   const monthMap = {};
   const incomeMap = {};
-  state.expenses.forEach(e => { const m=e.date.slice(0,7); monthMap[m]=(monthMap[m]||0)+e.amount; });
-  state.transactions.filter(t=>t.type==='credit').forEach(t => { const m=t.date.slice(0,7); incomeMap[m]=(incomeMap[m]||0)+t.amount; });
+  state.expenses.forEach(e => { const m=e.date?.slice(0,7); if(m) monthMap[m]=(monthMap[m]||0)+e.amount; });
+  state.transactions.filter(t=>t.type==='credit').forEach(t => { const m=t.date?.slice(0,7); if(m) incomeMap[m]=(incomeMap[m]||0)+t.amount; });
   // Add member monthly income for each known month
   const allMonths = [...new Set([...Object.keys(monthMap),...Object.keys(incomeMap)])].sort().slice(-6);
   const maxIE = Math.max(...allMonths.map(m=>Math.max(monthMap[m]||0, incomeMap[m]||totalIncome)), 1);
@@ -8525,12 +8602,12 @@ function renderFamilyDashboard() {
     ieChart.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;width:100%;padding:50px 0">No data yet</div>';
   }
 
-  // Member split horizontal bars
+  // Member split horizontal bars (period-filtered)
   const splitDiv = document.getElementById('member-split-chart');
-  const totalMemberExp = totalExpensesInBase()||1;
+  const totalMemberExp = periodExpenses.reduce((a,e)=>a+e.amount,0)||1;
   if(state.members.length) {
     splitDiv.innerHTML = state.members.map((m,i) => {
-      const mExp = state.expenses.filter(e=>e.memberId===m.id).reduce((a,e)=>a+e.amount,0);
+      const mExp = periodExpenses.filter(e=>e.memberId===m.id).reduce((a,e)=>a+e.amount,0);
       const pct = (mExp/totalMemberExp*100).toFixed(1);
       return `<div style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
@@ -8546,9 +8623,9 @@ function renderFamilyDashboard() {
     splitDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px">No members added yet</div>';
   }
 
-  // Category bar chart
+  // Category bar chart (period-filtered)
   const cats = {};
-  state.expenses.forEach(e => { cats[e.category] = (cats[e.category]||0) + e.amount; });
+  periodExpenses.forEach(e => { cats[e.category] = (cats[e.category]||0) + e.amount; });
   const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,7);
   const maxCat = catEntries.length ? Math.max(...catEntries.map(c=>c[1])) : 1;
   const chartDiv = document.getElementById('expense-chart');
@@ -8858,7 +8935,8 @@ function renderReports() {
 
 function renderFamilyReport() {
   const colors = ['var(--accent)','var(--accent2)','var(--accent3)','var(--accent4)','var(--gold)','var(--danger)','var(--seafoam)','var(--coral)'];
-  const totalExpenses = state.expenses.reduce((a,e)=>a+e.amount,0);
+  const periodExp = filterByPeriod(state.expenses);
+  const totalExpenses = periodExp.reduce((a,e)=>a+e.amount,0);
   const totalIncome = state.members.reduce((a,m)=>a+m.income,0);
   const totalInvested = state.investments.reduce((a,i)=>a+i.amount,0);
   const totalPortfolio = state.investments.reduce((a,i)=>a+i.currentValue,0);
