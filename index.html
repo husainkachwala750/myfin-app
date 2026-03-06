@@ -5095,7 +5095,7 @@ async function storageBootLoad(familyId) {
     return;
   }
   setSyncStatus('syncing');
-  _bootingSyncLock = true;  // prevent push during pull
+  _bootingSyncLock = true;  // prevent push during entire boot
   // Pull with 15s timeout so app doesn't hang forever
   try {
     const loaded = await Promise.race([
@@ -5108,7 +5108,7 @@ async function storageBootLoad(familyId) {
     console.warn('[MyFin Boot] Sync failed:', e.message);
     setSyncStatus('error');
   }
-  _bootingSyncLock = false;  // allow pushes again
+  // Keep lock on — bootFamilyApp will release it after full boot
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -16505,12 +16505,13 @@ async function bootFamilyApp(familyId) {
   } catch(e) {
     console.warn('Migration error:', e);
   }
-  recalcAllBalances(); // Ensure bank/CC balances are fresh from statements/transactions
+  recalcAllBalances();
   initApp();
-  applyAccountTypeLabels(); // Update labels based on personal/family mode
+  applyAccountTypeLabels();
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
-  // Don't override sync status — let the actual sync result show
+  // Release sync lock after full boot — allow future saves to sync
+  setTimeout(() => { _bootingSyncLock = false; }, 2000);
 }
 
 // Migrate data from old generic FamilyVaultDB or localStorage into family DB
