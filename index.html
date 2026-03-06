@@ -4895,6 +4895,7 @@ const STORAGE_PROVIDERS = {
 let _storageProvider  = null;   // active provider id
 let _storageSyncTimer = null;
 let _storageReady     = false;
+let _bootingSyncLock  = false;  // prevent auto-push during boot pull
 
 // ── Get/set active provider ──────────────────────────────────────────────
 function storageGetProvider() {
@@ -4963,6 +4964,7 @@ function setSyncStatus(status) {
 
 // ── Schedule debounced sync (500ms) ─────────────────────────────────────
 function scheduleStorageSync() {
+  if (_bootingSyncLock) return;  // don't push while pulling on boot
   if (_storageSyncTimer) clearTimeout(_storageSyncTimer);
   _storageSyncTimer = setTimeout(() => storagePushData(window._currentFamilyId), 500);
 }
@@ -4995,14 +4997,20 @@ async function storagePushData(familyId) {
   const pkg = await storageBuildPackage(familyId);
   setSyncStatus('syncing');
   try {
-    switch(provider) {
-      case 'supabase': await storagePushSupabase(familyId, pkg); break;
-      case 'local':    await storagePushLocal(familyId, pkg);    break;
-      case 'gdrive':   await storagePushGDrive(familyId, pkg);   break;
-      case 'onedrive': await storagePushOneDrive(familyId, pkg); break;
-      case 'dropbox':  await storagePushDropbox(familyId, pkg);  break;
-      case 'webdav':   await storagePushWebDAV(familyId, pkg);   break;
-    }
+    const pushFn = async () => {
+      switch(provider) {
+        case 'supabase': await storagePushSupabase(familyId, pkg); break;
+        case 'local':    await storagePushLocal(familyId, pkg);    break;
+        case 'gdrive':   await storagePushGDrive(familyId, pkg);   break;
+        case 'onedrive': await storagePushOneDrive(familyId, pkg); break;
+        case 'dropbox':  await storagePushDropbox(familyId, pkg);  break;
+        case 'webdav':   await storagePushWebDAV(familyId, pkg);   break;
+      }
+    };
+    await Promise.race([
+      pushFn(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Push timeout')), 15000))
+    ]);
     setSyncStatus('synced');
     updateStorageStatusBadge();
   } catch(e) {
@@ -5087,6 +5095,7 @@ async function storageBootLoad(familyId) {
     return;
   }
   setSyncStatus('syncing');
+  _bootingSyncLock = true;  // prevent push during pull
   // Pull with 15s timeout so app doesn't hang forever
   try {
     const loaded = await Promise.race([
@@ -5099,6 +5108,7 @@ async function storageBootLoad(familyId) {
     console.warn('[MyFin Boot] Sync failed:', e.message);
     setSyncStatus('error');
   }
+  _bootingSyncLock = false;  // allow pushes again
 }
 
 // ════════════════════════════════════════════════════════════════
