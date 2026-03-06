@@ -1133,6 +1133,21 @@
   .file-upload-label { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text2); transition: all 0.2s; }
   .file-upload-label:hover { border-color: var(--accent); color: var(--text); }
 
+  /* ── Interactive Chart Tooltip ── */
+  #chart-tooltip { position:fixed; z-index:9999; pointer-events:none; background:rgba(15,23,42,0.92); color:#fff; padding:8px 14px; border-radius:8px; font-size:13px; font-family:'Plus Jakarta Sans',sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.2); opacity:0; transition:opacity 0.15s; white-space:nowrap; backdrop-filter:blur(8px); max-width:300px; }
+  #chart-tooltip .tip-label { font-size:11px; color:rgba(255,255,255,0.6); margin-bottom:2px; }
+  #chart-tooltip .tip-value { font-size:15px; font-weight:700; font-family:'DM Mono',monospace; }
+  #chart-tooltip .tip-pct { font-size:11px; color:rgba(255,255,255,0.5); margin-left:6px; }
+  #chart-tooltip.visible { opacity:1; }
+  /* ── Chart hover effects ── */
+  .chart-bar { transition:all 0.2s ease; cursor:pointer; position:relative; }
+  .chart-bar:hover { filter:brightness(1.15); transform:scaleY(1.05); transform-origin:bottom; }
+  .chart-segment { transition:all 0.25s ease; cursor:pointer; }
+  .chart-segment:hover { stroke-width:22 !important; filter:brightness(1.2); }
+  .donut-mini .chart-segment:hover { stroke-width:12 !important; }
+  .chart-progress { transition:all 0.2s ease; cursor:pointer; }
+  .chart-progress:hover { filter:brightness(1.15); box-shadow:0 0 8px rgba(0,0,0,0.15); }
+
   /* =================== ONBOARDING WIZARD =================== */
   #onboarding-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:2000; display:none; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
   #onboarding-overlay.open { display:flex; }
@@ -1170,6 +1185,7 @@
 </style>
 </head>
 <body>
+<div id="chart-tooltip"></div>
 
 <!-- ==================== ONBOARDING WIZARD ==================== -->
 <div id="onboarding-overlay">
@@ -6652,6 +6668,29 @@ function toast(msg, type='success') {
   setTimeout(() => el.remove(), type === 'error' ? 8000 : 3000);
 }
 
+// ── Chart Tooltip System ──
+const _tip = { el: null };
+function _getTip() { if (!_tip.el) _tip.el = document.getElementById('chart-tooltip'); return _tip.el; }
+function hideTip() { const t = _getTip(); if (t) { t.classList.remove('visible'); } }
+function tipAttr(label, value, pct, color) {
+  const escaped = (label+'||'+value+'||'+(pct||'')+'||'+(color||'#fff')).replace(/"/g, '&quot;');
+  return `data-tip="${escaped}"`;
+}
+document.addEventListener('mousemove', function(e) {
+  const el = e.target.closest('[data-tip]');
+  const t = _getTip();
+  if (!t) return;
+  if (!el) { t.classList.remove('visible'); return; }
+  const parts = el.dataset.tip.replace(/&quot;/g, '"').split('||');
+  const label = parts[0], value = parts[1], pct = parts[2], color = parts[3] || '#fff';
+  t.innerHTML = '<div class="tip-label">' + label + '</div><div><span class="tip-value" style="color:' + color + '">' + value + '</span>' + (pct ? '<span class="tip-pct">' + pct + '</span>' : '') + '</div>';
+  t.classList.add('visible');
+  const x = e.clientX + 14, y = e.clientY - 14;
+  const r = t.getBoundingClientRect();
+  t.style.left = (x + r.width > window.innerWidth ? e.clientX - r.width - 14 : x) + 'px';
+  t.style.top = (y + r.height > window.innerHeight ? e.clientY - r.height - 14 : y) + 'px';
+});
+
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
@@ -7762,7 +7801,7 @@ function refreshIncomeModal(m) {
     svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface3)" stroke-width="10"/>` +
       entries.map(([t,v])=>{
         const pct=v/tot, dash=pct*circ;
-        const seg=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${incomeTypeColors[t]||'#94a3b8'}" stroke-width="10" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" style="transition:all 0.5s"><title>${t}: ${fmt(v)}/mo</title></circle>`;
+        const seg=`<circle class="chart-segment" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${incomeTypeColors[t]||'#94a3b8'}" stroke-width="10" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})" style="transition:all 0.25s" ${tipAttr(t, fmt(v)+'/mo', (pct*100).toFixed(1)+'%', incomeTypeColors[t]||'#94a3b8')}/>`;
         offset+=dash; return seg;
       }).join('');
     if(lbl) lbl.textContent = m.incomeSources.length;
@@ -8114,8 +8153,8 @@ function renderExpenseAnalysis() {
         const mIdx = parseInt(ym.slice(5)) - 1;
         return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="display:flex;gap:3px;align-items:flex-end;height:140px">
-            <div style="width:16px;background:var(--seafoam);border-radius:3px 3px 0 0;height:${incH}px;min-height:2px" title="Income: ${fmt(d.income)}"></div>
-            <div style="width:16px;background:var(--danger);border-radius:3px 3px 0 0;height:${expH}px;min-height:2px" title="Expense: ${fmt(d.expense)}"></div>
+            <div class="chart-bar" style="width:16px;background:var(--seafoam);border-radius:3px 3px 0 0;height:${incH}px;min-height:2px" ${tipAttr('Income \u00b7 '+monthNames[mIdx], fmt(d.income), '', '#6ee7b7')}></div>
+            <div class="chart-bar" style="width:16px;background:var(--danger);border-radius:3px 3px 0 0;height:${expH}px;min-height:2px" ${tipAttr('Expense \u00b7 '+monthNames[mIdx], fmt(d.expense), '', '#fca5a5')}></div>
           </div>
           <div style="font-size:11px;color:var(--text3);font-weight:600">${monthNames[mIdx]}</div>
         </div>`;
@@ -12818,9 +12857,10 @@ function renderFamilyDashboard() {
     ieChart.innerHTML = allMonths.map(m => {
       const exp = monthMap[m]||0;
       const inc = incomeMap[m]||totalIncome;
+      const mLabel = m.slice(5);
       return `<div style="flex:1;display:flex;gap:3px;align-items:flex-end">
-        <div style="flex:1;background:rgba(6,214,160,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(inc/maxIE)*140)}px" title="Income: ${fmt(inc)}"></div>
-        <div style="flex:1;background:rgba(255,107,107,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(exp/maxIE)*140)}px" title="Expense: ${fmt(exp)}"></div>
+        <div class="chart-bar" style="flex:1;background:rgba(6,214,160,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(inc/maxIE)*140)}px" ${tipAttr('Income \u00b7 '+mLabel, fmt(inc), '', '#6ee7b7')}></div>
+        <div class="chart-bar" style="flex:1;background:rgba(255,107,107,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(exp/maxIE)*140)}px" ${tipAttr('Expense \u00b7 '+mLabel, fmt(exp), '', '#fca5a5')}></div>
       </div>`;
     }).join('') + `<div style="position:absolute;bottom:-20px;left:4px;right:4px;display:flex;gap:6px">${allMonths.map(m=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--text3)">${m.slice(5)}</div>`).join('')}</div>`;
     ieLegend.innerHTML = `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(6,214,160,0.7);display:inline-block"></span>Income</span><span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,107,107,0.7);display:inline-block"></span>Expenses</span>`;
@@ -12828,12 +12868,14 @@ function renderFamilyDashboard() {
     ieChart.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;width:100%;padding:50px 0">No data yet</div>';
   }
 
-  // Member split horizontal bars (period-filtered)
+  // Member split horizontal bars (period-filtered) — expenses + debit transactions
   const splitDiv = document.getElementById('member-split-chart');
-  const totalMemberExp = periodExpenses.reduce((a,e)=>a+e.amount,0)||1;
+  const periodDebits = periodTransactions.filter(t => t.type === 'debit');
+  const combinedMemberExp = [...periodExpenses.map(e=>({memberId:e.memberId,amount:e.amount})), ...periodDebits.map(t=>({memberId:t.memberId,amount:t.amount||0}))];
+  const totalMemberExp = combinedMemberExp.reduce((a,e)=>a+e.amount,0)||1;
   if(state.members.length) {
     splitDiv.innerHTML = state.members.map((m,i) => {
-      const mExp = periodExpenses.filter(e=>e.memberId===m.id).reduce((a,e)=>a+e.amount,0);
+      const mExp = combinedMemberExp.filter(e=>e.memberId===m.id).reduce((a,e)=>a+e.amount,0);
       const pct = (mExp/totalMemberExp*100).toFixed(1);
       return `<div style="margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
@@ -12849,17 +12891,24 @@ function renderFamilyDashboard() {
     splitDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px">No members added yet</div>';
   }
 
-  // Category bar chart (period-filtered)
+  // Category bar chart (period-filtered) — include both expenses and debit transactions
   const cats = {};
   periodExpenses.forEach(e => { cats[e.category] = (cats[e.category]||0) + e.amount; });
+  periodTransactions.filter(t => t.type === 'debit' && (t.category || t.autoTagCategory)).forEach(t => {
+    const cat = t.category || t.autoTagCategory;
+    cats[cat] = (cats[cat]||0) + (t.amount||0);
+  });
   const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,7);
   const maxCat = catEntries.length ? Math.max(...catEntries.map(c=>c[1])) : 1;
   const chartDiv = document.getElementById('expense-chart');
   const labelsDiv = document.getElementById('chart-labels');
   if(catEntries.length) {
-    chartDiv.innerHTML = catEntries.map((c,i) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
-      <div class="bar" style="width:100%;height:${Math.max(4,(c[1]/maxCat)*160)}px;background:${colors[i]};opacity:0.85;border-radius:4px 4px 0 0" title="${c[0]}: ${fmt(c[1])}"></div>
-    </div>`).join('');
+    chartDiv.innerHTML = catEntries.map((c,i) => {
+      const pct = totalExpenses > 0 ? ((c[1]/totalExpenses)*100).toFixed(1)+'%' : '';
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div class="chart-bar" style="width:100%;height:${Math.max(4,(c[1]/maxCat)*160)}px;background:${colors[i]};opacity:0.85;border-radius:4px 4px 0 0" ${tipAttr(c[0], fmt(c[1]), pct, colors[i])}></div>
+    </div>`;
+    }).join('');
     labelsDiv.innerHTML = catEntries.map((c,i) => `<span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i]};display:inline-block"></span>${c[0].split(' ').slice(-1)[0]}</span>`).join('');
   } else {
     chartDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;width:100%;padding:60px 0">No expense data yet</div>';
@@ -12874,7 +12923,7 @@ function renderFamilyDashboard() {
   const donutDiv = document.getElementById('portfolio-donut');
   if(typeEntries.length) {
     let offset=0; const r=50, circ=2*Math.PI*r;
-    const segments = typeEntries.map((e,i)=>{ const pct=e[1]/totalPF; const dash=pct*circ; const seg=`<circle cx="60" cy="60" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="18" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}" style="transition:all 0.5s"/>`; offset+=dash; return seg; }).join('');
+    const segments = typeEntries.map((e,i)=>{ const pct=e[1]/totalPF; const dash=pct*circ; const seg=`<circle class="chart-segment" cx="60" cy="60" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="18" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}" style="transition:all 0.25s" ${tipAttr(e[0], fmt(e[1]), (pct*100).toFixed(1)+'%', colors[i])}/>`; offset+=dash; return seg; }).join('');
     donutDiv.innerHTML = `<div class="donut"><svg width="120" height="120" viewBox="0 0 120 120">${segments}</svg><div class="donut-label"><div style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500">${fmt(totalPF)}</div><div style="font-size:10px;color:var(--text3)">Portfolio</div></div></div><div class="donut-legend">${typeEntries.map((e,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><div><div style="font-size:12px">${e[0]}</div><div style="font-size:11px;color:var(--text3)">${fmt(e[1])} · ${(e[1]/totalPF*100).toFixed(1)}%</div></div></div>`).join('')}</div>`;
   } else {
     donutDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:40px">No investments yet</div>';
@@ -13029,15 +13078,15 @@ function renderMonthlyBalances() {
     if (hasClosing) {
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0">
         <div style="display:flex;gap:2px;align-items:flex-end;height:${chartHeight}px;width:100%">
-          <div style="flex:1;background:rgba(37,99,235,0.4);border-radius:3px 3px 0 0;height:${closingH}px" title="Closing Balance: ${fmt(r.closingBalance)}"></div>
-          <div style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" title="Net: ${r.net>=0?'+':''}${fmt(r.net)}"></div>
+          <div class="chart-bar" style="flex:1;background:rgba(37,99,235,0.4);border-radius:3px 3px 0 0;height:${closingH}px" ${tipAttr('Closing Balance', fmt(r.closingBalance), '', '#93c5fd')}></div>
+          <div class="chart-bar" style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" ${tipAttr('Net Flow', (r.net>=0?'+':'')+fmt(r.net), '', r.net>=0?'#6ee7b7':'#fca5a5')}></div>
         </div>
         <div style="font-size:9px;color:var(--text3);white-space:nowrap">${mName}</div>
       </div>`;
     } else {
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0">
         <div style="display:flex;align-items:flex-end;height:${chartHeight}px;width:100%">
-          <div style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" title="Net: ${r.net>=0?'+':''}${fmt(r.net)}"></div>
+          <div class="chart-bar" style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" ${tipAttr('Net \u00b7 '+mName, (r.net>=0?'+':'')+fmt(r.net), '', r.net>=0?'#6ee7b7':'#fca5a5')}></div>
         </div>
         <div style="font-size:9px;color:var(--text3);white-space:nowrap">${mName}</div>
       </div>`;
@@ -13421,7 +13470,7 @@ function renderFamilyReport() {
     <div style="display:flex;align-items:flex-end;gap:8px;height:150px;padding:0 4px;position:relative">
       ${monthEntries.map(([m,v])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
         <div style="font-size:9px;color:var(--text3);white-space:nowrap">${fmt(v).replace('₹','₹')}</div>
-        <div style="width:100%;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:4px 4px 0 0;height:${Math.max(4,(v/maxM*120))}px;opacity:0.85;transition:all 0.4s" title="${m}: ${fmt(v)}"></div>
+        <div class="chart-bar" style="width:100%;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:4px 4px 0 0;height:${Math.max(4,(v/maxM*120))}px;opacity:0.85;transition:all 0.2s" ${tipAttr(m, fmt(v), '', '#60a5fa')}></div>
         <div style="font-size:10px;color:var(--text3)">${m.slice(5)}</div>
       </div>`).join('')}
     </div>` : '<div style="color:var(--text3);font-size:13px;padding:20px">No monthly data</div>';
@@ -13585,7 +13634,7 @@ function renderMemberReport(memberId) {
         <div style="display:flex;align-items:flex-end;gap:8px;height:150px;padding:0 4px">
           ${monthEntries.map(([mo,v])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
             <div style="font-size:9px;color:var(--text3);white-space:nowrap">${fmt(v).replace('₹','')}</div>
-            <div style="width:100%;background:linear-gradient(180deg,${mc},${mc}88);border-radius:4px 4px 0 0;height:${Math.max(4,(v/maxM*120))}px;opacity:0.85" title="${mo}: ${fmt(v)}"></div>
+            <div class="chart-bar" style="width:100%;background:linear-gradient(180deg,${mc},${mc}88);border-radius:4px 4px 0 0;height:${Math.max(4,(v/maxM*120))}px;opacity:0.85" ${tipAttr(mo, fmt(v), '', mc)}></div>
             <div style="font-size:10px;color:var(--text3)">${mo.slice(5)}</div>
           </div>`).join('')}
         </div>
@@ -16838,8 +16887,8 @@ function renderBizFinancials() {
       <div style="display:flex;align-items:flex-end;gap:6px;height:90px">
         ${months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
           <div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:72px">
-            <div style="flex:1;background:rgba(6,214,160,.65);border-radius:2px 2px 0 0;height:${Math.max(2,monthMap[m].rev/maxBar*70)}px" title="Rev:${fmt(monthMap[m].rev)}"></div>
-            <div style="flex:1;background:rgba(255,107,107,.65);border-radius:2px 2px 0 0;height:${Math.max(2,monthMap[m].exp/maxBar*70)}px" title="Exp:${fmt(monthMap[m].exp)}"></div>
+            <div class="chart-bar" style="flex:1;background:rgba(6,214,160,.65);border-radius:2px 2px 0 0;height:${Math.max(2,monthMap[m].rev/maxBar*70)}px" ${tipAttr('Revenue', fmt(monthMap[m].rev), '', '#6ee7b7')}></div>
+            <div class="chart-bar" style="flex:1;background:rgba(255,107,107,.65);border-radius:2px 2px 0 0;height:${Math.max(2,monthMap[m].exp/maxBar*70)}px" ${tipAttr('Expense', fmt(monthMap[m].exp), '', '#fca5a5')}></div>
           </div>
           <div style="font-size:9px;color:var(--text3)">${m.slice(5)}</div>
         </div>`).join('')}
@@ -17525,8 +17574,8 @@ function renderBizReport() {
       <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:0 4px">
         ${months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="width:100%;display:flex;gap:2px;align-items:flex-end;justify-content:center;height:130px">
-            <div style="flex:1;background:rgba(6,214,160,0.7);border-radius:3px 3px 0 0;height:${Math.max(2,(monthMap[m].rev/maxBar*120))}px" title="Rev: ${fmt(monthMap[m].rev)}"></div>
-            <div style="flex:1;background:rgba(255,107,107,0.7);border-radius:3px 3px 0 0;height:${Math.max(2,(monthMap[m].exp/maxBar*120))}px" title="Exp: ${fmt(monthMap[m].exp)}"></div>
+            <div class="chart-bar" style="flex:1;background:rgba(6,214,160,0.7);border-radius:3px 3px 0 0;height:${Math.max(2,(monthMap[m].rev/maxBar*120))}px" ${tipAttr('Revenue', fmt(monthMap[m].rev), '', '#6ee7b7')}></div>
+            <div class="chart-bar" style="flex:1;background:rgba(255,107,107,0.7);border-radius:3px 3px 0 0;height:${Math.max(2,(monthMap[m].exp/maxBar*120))}px" ${tipAttr('Expense', fmt(monthMap[m].exp), '', '#fca5a5')}></div>
           </div>
           <div style="font-size:9px;color:var(--text3)">${m.slice(5)}</div>
         </div>`).join('')}
@@ -17912,8 +17961,8 @@ function renderPortfolioOverview() {
       chart.innerHTML = types.map(t => `
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
           <div style="width:100%;display:flex;gap:2px;align-items:flex-end;justify-content:center;height:160px">
-            <div style="flex:1;background:rgba(0,150,199,0.6);border-radius:3px 3px 0 0;height:${Math.max(3,(typeMap[t].invested/maxVal*150))}px" title="Invested: ${fmt(typeMap[t].invested)}"></div>
-            <div style="flex:1;background:${typeMap[t].current >= typeMap[t].invested ? 'rgba(6,214,160,0.7)' : 'rgba(255,107,107,0.7)'};border-radius:3px 3px 0 0;height:${Math.max(3,(typeMap[t].current/maxVal*150))}px" title="Current: ${fmt(typeMap[t].current)}"></div>
+            <div class="chart-bar" style="flex:1;background:rgba(0,150,199,0.6);border-radius:3px 3px 0 0;height:${Math.max(3,(typeMap[t].invested/maxVal*150))}px" ${tipAttr('Invested \u00b7 '+t, fmt(typeMap[t].invested), '', '#67e8f9')}></div>
+            <div class="chart-bar" style="flex:1;background:${typeMap[t].current >= typeMap[t].invested ? 'rgba(6,214,160,0.7)' : 'rgba(255,107,107,0.7)'};border-radius:3px 3px 0 0;height:${Math.max(3,(typeMap[t].current/maxVal*150))}px" ${tipAttr('Current \u00b7 '+t, fmt(typeMap[t].current), ((typeMap[t].current/typeMap[t].invested-1)*100).toFixed(1)+'%', typeMap[t].current>=typeMap[t].invested?'#6ee7b7':'#fca5a5')}></div>
           </div>
           <div style="font-size:9px;color:var(--text3);text-align:center;word-break:break-word;max-width:60px">${t.replace(/^[^a-zA-Z₿]*/,'').trim().substring(0,10)}</div>
         </div>`).join('') +
