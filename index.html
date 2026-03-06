@@ -2443,46 +2443,37 @@
       <div id="stmt-member-summary" style="margin-bottom:20px"></div>
 
       <!-- Smart Auto-Import from Folder -->
-      <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(6,214,160,0.25);background:linear-gradient(135deg,rgba(6,214,160,0.03),rgba(0,180,216,0.03))">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:24px">🤖</span>
-            <div>
-              <div style="font-size:15px;font-weight:700;color:var(--text)">Smart Auto-Import</div>
-              <div style="font-size:12px;color:var(--text3)">Drop statement files in a folder — app auto-detects bank, period &amp; imports</div>
+      <div class="card" style="margin-bottom:20px;padding:12px 16px;border:1.5px solid rgba(6,214,160,0.25);background:linear-gradient(135deg,rgba(6,214,160,0.03),rgba(0,180,216,0.03))">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:18px">🤖</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text)">Smart Auto-Import</span>
+          <span id="auto-import-folder-label" style="font-size:11px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <span style="flex:1"></span>
+          <!-- Info tooltip -->
+          <span style="position:relative;cursor:pointer" onmouseenter="document.getElementById('auto-import-tooltip').style.display='block'" onmouseleave="document.getElementById('auto-import-tooltip').style.display='none'" onclick="const t=document.getElementById('auto-import-tooltip');t.style.display=t.style.display==='block'?'none':'block'">
+            <span style="width:20px;height:20px;border-radius:50%;background:rgba(0,180,216,0.15);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent)">ℹ</span>
+            <div id="auto-import-tooltip" style="display:none;position:absolute;right:0;top:28px;width:320px;background:var(--surface);border:1px solid rgba(0,180,216,0.25);border-radius:10px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:100;font-size:12px;color:var(--text2);line-height:1.7">
+              <div style="font-weight:700;margin-bottom:6px;color:var(--text)">📋 How it works</div>
+              <div><strong>1.</strong> Click <strong>Select Folder</strong> — pick any location</div>
+              <div><strong>2.</strong> App auto-creates sub-folders for each bank &amp; card</div>
+              <div><strong>3.</strong> Drop CSV files into the matching folder</div>
+              <div><strong>4.</strong> Click <strong>Scan</strong> — auto-detects bank, period &amp; imports</div>
+              <div style="margin-top:6px;font-size:11px;color:var(--accent)">💡 New accounts auto-create folders. Deleted accounts remove them.</div>
             </div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span id="auto-import-folder-label" style="font-size:12px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-            <button class="btn btn-primary btn-sm" onclick="pickAutoImportFolder()" style="white-space:nowrap">📁 Select Folder</button>
-            <button class="btn btn-secondary btn-sm" id="auto-import-scan-btn" onclick="scanAutoImportFolder()" style="display:none;white-space:nowrap">🔄 Scan Now</button>
-          </div>
+          </span>
+          <button class="btn btn-primary btn-sm" onclick="pickAutoImportFolder()" style="font-size:12px;padding:5px 12px">📁 Folder</button>
+          <button class="btn btn-secondary btn-sm" id="auto-import-sync-btn" onclick="syncAndShowFolders()" style="display:none;font-size:12px;padding:5px 10px">📂 Sync</button>
+          <button class="btn btn-secondary btn-sm" id="auto-import-scan-btn" onclick="scanAutoImportFolder()" style="display:none;font-size:12px;padding:5px 10px">🔄 Scan</button>
         </div>
-
-        <!-- How it works -->
-        <div id="auto-import-guide" style="background:var(--surface3);border-radius:10px;padding:14px 16px;margin-bottom:14px">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">📋 How it works</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.8">
-            <div><strong>1.</strong> Select a folder on your computer (e.g. <code>Documents/BankStatements</code>)</div>
-            <div><strong>2.</strong> Create sub-folders matching your bank names: <code>HDFC</code>, <code>SBI</code>, <code>Axis</code>, <code>ICICI</code>, etc.</div>
-            <div><strong>3.</strong> Drop CSV statement files into the matching bank folder</div>
-            <div><strong>4.</strong> Click <strong>Scan Now</strong> — the app reads each file, detects the bank account, auto-detects the month from transaction dates, and imports!</div>
-            <div style="margin-top:6px;padding:8px 10px;background:rgba(0,180,216,0.08);border-radius:8px;font-size:11px;color:var(--accent)">
-              💡 <strong>Tip:</strong> Name folders to match bank names in your account list. Files already imported are skipped (dedup by content).
-            </div>
-          </div>
-        </div>
-
-        <!-- Scan Results -->
-        <div id="auto-import-results" style="display:none"></div>
-
-        <!-- File Mapping Config -->
-        <div id="auto-import-mapping" style="display:none;margin-top:14px">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">📎 Detected Files</div>
+        <!-- Scan Results (hidden until scan) -->
+        <div id="auto-import-results" style="display:none;margin-top:12px"></div>
+        <!-- File Mapping (hidden until scan) -->
+        <div id="auto-import-mapping" style="display:none;margin-top:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">📎 Detected Files</div>
           <div id="auto-import-file-list"></div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button class="btn btn-primary" onclick="executeAutoImport()" style="flex:1">✅ Import All Matched Files</button>
-            <button class="btn btn-secondary" onclick="cancelAutoImport()">Cancel</button>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-primary btn-sm" onclick="executeAutoImport()" style="flex:1;font-size:12px">✅ Import All</button>
+            <button class="btn btn-secondary btn-sm" onclick="cancelAutoImport()" style="font-size:12px">Cancel</button>
           </div>
         </div>
       </div>
@@ -9528,7 +9519,9 @@ function addBankAccount() {
     email: document.getElementById('bank-email').value,
     notes: document.getElementById('bank-notes').value
   });
-  saveData(); fsSaveBankAccount(state.bankAccounts[state.bankAccounts.length-1]); renderBankAccounts(); populateBankSelects(); toast('Bank account saved!');
+  const newAccount = state.bankAccounts[state.bankAccounts.length-1];
+  saveData(); fsSaveBankAccount(newAccount); renderBankAccounts(); populateBankSelects(); toast('Bank account saved!');
+  createAutoImportFolder('bank', newAccount);
   ['bank-name','bank-accno','bank-ifsc','bank-branch','bank-cif','bank-balance','bank-mobile','bank-email','bank-notes'].forEach(id => document.getElementById(id).value='');
 }
 
@@ -9630,7 +9623,9 @@ function viewBankDetails(id) {
 
 function deleteBankAccount(id) {
   if(!confirm('Delete this bank account?')) return;
+  const account = state.bankAccounts.find(b => b.id === id);
   state.bankAccounts = state.bankAccounts.filter(b => b.id !== id);
+  if (account) deleteAutoImportFolder('bank', account);
   saveData(); renderBankAccounts(); populateBankSelects(); toast('Account removed');
 }
 
@@ -9859,6 +9854,8 @@ async function restoreAutoImportHandle() {
       if (label) label.textContent = '📁 ' + handle.name;
       const scanBtn = document.getElementById('auto-import-scan-btn');
       if (scanBtn) scanBtn.style.display = '';
+      const syncBtn = document.getElementById('auto-import-sync-btn');
+      if (syncBtn) syncBtn.style.display = '';
     }
   } catch(e) { /* ignore */ }
 }
@@ -9879,15 +9876,118 @@ async function pickAutoImportFolder() {
     return;
   }
   try {
-    const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
     _autoImportDirHandle = dirHandle;
     await saveAutoImportHandle(dirHandle);
     document.getElementById('auto-import-folder-label').textContent = '📁 ' + dirHandle.name;
     document.getElementById('auto-import-scan-btn').style.display = '';
-    toast('Folder selected: ' + dirHandle.name + '. Click Scan Now to find statements.');
+    // Auto-create folder structure for all bank accounts and credit cards
+    await syncAutoImportFolders();
+    toast('Folder ready: ' + dirHandle.name + ' — sub-folders created for all accounts!');
   } catch(e) {
     if (e.name !== 'AbortError') toast('Failed to select folder: ' + e.message, 'error');
   }
+}
+
+// Create/sync sub-folders for all bank accounts and credit cards
+async function syncAutoImportFolders() {
+  if (!_autoImportDirHandle) return;
+  try {
+    const perm = await _autoImportDirHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') {
+      const req = await _autoImportDirHandle.requestPermission({ mode: 'readwrite' });
+      if (req !== 'granted') return;
+    }
+  } catch(e) { return; }
+
+  const created = [];
+  // Create folders for bank accounts
+  for (const bank of state.bankAccounts) {
+    const folderName = sanitizeFolderName(bank.bankName, bank.accountNumber);
+    try {
+      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+      created.push(folderName);
+    } catch(e) { /* ignore */ }
+  }
+  // Create folders for credit cards
+  for (const cc of (state.creditCards || [])) {
+    const folderName = sanitizeFolderName(cc.bankName + '_CC', cc.last4);
+    try {
+      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+      created.push(folderName);
+    } catch(e) { /* ignore */ }
+  }
+  if (created.length) renderAutoImportFolderStatus();
+  return created;
+}
+
+function sanitizeFolderName(name, suffix) {
+  let fn = (name || 'Unknown').replace(/[<>:"/\\|?*]/g, '').trim();
+  if (suffix) fn += '_' + (suffix.length > 4 ? suffix.slice(-4) : suffix);
+  return fn;
+}
+
+// Create folder for a specific new account
+async function createAutoImportFolder(type, account) {
+  if (!_autoImportDirHandle) return;
+  try {
+    const perm = await _autoImportDirHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') return;
+    const folderName = type === 'bank'
+      ? sanitizeFolderName(account.bankName, account.accountNumber)
+      : sanitizeFolderName(account.bankName + '_CC', account.last4);
+    await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+    renderAutoImportFolderStatus();
+  } catch(e) { /* ignore */ }
+}
+
+// Delete folder for a removed account
+async function deleteAutoImportFolder(type, account) {
+  if (!_autoImportDirHandle) return;
+  try {
+    const perm = await _autoImportDirHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') return;
+    const folderName = type === 'bank'
+      ? sanitizeFolderName(account.bankName, account.accountNumber)
+      : sanitizeFolderName(account.bankName + '_CC', account.last4);
+    await _autoImportDirHandle.removeEntry(folderName, { recursive: true });
+    renderAutoImportFolderStatus();
+  } catch(e) { /* ignore - folder may not exist */ }
+}
+
+// Show folder status in the UI
+async function renderAutoImportFolderStatus() {
+  if (!_autoImportDirHandle) return;
+  const statusEl = document.getElementById('auto-import-results');
+  if (!statusEl) return;
+
+  try {
+    const folders = [];
+    for await (const entry of _autoImportDirHandle.values()) {
+      if (entry.kind === 'directory') {
+        // Count files inside
+        let fileCount = 0;
+        try {
+          for await (const f of entry.values()) {
+            if (f.kind === 'file' && /\.(csv|txt|tsv)$/i.test(f.name)) fileCount++;
+          }
+        } catch(e) {}
+        const match = matchFolderToAccount(entry.name);
+        folders.push({ name: entry.name, fileCount, matched: !!match, matchLabel: match ? match.label : null });
+      }
+    }
+
+    if (!folders.length) { statusEl.style.display = 'none'; return; }
+
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">📂 Folder Structure</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${folders.map(f => `
+        <div style="padding:8px 12px;background:var(--surface3);border-radius:8px;font-size:12px;border:1px solid ${f.matched ? 'rgba(6,214,160,0.3)' : 'rgba(255,107,107,0.2)'}">
+          <div style="font-weight:600">📁 ${f.name}</div>
+          <div style="color:var(--text3);font-size:11px;margin-top:2px">${f.matched ? '✅ ' + f.matchLabel : '⚠️ No match'} · ${f.fileCount} file${f.fileCount!==1?'s':''}</div>
+        </div>`).join('')}
+      </div>`;
+  } catch(e) { /* ignore */ }
 }
 
 // Match folder name to a bank account or credit card
@@ -10282,6 +10382,13 @@ function cancelAutoImport() {
   document.getElementById('auto-import-mapping').style.display = 'none';
   document.getElementById('auto-import-results').style.display = 'none';
   _autoImportFiles = [];
+}
+
+async function syncAndShowFolders() {
+  const created = await syncAutoImportFolders();
+  if (created && created.length) toast(`Folders synced: ${created.length} folders ready`);
+  else toast('All folders are already in sync');
+  await renderAutoImportFolderStatus();
 }
 
 // Restore folder handle on page load
@@ -13087,10 +13194,12 @@ function addCreditCard() {
     photo: ccPhotoData || null,
     addedOn: today()
   });
+  const newCard = state.creditCards[state.creditCards.length-1];
   saveData();
-  fsSaveCreditCard(state.creditCards[state.creditCards.length-1]);
+  fsSaveCreditCard(newCard);
   ccPhotoData = null;
   renderCreditCards();
+  createAutoImportFolder('cc', newCard);
   toast('Credit card saved! 💳');
 
   // Reset form
@@ -13322,7 +13431,9 @@ function viewCardDetails(id) {
 
 function deleteCreditCard(id) {
   if(!confirm('Remove this credit card?')) return;
+  const card = (state.creditCards||[]).find(c => c.id === id);
   state.creditCards = (state.creditCards||[]).filter(c=>c.id!==id);
+  if (card) deleteAutoImportFolder('cc', card);
   saveData(); renderCreditCards(); toast('Card removed');
 }
 
