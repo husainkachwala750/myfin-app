@@ -374,7 +374,7 @@
   .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
 
   /* Chart placeholder */
-  .chart-area { height: 180px; position: relative; display: flex; align-items: flex-end; gap: 8px; padding: 0 4px; }
+  .chart-area { min-height: 200px; position: relative; padding: 0 4px; }
   .bar { flex: 1; border-radius: 4px 4px 0 0; transition: height 0.5s ease; position: relative; cursor: pointer; }
   .bar:hover { opacity: 0.8; }
   .bar-label { font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px; }
@@ -1564,7 +1564,7 @@
         <div class="grid-2" style="margin-bottom:24px">
           <div class="card">
             <div class="card-title" style="margin-bottom:14px">Monthly Income vs Expenses</div>
-            <div id="income-expense-chart" style="height:160px;display:flex;align-items:flex-end;gap:6px;padding:0 4px"></div>
+            <div id="income-expense-chart" style="min-height:180px;padding:0 4px"></div>
             <div id="income-expense-legend" style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap"></div>
           </div>
           <div class="card">
@@ -6656,6 +6656,13 @@ let parsedRows = [];
 // =================== UTILS ===================
 function fmt(n) { return '₹' + parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function fmtNum(n) { return parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtShort(n) {
+  const v = Math.abs(n||0);
+  if(v >= 10000000) return (n<0?'-':'') + '₹' + (v/10000000).toFixed(1) + 'Cr';
+  if(v >= 100000) return (n<0?'-':'') + '₹' + (v/100000).toFixed(1) + 'L';
+  if(v >= 1000) return (n<0?'-':'') + '₹' + (v/1000).toFixed(1) + 'K';
+  return '₹' + Math.round(v);
+}
 function today() { return new Date().toISOString().split('T')[0]; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function getMember(id) { return state.members.find(m => m.id === id) || {}; }
@@ -8145,21 +8152,33 @@ function renderExpenseAnalysis() {
     const maxVal = Math.max(...monthKeys.map(k => Math.max(monthData[k].income, monthData[k].expense)), 1);
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    trendEl.innerHTML = `<div style="display:flex;align-items:flex-end;gap:8px;height:180px;padding:10px 0">
+    const trendH = 150;
+    const tSteps = 4;
+    const tYLines = Array.from({length:tSteps+1},(_,i)=>maxVal - (maxVal/tSteps)*i);
+    const tGrid = tYLines.map((v,i)=>{
+      const top = (i/tSteps)*trendH;
+      return `<div style="position:absolute;top:${top}px;left:0;right:0;display:flex;align-items:center;pointer-events:none;z-index:0">
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;width:48px;text-align:right;padding-right:6px;flex-shrink:0">${fmtShort(v)}</span>
+        <div style="flex:1;border-top:1px ${i===tSteps?'solid':'dashed'} var(--border);opacity:0.5"></div>
+      </div>`;
+    }).join('');
+    trendEl.innerHTML = `<div style="position:relative;height:${trendH}px;margin-left:54px">${tGrid}
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:8px;z-index:1">
       ${monthKeys.map(ym => {
         const d = monthData[ym];
-        const expH = (d.expense / maxVal) * 140;
-        const incH = (d.income / maxVal) * 140;
+        const expH = (d.expense / maxVal) * trendH;
+        const incH = (d.income / maxVal) * trendH;
         const mIdx = parseInt(ym.slice(5)) - 1;
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div style="display:flex;gap:3px;align-items:flex-end;height:140px">
-            <div class="chart-bar" style="width:16px;background:var(--seafoam);border-radius:3px 3px 0 0;height:${incH}px;min-height:2px" ${tipAttr('Income \u00b7 '+monthNames[mIdx], fmt(d.income), '', '#6ee7b7')}></div>
-            <div class="chart-bar" style="width:16px;background:var(--danger);border-radius:3px 3px 0 0;height:${expH}px;min-height:2px" ${tipAttr('Expense \u00b7 '+monthNames[mIdx], fmt(d.expense), '', '#fca5a5')}></div>
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0">
+          <div style="display:flex;gap:3px;align-items:flex-end;flex:1;width:100%">
+            <div class="chart-bar" style="flex:1;background:var(--seafoam);border-radius:3px 3px 0 0;height:${incH}px;min-height:2px" ${tipAttr('Income \u00b7 '+monthNames[mIdx], fmt(d.income), '', '#6ee7b7')}></div>
+            <div class="chart-bar" style="flex:1;background:var(--danger);border-radius:3px 3px 0 0;height:${expH}px;min-height:2px" ${tipAttr('Expense \u00b7 '+monthNames[mIdx], fmt(d.expense), '', '#fca5a5')}></div>
           </div>
-          <div style="font-size:11px;color:var(--text3);font-weight:600">${monthNames[mIdx]}</div>
         </div>`;
       }).join('')}
+      </div>
     </div>
+    <div style="display:flex;gap:8px;margin-left:54px;margin-top:4px">${monthKeys.map(ym=>{const mIdx=parseInt(ym.slice(5))-1; return `<div style="flex:1;text-align:center;font-size:10px;color:var(--text3);font-weight:600">${monthNames[mIdx]}</div>`;}).join('')}</div>
     <div style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--text3);margin-top:8px">
       <span><span style="display:inline-block;width:10px;height:10px;background:var(--seafoam);border-radius:2px;margin-right:4px"></span>Income</span>
       <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:2px;margin-right:4px"></span>Expense</span>
@@ -12854,16 +12873,33 @@ function renderFamilyDashboard() {
   const ieChart = document.getElementById('income-expense-chart');
   const ieLegend = document.getElementById('income-expense-legend');
   if(allMonths.length) {
-    ieChart.innerHTML = allMonths.map(m => {
-      const exp = monthMap[m]||0;
-      const inc = incomeMap[m]||totalIncome;
-      const mLabel = m.slice(5);
-      return `<div style="flex:1;display:flex;gap:3px;align-items:flex-end">
-        <div class="chart-bar" style="flex:1;background:rgba(6,214,160,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(inc/maxIE)*140)}px" ${tipAttr('Income \u00b7 '+mLabel, fmt(inc), '', '#6ee7b7')}></div>
-        <div class="chart-bar" style="flex:1;background:rgba(255,107,107,0.7);border-radius:3px 3px 0 0;height:${Math.max(4,(exp/maxIE)*140)}px" ${tipAttr('Expense \u00b7 '+mLabel, fmt(exp), '', '#fca5a5')}></div>
+    const chartH = 140;
+    const ySteps = 4;
+    const yLines = Array.from({length:ySteps+1},(_,i)=>maxIE - (maxIE/ySteps)*i);
+    const gridHtml = yLines.map((v,i)=>{
+      const top = (i/ySteps)*chartH;
+      return `<div style="position:absolute;top:${top}px;left:0;right:0;display:flex;align-items:center;pointer-events:none;z-index:0">
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;width:48px;text-align:right;padding-right:6px;flex-shrink:0">${fmtShort(v)}</span>
+        <div style="flex:1;border-top:1px ${i===ySteps?'solid':'dashed'} var(--border);opacity:0.5"></div>
       </div>`;
-    }).join('') + `<div style="position:absolute;bottom:-20px;left:4px;right:4px;display:flex;gap:6px">${allMonths.map(m=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--text3)">${m.slice(5)}</div>`).join('')}</div>`;
-    ieLegend.innerHTML = `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(6,214,160,0.7);display:inline-block"></span>Income</span><span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,107,107,0.7);display:inline-block"></span>Expenses</span>`;
+    }).join('');
+    ieChart.innerHTML = `<div style="position:relative;height:${chartH}px;margin-left:54px">${gridHtml}
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:6px;z-index:1">
+      ${allMonths.map(m => {
+        const exp = monthMap[m]||0;
+        const inc = incomeMap[m]||totalIncome;
+        const mLabel = m.slice(5);
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0">
+          <div style="display:flex;gap:3px;align-items:flex-end;flex:1;width:100%">
+            <div class="chart-bar" style="flex:1;background:rgba(6,214,160,0.75);border-radius:3px 3px 0 0;height:${Math.max(4,(inc/maxIE)*chartH)}px" ${tipAttr('Income \u00b7 '+mLabel, fmt(inc), '', '#6ee7b7')}></div>
+            <div class="chart-bar" style="flex:1;background:rgba(255,107,107,0.75);border-radius:3px 3px 0 0;height:${Math.max(4,(exp/maxIE)*chartH)}px" ${tipAttr('Expense \u00b7 '+mLabel, fmt(exp), '', '#fca5a5')}></div>
+          </div>
+        </div>`;
+      }).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-left:54px;margin-top:4px">${allMonths.map(m=>`<div style="flex:1;text-align:center;font-size:10px;color:var(--text3);font-weight:600">${m.slice(5)}</div>`).join('')}</div>`;
+    ieLegend.innerHTML = `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(6,214,160,0.75);display:inline-block"></span>Income</span><span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,107,107,0.75);display:inline-block"></span>Expenses</span>`;
   } else {
     ieChart.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;width:100%;padding:50px 0">No data yet</div>';
   }
@@ -12903,12 +12939,29 @@ function renderFamilyDashboard() {
   const chartDiv = document.getElementById('expense-chart');
   const labelsDiv = document.getElementById('chart-labels');
   if(catEntries.length) {
-    chartDiv.innerHTML = catEntries.map((c,i) => {
-      const pct = totalExpenses > 0 ? ((c[1]/totalExpenses)*100).toFixed(1)+'%' : '';
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
-      <div class="chart-bar" style="width:100%;height:${Math.max(4,(c[1]/maxCat)*160)}px;background:${colors[i]};opacity:0.85;border-radius:4px 4px 0 0" ${tipAttr(c[0], fmt(c[1]), pct, colors[i])}></div>
-    </div>`;
+    const catChartH = 160;
+    const catSteps = 4;
+    const catYLines = Array.from({length:catSteps+1},(_,i)=>maxCat - (maxCat/catSteps)*i);
+    const catGrid = catYLines.map((v,i)=>{
+      const top = (i/catSteps)*catChartH;
+      return `<div style="position:absolute;top:${top}px;left:0;right:0;display:flex;align-items:center;pointer-events:none;z-index:0">
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;width:48px;text-align:right;padding-right:6px;flex-shrink:0">${fmtShort(v)}</span>
+        <div style="flex:1;border-top:1px ${i===catSteps?'solid':'dashed'} var(--border);opacity:0.5"></div>
+      </div>`;
     }).join('');
+    const totalCatExp = catEntries.reduce((a,c)=>a+c[1],0);
+    chartDiv.innerHTML = `<div style="position:relative;height:${catChartH}px;margin-left:54px">${catGrid}
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:8px;z-index:1">
+      ${catEntries.map((c,i) => {
+        const pct = totalCatExp > 0 ? ((c[1]/totalCatExp)*100).toFixed(1)+'%' : '';
+        const barH = Math.max(4,(c[1]/maxCat)*catChartH);
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap">${fmtShort(c[1])}</div>
+          <div class="chart-bar" style="width:100%;height:${barH}px;background:${colors[i]};opacity:0.85;border-radius:4px 4px 0 0" ${tipAttr(c[0], fmt(c[1]), pct, colors[i])}></div>
+        </div>`;
+      }).join('')}
+      </div>
+    </div>`;
     labelsDiv.innerHTML = catEntries.map((c,i) => `<span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i]};display:inline-block"></span>${c[0].split(' ').slice(-1)[0]}</span>`).join('');
   } else {
     chartDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;width:100%;padding:60px 0">No expense data yet</div>';
