@@ -2392,9 +2392,10 @@
       <div class="card" style="margin-bottom:20px">
         <div class="section-header">
           <h3>Statement Upload Tracker</h3>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:var(--seafoam);display:inline-block"></span>Uploaded</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,107,107,0.3);border:1px dashed var(--danger);display:inline-block"></span>Missing</span>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(6,214,160,0.6);display:inline-block"></span>Uploaded</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,107,107,0.2);border:1.5px dashed var(--danger);display:inline-block"></span>Missing</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(0,229,255,0.2);border:1.5px solid var(--accent);display:inline-block"></span>Upload</span>
           </div>
         </div>
         <div id="stmt-tracker-board"></div>
@@ -2408,53 +2409,59 @@
 
       <!-- ====== BANK STATEMENTS SECTION ====== -->
       <div id="stmt-bank-panel">
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">Upload Bank Statement (CSV / Text)</div>
-            <div class="upload-zone" id="statement-dropzone" onclick="document.getElementById('statement-file').click()">
-              <div class="icon">📄</div>
-              <p>Drop your bank statement here</p>
-              <small>CSV, TXT formats supported · Max 10MB</small>
-            </div>
-            <input type="file" id="statement-file" accept=".csv,.txt,.tsv" onchange="handleStatementUpload(event)">
-            <div style="margin-top:16px">
-              <div class="form-group"><label>Or Paste Statement Text</label>
-                <textarea id="statement-paste" rows="6" placeholder="Paste CSV rows here:&#10;Date,Description,Debit,Credit,Balance&#10;01-03-2025,NEFT Transfer,0,50000,150000&#10;02-03-2025,Grocery Payment,2500,0,147500"></textarea>
+        <!-- Upload Area -->
+        <div class="card" id="stmt-upload-card" style="margin-bottom:20px">
+          <div class="card-title" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span style="font-size:20px">📄</span> Upload Bank Statement
+            <span id="stmt-upload-hint" style="font-size:11px;color:var(--accent);font-weight:400;margin-left:auto"></span>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <!-- Left: Upload + Config -->
+            <div style="flex:1;min-width:280px">
+              <div class="upload-zone" id="statement-dropzone" onclick="document.getElementById('statement-file').click()" style="margin-bottom:12px;padding:18px">
+                <div class="icon" style="font-size:28px">📂</div>
+                <p style="font-size:13px;margin:4px 0 2px">Drop CSV / TXT file here or click to browse</p>
+                <small style="font-size:11px">Max 10MB</small>
               </div>
-              <div class="form-row">
-                <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
-                <div class="form-group"><label>Statement Month <span style="font-size:10px;color:var(--accent);font-weight:400">(auto-detected)</span></label><input type="month" id="stmt-month"></div>
+              <input type="file" id="statement-file" accept=".csv,.txt,.tsv" onchange="handleStatementUpload(event)">
+              <div class="form-group" style="margin-bottom:10px"><label style="font-size:12px">Or paste statement text</label>
+                <textarea id="statement-paste" rows="4" style="font-size:12px" placeholder="Date,Description,Debit,Credit,Balance&#10;01-03-2025,NEFT Transfer,0,50000,150000&#10;02-03-2025,Grocery Payment,2500,0,147500"></textarea>
               </div>
-              <div style="display:flex;gap:10px">
-                <button class="btn btn-primary" style="flex:2" onclick="parseStatement()">⚡ Parse Statement</button>
+              <div style="display:flex;gap:8px;margin-bottom:10px">
+                <div class="form-group" style="flex:1"><label style="font-size:12px">Bank Account</label><select id="stmt-bank" style="font-size:12px"><option value="">Select account</option></select></div>
+                <div class="form-group" style="flex:1"><label style="font-size:12px">Month <span style="font-size:9px;color:var(--accent)">(auto)</span></label><input type="month" id="stmt-month" style="font-size:12px"></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary" style="flex:2;font-size:13px" onclick="parseStatement()">⚡ Parse Statement</button>
                 <div style="position:relative;flex:1">
-                  <button class="btn btn-secondary" style="width:100%" onclick="document.getElementById('sample-bank-menu').style.display=document.getElementById('sample-bank-menu').style.display==='block'?'none':'block'">📋 Sample Data ▾</button>
+                  <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="document.getElementById('sample-bank-menu').style.display=document.getElementById('sample-bank-menu').style.display==='block'?'none':'block'">📋 Sample ▾</button>
                   <div id="sample-bank-menu" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(0,180,216,0.25);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:10;margin-top:4px;overflow:hidden">
                     <div onclick="loadSampleStatement('hdfc');document.getElementById('sample-bank-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(0,180,216,0.06)'" onmouseout="this.style.background=''">
-                      <span style="font-size:16px">🏦</span> HDFC Bank Statement (50 rows)
+                      🏦 HDFC Bank (50 rows)
                     </div>
                     <div onclick="loadSampleStatement('sbi');document.getElementById('sample-bank-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(0,180,216,0.06)'" onmouseout="this.style.background=''">
-                      <span style="font-size:16px">🏛️</span> SBI Statement (40 rows)
+                      🏛️ SBI Statement (40 rows)
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="card">
-            <div class="card-title">Parsed Transactions Preview</div>
-            <div id="parsed-preview">
-              <div class="empty-state"><div class="icon">📊</div><p>Upload or paste your statement to see parsed transactions here</p></div>
-            </div>
-            <div id="parsed-import-btn" style="display:none;margin-top:16px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
-                <input type="checkbox" id="stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
-                🏷️ Auto-tag imported transactions as expenses/income
-              </label>
-              <button class="btn btn-primary" style="width:100%" onclick="importParsedTransactions()">✅ Import All Transactions</button>
+            <!-- Right: Preview -->
+            <div style="flex:1;min-width:280px">
+              <div id="parsed-preview" style="min-height:200px">
+                <div class="empty-state" style="padding:40px 20px"><div class="icon">📊</div><p style="font-size:13px">Parse your statement to preview transactions</p></div>
+              </div>
+              <div id="parsed-import-btn" style="display:none;margin-top:12px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:8px">
+                  <input type="checkbox" id="stmt-auto-tag" checked style="width:15px;height:15px;accent-color:var(--accent)">
+                  🏷️ Auto-tag as expenses/income
+                </label>
+                <button class="btn btn-primary" style="width:100%;font-size:13px" onclick="importParsedTransactions()">✅ Import All Transactions</button>
+              </div>
             </div>
           </div>
         </div>
+
         <!-- Uploaded Statements Batches -->
         <div class="card" id="stmt-batches-card" style="display:none">
           <div class="section-header"><h3>Uploaded Statements</h3><span style="font-size:12px;color:var(--text3)">Grouped by Year &amp; Month</span></div>
@@ -2475,40 +2482,45 @@
 
       <!-- ====== CREDIT CARD STATEMENTS SECTION ====== -->
       <div id="stmt-cc-panel" style="display:none">
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">Upload Credit Card Statement (CSV / Text)</div>
-            <div class="upload-zone" id="cc-statement-dropzone" onclick="document.getElementById('cc-statement-file').click()">
-              <div class="icon">💳</div>
-              <p>Drop your credit card statement here</p>
-              <small>CSV, TXT formats supported · Max 10MB</small>
-            </div>
-            <input type="file" id="cc-statement-file" accept=".csv,.txt,.tsv" onchange="handleCCStatementUpload(event)" style="display:none">
-            <div style="margin-top:16px">
-              <div class="form-group"><label>Or Paste CC Statement Text</label>
-                <textarea id="cc-statement-paste" rows="6" placeholder="Paste CSV rows here:&#10;Date,Description,Amount,Type&#10;01-03-2026,Amazon Purchase,2999,debit&#10;05-03-2026,Payment Received,15000,credit"></textarea>
-              </div>
-              <div class="form-row">
-                <div class="form-group"><label>Select Credit Card</label><select id="stmt-cc"><option value="">Select card</option></select></div>
-                <div class="form-group"><label>Statement Month <span style="font-size:10px;color:var(--accent);font-weight:400">(auto-detected)</span></label><input type="month" id="cc-stmt-month"></div>
-              </div>
-              <div style="display:flex;gap:10px">
-                <button class="btn btn-primary" style="flex:2" onclick="parseCCStatement()">⚡ Parse CC Statement</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="loadSampleCCStatement()">📋 Sample CC Data</button>
-              </div>
-            </div>
+        <!-- CC Upload Area -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <span style="font-size:20px">💳</span> Upload Credit Card Statement
+            <span id="cc-stmt-upload-hint" style="font-size:11px;color:var(--accent);font-weight:400;margin-left:auto"></span>
           </div>
-          <div class="card">
-            <div class="card-title">Parsed CC Transactions Preview</div>
-            <div id="cc-parsed-preview">
-              <div class="empty-state"><div class="icon">💳</div><p>Upload or paste your credit card statement to preview</p></div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <!-- Left: Upload + Config -->
+            <div style="flex:1;min-width:280px">
+              <div class="upload-zone" id="cc-statement-dropzone" onclick="document.getElementById('cc-statement-file').click()" style="margin-bottom:12px;padding:18px">
+                <div class="icon" style="font-size:28px">📂</div>
+                <p style="font-size:13px;margin:4px 0 2px">Drop CC statement CSV / TXT here or click to browse</p>
+                <small style="font-size:11px">Max 10MB</small>
+              </div>
+              <input type="file" id="cc-statement-file" accept=".csv,.txt,.tsv" onchange="handleCCStatementUpload(event)" style="display:none">
+              <div class="form-group" style="margin-bottom:10px"><label style="font-size:12px">Or paste CC statement text</label>
+                <textarea id="cc-statement-paste" rows="4" style="font-size:12px" placeholder="Date,Description,Amount,Type&#10;01-03-2026,Amazon Purchase,2999,debit&#10;05-03-2026,Payment Received,15000,credit"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:10px">
+                <div class="form-group" style="flex:1"><label style="font-size:12px">Credit Card</label><select id="stmt-cc" style="font-size:12px"><option value="">Select card</option></select></div>
+                <div class="form-group" style="flex:1"><label style="font-size:12px">Month <span style="font-size:9px;color:var(--accent)">(auto)</span></label><input type="month" id="cc-stmt-month" style="font-size:12px"></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary" style="flex:2;font-size:13px" onclick="parseCCStatement()">⚡ Parse CC Statement</button>
+                <button class="btn btn-secondary" style="flex:1;font-size:12px" onclick="loadSampleCCStatement()">📋 Sample</button>
+              </div>
             </div>
-            <div id="cc-parsed-import-btn" style="display:none;margin-top:16px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:10px">
-                <input type="checkbox" id="cc-stmt-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
-                🏷️ Auto-tag imported CC transactions as expenses
-              </label>
-              <button class="btn btn-primary" style="width:100%" onclick="importCCParsedTransactions()">✅ Import CC Transactions</button>
+            <!-- Right: Preview -->
+            <div style="flex:1;min-width:280px">
+              <div id="cc-parsed-preview" style="min-height:200px">
+                <div class="empty-state" style="padding:40px 20px"><div class="icon">💳</div><p style="font-size:13px">Parse your CC statement to preview</p></div>
+              </div>
+              <div id="cc-parsed-import-btn" style="display:none;margin-top:12px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:8px">
+                  <input type="checkbox" id="cc-stmt-auto-tag" checked style="width:15px;height:15px;accent-color:var(--accent)">
+                  🏷️ Auto-tag CC transactions as expenses
+                </label>
+                <button class="btn btn-primary" style="width:100%;font-size:13px" onclick="importCCParsedTransactions()">✅ Import CC Transactions</button>
+              </div>
             </div>
           </div>
         </div>
@@ -7731,7 +7743,7 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   if(filterKey === 'investments') { buildMemberTabs('inv-member-tabs','investments',()=>0, id=>state.investments.filter(i=>!id||i.memberId===id).length); renderInvestments(); }
   if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length); renderBankAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
-  if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderCCStatementTable(); renderCCStmtSummary(); }
+  if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
   if(filterKey === 'portfolio') { buildPortfolioMemberTabs(); renderPortfolioMemberSummary(); switchPortfolioTab(document.querySelector('.inv-tab.active')?.id?.replace('ptab-','') || 'overview'); }
   if(filterKey === 'insurance') { buildInsMemberTabs(); renderInsMemberSummary(); switchInsTab(document.querySelector('.ins-tab.active')?.id?.replace('instab-','') || 'overview'); }
@@ -10132,21 +10144,26 @@ function renderStmtTracker() {
   const board = document.getElementById('stmt-tracker-board');
   if (!board) return;
 
-  const banks = state.bankAccounts || [];
-  const cards = state.creditCards || [];
+  const mid = memberFilters.statements || '';
+  const allBanks = state.bankAccounts || [];
+  const allCards = state.creditCards || [];
   const batches = state.stmtBatches || [];
+  const members = state.members || [];
+
+  // Filter accounts by selected member
+  const banks = mid ? allBanks.filter(b => b.memberId === mid) : allBanks;
+  const cards = mid ? allCards.filter(c => c.memberId === mid) : allCards;
 
   if (!banks.length && !cards.length) {
-    board.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px;text-align:center">Add bank accounts or credit cards to see the upload tracker.</div>';
+    board.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:16px;text-align:center">${mid ? 'No accounts found for this member.' : 'Add bank accounts or credit cards to see the tracker.'}</div>`;
     return;
   }
 
-  // Determine month range: from earliest batch/transaction to current month
+  // Determine month range
   const now = new Date();
   const currentYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
-  // Find earliest month from batches or transactions (only valid YYYY-MM)
   const isValidYM = ym => /^\d{4}-\d{2}$/.test(ym) && parseInt(ym.slice(0,4)) > 2000;
+
   let earliest = currentYM;
   batches.forEach(b => { if (b.month && isValidYM(b.month) && b.month < earliest) earliest = b.month; });
   (state.transactions || []).forEach(t => {
@@ -10154,17 +10171,13 @@ function renderStmtTracker() {
     if (ym && isValidYM(ym) && ym < earliest) earliest = ym;
   });
 
-  // Go back at least 6 months from current
   const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const sixAgoYM = `${sixAgo.getFullYear()}-${String(sixAgo.getMonth()+1).padStart(2,'0')}`;
   if (sixAgoYM < earliest) earliest = sixAgoYM;
-
-  // Cap at max 24 months to prevent runaway loops
-  const maxMonthsBack = new Date(now.getFullYear(), now.getMonth() - 23, 1);
-  const maxBackYM = `${maxMonthsBack.getFullYear()}-${String(maxMonthsBack.getMonth()+1).padStart(2,'0')}`;
+  const maxBack = new Date(now.getFullYear(), now.getMonth() - 23, 1);
+  const maxBackYM = `${maxBack.getFullYear()}-${String(maxBack.getMonth()+1).padStart(2,'0')}`;
   if (earliest < maxBackYM) earliest = maxBackYM;
 
-  // Generate month list from earliest to current
   const months = [];
   let [y, m] = earliest.split('-').map(Number);
   const [cy, cm] = currentYM.split('-').map(Number);
@@ -10174,111 +10187,192 @@ function renderStmtTracker() {
     if (m > 12) { m = 1; y++; }
   }
 
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Build index: which account has which months uploaded
-  const bankUploads = {}; // bankId -> Set of months
-  const cardUploads = {}; // cardId -> Set of months
+  // Build upload index
+  const bankUploads = {};
+  const cardUploads = {};
   batches.forEach(b => {
     if (!b.month) return;
-    if (b.type === 'bank' && b.bankId) {
-      if (!bankUploads[b.bankId]) bankUploads[b.bankId] = new Set();
-      bankUploads[b.bankId].add(b.month);
-    }
-    if (b.type === 'cc' && b.cardId) {
-      if (!cardUploads[b.cardId]) cardUploads[b.cardId] = new Set();
-      cardUploads[b.cardId].add(b.month);
-    }
+    if (b.type === 'bank' && b.bankId) { if (!bankUploads[b.bankId]) bankUploads[b.bankId] = new Set(); bankUploads[b.bankId].add(b.month); }
+    if (b.type === 'cc' && b.cardId) { if (!cardUploads[b.cardId]) cardUploads[b.cardId] = new Set(); cardUploads[b.cardId].add(b.month); }
   });
 
-  // Count transactions per month per account (for delete feature)
-  const bankTxnCounts = {}; // "bankId|month" -> count
-  const cardTxnCounts = {};
+  // Count txns per month per account
+  const bankTxnC = {};
+  const cardTxnC = {};
   (state.transactions || []).forEach(t => {
     const ym = t.date?.slice(0,7);
-    if (!ym) return;
-    if (t.bankId) {
-      const key = t.bankId + '|' + ym;
-      bankTxnCounts[key] = (bankTxnCounts[key] || 0) + 1;
-    }
-    if (t.cardId) {
-      const key = t.cardId + '|' + ym;
-      cardTxnCounts[key] = (cardTxnCounts[key] || 0) + 1;
-    }
+    if (!ym || !isValidYM(ym)) return;
+    if (t.bankId) { const k = t.bankId+'|'+ym; bankTxnC[k] = (bankTxnC[k]||0)+1; }
+    if (t.cardId) { const k = t.cardId+'|'+ym; cardTxnC[k] = (cardTxnC[k]||0)+1; }
   });
 
-  let html = '<div style="overflow-x:auto">';
-  html += '<table style="width:100%;font-size:12px;border-collapse:separate;border-spacing:0">';
+  // Helper: render one cell
+  function cell(hasUpload, txnCount, isFuture, type, accId, accName, ym) {
+    const td = 'style="text-align:center;padding:4px 2px;border-bottom:1px solid rgba(0,150,199,0.06)"';
+    if (isFuture) return `<td ${td}><span style="color:var(--text3);font-size:10px">—</span></td>`;
+    const mLabel = MN[parseInt(ym.slice(5))-1]+' '+ym.slice(0,4);
+    const safeName = (accName||'').replace(/'/g,"\\'");
+    if (hasUpload) {
+      return `<td ${td}><div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+        <span style="display:inline-block;width:26px;height:26px;line-height:26px;border-radius:6px;background:rgba(6,214,160,0.18);color:var(--seafoam);font-size:13px;font-weight:700" title="${mLabel}: Uploaded (${txnCount} txns)">✓</span>
+        ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} txns for ${mLabel} from ${safeName}?'))deleteMonthTransactions('${type}','${accId}','${ym}')" style="font-size:8px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;opacity:0.7" title="Delete ${txnCount} txns">🗑${txnCount}</button>` : ''}
+      </div></td>`;
+    }
+    // Missing — show upload button
+    return `<td ${td}><div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+      <span style="display:inline-block;width:26px;height:26px;line-height:26px;border-radius:6px;background:rgba(255,107,107,0.08);border:1.5px dashed rgba(255,107,107,0.35);color:var(--danger);font-size:9px" title="${mLabel}: Missing">✗</span>
+      <button onclick="quickUploadForMonth('${type}','${accId}','${ym}')" style="font-size:8px;color:var(--accent);background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:4px;cursor:pointer;padding:1px 4px;white-space:nowrap" title="Upload statement for ${mLabel}">↑</button>
+      ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} txns for ${mLabel} from ${safeName}?'))deleteMonthTransactions('${type}','${accId}','${ym}')" style="font-size:8px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;opacity:0.7">🗑${txnCount}</button>` : ''}
+    </div></td>`;
+  }
 
-  // Header row with months
-  html += '<thead><tr><th style="text-align:left;padding:8px 10px;position:sticky;left:0;background:var(--surface);z-index:2;min-width:140px">Account</th>';
+  // Build grouped by member (for family "All" view) or flat (for single member)
+  function buildAccountRows(accs, accCards) {
+    let html = '';
+    // Group by member if showing all
+    if (!mid && members.length > 1) {
+      members.forEach(member => {
+        const mBanks = accs.filter(b => b.memberId === member.id);
+        const mCards = accCards.filter(c => c.memberId === member.id);
+        if (!mBanks.length && !mCards.length) return;
+
+        // Member header row
+        html += `<tr><td colspan="${months.length+1}" style="padding:10px 10px 4px;border-bottom:2px solid ${member.color||'var(--accent)'};background:rgba(0,150,199,0.03)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:22px;height:22px;border-radius:50%;background:${member.color||'#00e5ff'}22;border:1.5px solid ${member.color||'#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${member.color||'#00e5ff'}">${member.name[0]}</div>
+            <span style="font-weight:700;font-size:13px;color:var(--text)">${member.name}</span>
+            <span style="font-size:11px;color:var(--text3)">${mBanks.length} bank${mBanks.length!==1?'s':''} · ${mCards.length} card${mCards.length!==1?'s':''}</span>
+          </div>
+        </td></tr>`;
+
+        mBanks.forEach(bank => {
+          const uploads = bankUploads[bank.id] || new Set();
+          html += `<tr><td style="padding:6px 10px 6px 32px;font-weight:500;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">🏦 ${bank.bankName||'Bank'}</td>`;
+          months.forEach(ym => {
+            html += cell(uploads.has(ym), bankTxnC[bank.id+'|'+ym]||0, ym>currentYM, 'bank', bank.id, bank.bankName, ym);
+          });
+          html += '</tr>';
+        });
+
+        mCards.forEach(card => {
+          const uploads = cardUploads[card.id] || new Set();
+          const cName = (card.bankName||'')+ ' ••'+( card.last4||'');
+          html += `<tr><td style="padding:6px 10px 6px 32px;font-weight:500;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">💳 ${cName}</td>`;
+          months.forEach(ym => {
+            html += cell(uploads.has(ym), cardTxnC[card.id+'|'+ym]||0, ym>currentYM, 'cc', card.id, cName, ym);
+          });
+          html += '</tr>';
+        });
+      });
+
+      // Unassigned accounts (no memberId)
+      const unBanks = accs.filter(b => !b.memberId || !members.find(mm => mm.id === b.memberId));
+      const unCards = accCards.filter(c => !c.memberId || !members.find(mm => mm.id === c.memberId));
+      if (unBanks.length || unCards.length) {
+        html += `<tr><td colspan="${months.length+1}" style="padding:10px 10px 4px;border-bottom:2px solid var(--text3);background:rgba(0,150,199,0.03)">
+          <span style="font-weight:700;font-size:13px;color:var(--text3)">Unassigned Accounts</span>
+        </td></tr>`;
+        unBanks.forEach(bank => {
+          const uploads = bankUploads[bank.id] || new Set();
+          html += `<tr><td style="padding:6px 10px 6px 32px;font-weight:500;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">🏦 ${bank.bankName||'Bank'}</td>`;
+          months.forEach(ym => { html += cell(uploads.has(ym), bankTxnC[bank.id+'|'+ym]||0, ym>currentYM, 'bank', bank.id, bank.bankName, ym); });
+          html += '</tr>';
+        });
+        unCards.forEach(card => {
+          const uploads = cardUploads[card.id] || new Set();
+          const cName = (card.bankName||'')+' ••'+(card.last4||'');
+          html += `<tr><td style="padding:6px 10px 6px 32px;font-weight:500;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">💳 ${cName}</td>`;
+          months.forEach(ym => { html += cell(uploads.has(ym), cardTxnC[card.id+'|'+ym]||0, ym>currentYM, 'cc', card.id, cName, ym); });
+          html += '</tr>';
+        });
+      }
+    } else {
+      // Single member or filtered — flat list
+      accs.forEach(bank => {
+        const uploads = bankUploads[bank.id] || new Set();
+        html += `<tr><td style="padding:6px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">🏦 ${bank.bankName||'Bank'}</td>`;
+        months.forEach(ym => { html += cell(uploads.has(ym), bankTxnC[bank.id+'|'+ym]||0, ym>currentYM, 'bank', bank.id, bank.bankName, ym); });
+        html += '</tr>';
+      });
+      accCards.forEach(card => {
+        const uploads = cardUploads[card.id] || new Set();
+        const cName = (card.bankName||'')+' ••'+(card.last4||'');
+        html += `<tr><td style="padding:6px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.06)">💳 ${cName}</td>`;
+        months.forEach(ym => { html += cell(uploads.has(ym), cardTxnC[card.id+'|'+ym]||0, ym>currentYM, 'cc', card.id, cName, ym); });
+        html += '</tr>';
+      });
+    }
+    return html;
+  }
+
+  let html = '<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(0,150,199,0.1)">';
+  html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+  html += '<thead><tr><th style="text-align:left;padding:8px 10px;position:sticky;left:0;background:var(--surface);z-index:2;min-width:150px;font-size:11px;color:var(--text2)">Account</th>';
   months.forEach(ym => {
-    const mi = parseInt(ym.slice(5)) - 1;
-    html += `<th style="text-align:center;padding:6px 4px;font-size:10px;font-weight:600;color:var(--text3);min-width:52px">${monthNames[mi]}<br>${ym.slice(0,4)}</th>`;
+    const mi = parseInt(ym.slice(5))-1;
+    const isCurrentMonth = ym === currentYM;
+    html += `<th style="text-align:center;padding:6px 3px;font-size:9px;font-weight:600;color:${isCurrentMonth?'var(--accent)':'var(--text3)'};min-width:44px;${isCurrentMonth?'background:rgba(0,229,255,0.06)':''}">${MN[mi]}<br><span style="font-weight:400">${ym.slice(2,4)}</span></th>`;
   });
   html += '</tr></thead><tbody>';
-
-  // Bank account rows
-  banks.forEach(bank => {
-    const uploads = bankUploads[bank.id] || new Set();
-    html += `<tr><td style="padding:8px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="margin-right:6px">🏦</span>${bank.bankName || 'Bank'}</td>`;
-    months.forEach(ym => {
-      const hasUpload = uploads.has(ym);
-      const txnKey = bank.id + '|' + ym;
-      const txnCount = bankTxnCounts[txnKey] || 0;
-      const isFuture = ym > currentYM;
-
-      if (isFuture) {
-        html += '<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="color:var(--text3);font-size:10px">—</span></td>';
-      } else if (hasUpload) {
-        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(6,214,160,0.15);color:var(--seafoam);font-size:14px;cursor:default" title="Uploaded — ${txnCount} txns">✓</span>
-            ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${(bank.bankName||'this bank').replace(/'/g,"\\'")}?'))deleteMonthTransactions('bank','${bank.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button>` : ''}
-          </div>
-        </td>`;
-      } else {
-        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
-          <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(255,107,107,0.1);border:1px dashed rgba(255,107,107,0.4);color:var(--danger);font-size:10px;cursor:default" title="No statement uploaded${txnCount ? ' — but '+txnCount+' txns exist' : ''}">✗</span>
-          ${txnCount ? `<div><button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${(bank.bankName||'this bank').replace(/'/g,"\\'")}?'))deleteMonthTransactions('bank','${bank.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button></div>` : ''}
-        </td>`;
-      }
-    });
-    html += '</tr>';
-  });
-
-  // Credit card rows
-  cards.forEach(card => {
-    const uploads = cardUploads[card.id] || new Set();
-    const cardName = (card.bankName || '') + ' •••' + (card.last4 || '');
-    html += `<tr><td style="padding:8px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="margin-right:6px">💳</span>${cardName}</td>`;
-    months.forEach(ym => {
-      const hasUpload = uploads.has(ym);
-      const txnKey = card.id + '|' + ym;
-      const txnCount = cardTxnCounts[txnKey] || 0;
-      const isFuture = ym > currentYM;
-
-      if (isFuture) {
-        html += '<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="color:var(--text3);font-size:10px">—</span></td>';
-      } else if (hasUpload) {
-        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(6,214,160,0.15);color:var(--seafoam);font-size:14px;cursor:default" title="Uploaded — ${txnCount} txns">✓</span>
-            ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${cardName.replace(/'/g,"\\'")}?'))deleteMonthTransactions('cc','${card.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button>` : ''}
-          </div>
-        </td>`;
-      } else {
-        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
-          <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(255,107,107,0.1);border:1px dashed rgba(255,107,107,0.4);color:var(--danger);font-size:10px;cursor:default" title="No statement uploaded${txnCount ? ' — but '+txnCount+' txns exist' : ''}">✗</span>
-          ${txnCount ? `<div><button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${cardName.replace(/'/g,"\\'")}?'))deleteMonthTransactions('cc','${card.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button></div>` : ''}
-        </td>`;
-      }
-    });
-    html += '</tr>';
-  });
-
+  html += buildAccountRows(banks, cards);
   html += '</tbody></table></div>';
+
+  // Summary line
+  const totalAccounts = banks.length + cards.length;
+  const totalCells = totalAccounts * months.length;
+  let uploadedCount = 0;
+  banks.forEach(b => { const u = bankUploads[b.id]; months.forEach(ym => { if (ym <= currentYM && u?.has(ym)) uploadedCount++; }); });
+  cards.forEach(c => { const u = cardUploads[c.id]; months.forEach(ym => { if (ym <= currentYM && u?.has(ym)) uploadedCount++; }); });
+  const activeCells = totalAccounts * months.filter(ym => ym <= currentYM).length;
+  const missingCount = activeCells - uploadedCount;
+  const pct = activeCells ? Math.round(uploadedCount / activeCells * 100) : 0;
+
+  html += `<div style="display:flex;align-items:center;gap:12px;margin-top:10px;padding:8px 12px;background:rgba(0,150,199,0.04);border-radius:8px;font-size:12px">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-weight:600;color:var(--text)">${pct}% Complete</span>
+        <span style="color:var(--text3)">${uploadedCount} uploaded · ${missingCount} missing</span>
+      </div>
+      <div style="height:4px;background:rgba(0,150,199,0.1);border-radius:2px;margin-top:4px;overflow:hidden">
+        <div style="height:100%;background:var(--seafoam);border-radius:2px;width:${pct}%;transition:width 0.3s"></div>
+      </div>
+    </div>
+  </div>`;
+
   board.innerHTML = html;
+}
+
+// Quick upload: pre-select bank/card and scroll to upload area
+function quickUploadForMonth(type, accountId, month) {
+  if (type === 'bank') {
+    switchStmtTab('bank');
+    const sel = document.getElementById('stmt-bank');
+    if (sel) sel.value = accountId;
+    const monthEl = document.getElementById('stmt-month');
+    if (monthEl) monthEl.value = month;
+    // Show hint
+    const hint = document.getElementById('stmt-upload-hint');
+    const bank = (state.bankAccounts||[]).find(b => b.id === accountId);
+    const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mLabel = MN[parseInt(month.slice(5))-1]+' '+month.slice(0,4);
+    if (hint) hint.textContent = `Upload for: ${bank?.bankName||'Bank'} — ${mLabel}`;
+  } else {
+    switchStmtTab('cc');
+    const sel = document.getElementById('stmt-cc');
+    if (sel) sel.value = accountId;
+    const monthEl = document.getElementById('cc-stmt-month');
+    if (monthEl) monthEl.value = month;
+    const hint = document.getElementById('cc-stmt-upload-hint');
+    const card = (state.creditCards||[]).find(c => c.id === accountId);
+    const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mLabel = MN[parseInt(month.slice(5))-1]+' '+month.slice(0,4);
+    if (hint) hint.textContent = `Upload for: ${card?.bankName||''} ••${card?.last4||''} — ${mLabel}`;
+  }
+  // Scroll to upload area
+  const uploadCard = document.getElementById(type === 'bank' ? 'stmt-upload-card' : 'stmt-cc-panel');
+  if (uploadCard) uploadCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function deleteMonthTransactions(type, accountId, month) {
