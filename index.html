@@ -5189,12 +5189,33 @@ let _bootingSyncLock  = false;  // prevent auto-push during boot pull
 // ── Get/set active provider ──────────────────────────────────────────────
 function storageGetProvider() {
   if (_storageProvider) return _storageProvider;
+  // Check multiple storage locations for robustness
   _storageProvider = localStorage.getItem(STORAGE_KEY) || null;
+  if (!_storageProvider) {
+    // Try per-family key
+    const fid = window._currentFamilyId;
+    if (fid) _storageProvider = localStorage.getItem('myfin_provider_' + fid) || null;
+  }
+  if (!_storageProvider) {
+    // Try reading from session object
+    try {
+      const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (sess?.storage_provider) _storageProvider = sess.storage_provider;
+    } catch(e) {}
+  }
   return _storageProvider;
 }
 function storageSetProvider(id) {
   _storageProvider = id;
+  // Save to multiple locations for robustness
   localStorage.setItem(STORAGE_KEY, id);
+  const fid = window._currentFamilyId;
+  if (fid) localStorage.setItem('myfin_provider_' + fid, id);
+  // Also embed in session object so it's always available
+  try {
+    const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (sess) { sess.storage_provider = id; localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); }
+  } catch(e) {}
   updateStorageStatusBadge();
   // Persist to Supabase user_metadata so it survives browser changes
   storageSaveProviderToCloud(id);
@@ -5367,22 +5388,26 @@ async function storagePullData(familyId) {
 // ── BOOT: called on login to load data & show picker if needed ──────────
 async function storageBootLoad(familyId) {
   let provider = storageGetProvider();
-  // If no provider in localStorage, try restoring from Supabase user_metadata
+  // Fallback 1: Restore from Supabase user_metadata
   if (!provider) {
+    console.log('[MyFin Boot] No local provider — trying cloud restore...');
     provider = await storageRestoreProviderFromCloud();
   }
-  // If still no provider, check if data exists in Supabase (auto-detect)
+  // Fallback 2: Auto-detect if data exists in Supabase
   if (!provider) {
+    console.log('[MyFin Boot] No cloud provider — trying auto-detect...');
     try {
       const existing = await storagePullSupabase(familyId);
       if (existing) {
         provider = 'supabase';
-        storageSetProvider('supabase');
-        console.log('[MyFin Boot] Auto-detected supabase provider from existing cloud data');
+        console.log('[MyFin Boot] Auto-detected supabase from existing cloud data');
       }
     } catch(e) { console.warn('Auto-detect provider failed:', e); }
   }
-  if (!provider) {
+  // If we found a provider through any fallback, persist it everywhere
+  if (provider) {
+    storageSetProvider(provider);
+  } else {
     // Truly first time — show storage picker
     showStoragePicker(familyId, true);
     return;
@@ -5392,10 +5417,8 @@ async function storageBootLoad(familyId) {
   try {
     const loaded = await Promise.race([
       storagePullData(familyId),
-      new Promise(resolve => setTimeout(() => resolve(false), 10000))
+      new Promise(resolve => setTimeout(() => resolve(false), 15000))
     ]);
-    // Re-persist provider to localStorage in case it was cleared
-    localStorage.setItem(STORAGE_KEY, provider);
     _storageReady = true;
     setSyncStatus('synced');
   } catch(e) {
