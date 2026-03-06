@@ -9874,6 +9874,66 @@ function stmtTxnDedupKey(date, description, amount, bankOrCardId) {
   return `${date}|${(description||'').trim().toLowerCase()}|${amount}|${bankOrCardId}`;
 }
 
+// Smart CSV line splitter — handles quoted fields with commas inside
+function smartCSVSplit(line) {
+  const cols = []; let cur = ''; let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuote = !inQuote; continue; }
+    if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+// Detect if a string looks like a valid date
+function looksLikeDate(s) {
+  if (!s) return false;
+  const t = s.trim();
+  // Quick patterns: starts with digits or matches known date formats
+  if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/.test(t)) return true;
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(t)) return true;
+  if (/^\d{1,2}[\s-]\w{3}[\s-]\d{2,4}/i.test(t)) return true;
+  return false;
+}
+
+// Detect if a string is a header keyword (not a transaction)
+function isHeaderWord(s) {
+  const hw = ['date','txn date','transaction date','value date','posting date','description','narration','particulars','debit','credit','balance','withdrawal','deposit','amount','ref','reference','chq','cheque','sr','sl','no','type','mode','remarks','category','status','closing','opening','dr','cr','total'];
+  return hw.includes(s.toLowerCase().replace(/[^a-z\s]/g,'').trim());
+}
+
+// Smart auto-detect: find date column and numeric columns
+function detectColumns(lines) {
+  // Try to find the header row and data start
+  let headerIdx = -1, dateCol = -1, descCol = -1;
+  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+    const cols = smartCSVSplit(lines[i]);
+    if (cols.length < 3) continue;
+    // Check if this row has header-like words
+    const headerCount = cols.filter(c => isHeaderWord(c)).length;
+    if (headerCount >= 2) { headerIdx = i; break; }
+  }
+  // Find first row with a valid date to confirm data start
+  const startSearch = headerIdx >= 0 ? headerIdx + 1 : 0;
+  for (let i = startSearch; i < Math.min(lines.length, 20); i++) {
+    const cols = smartCSVSplit(lines[i]);
+    if (cols.length < 3) continue;
+    for (let c = 0; c < Math.min(cols.length, 3); c++) {
+      if (looksLikeDate(cols[c])) {
+        dateCol = c;
+        // Description is typically the next non-numeric column after date
+        for (let d = 0; d < cols.length; d++) {
+          if (d !== dateCol && isNaN(parseFloat(cols[d].replace(/,/g,''))) && cols[d].length > 1) { descCol = d; break; }
+        }
+        return { headerIdx, dateCol, descCol: descCol >= 0 ? descCol : (dateCol === 0 ? 1 : 0), dataStart: i };
+      }
+    }
+  }
+  return { headerIdx, dateCol: 0, descCol: 1, dataStart: headerIdx >= 0 ? headerIdx + 1 : 1 };
+}
+
 function parseStatement() {
   const text = document.getElementById('statement-paste').value.trim();
   if(!text) return toast('Paste statement text or upload a file', 'error');
@@ -9881,31 +9941,48 @@ function parseStatement() {
   const lines = text.split('\n').filter(l => l.trim());
   parsedRows = [];
 
-  lines.forEach((line, idx) => {
-    if(idx === 0) return; // skip header
-    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
-    if(cols.length < 3) return;
+  const { headerIdx, dateCol, descCol, dataStart } = detectColumns(lines);
+  let skippedRows = 0;
 
-    // Try to detect format: Date, Description, Debit, Credit, Balance
-    let date = cols[0], desc = cols[1], debit = 0, credit = 0, balance = 0;
-    if(cols.length >= 5) {
-      debit = parseFloat(cols[2])||0;
-      credit = parseFloat(cols[3])||0;
-      balance = parseFloat(cols[4])||0;
-    } else if(cols.length === 4) {
-      debit = parseFloat(cols[2])||0;
-      credit = parseFloat(cols[3])||0;
-    } else if(cols.length === 3) {
-      const amt = parseFloat(cols[2])||0;
-      if(amt < 0) debit = Math.abs(amt); else credit = amt;
-    }
-    if(date && desc) {
-      const normDate = normalizeDate(date);
-      parsedRows.push({ date: normDate || date, description: desc, debit, credit, balance });
-    }
-  });
+  for (let idx = dataStart; idx < lines.length; idx++) {
+    const cols = smartCSVSplit(lines[idx]);
+    if (cols.length < 3) { skippedRows++; continue; }
 
-  if(!parsedRows.length) { toast('Could not parse. Check CSV format.', 'error'); return; }
+    const rawDate = cols[dateCol] || '';
+    const desc = cols[descCol] || '';
+
+    // Skip if no valid date — this catches headers, footers, summaries, blank rows
+    if (!looksLikeDate(rawDate)) { skippedRows++; continue; }
+    const normDate = normalizeDate(rawDate);
+    if (!normDate || !/^\d{4}-\d{2}-\d{2}$/.test(normDate)) { skippedRows++; continue; }
+
+    // Skip if description is empty or looks like a header
+    if (!desc || desc.length < 2 || isHeaderWord(desc)) { skippedRows++; continue; }
+
+    // Find numeric columns for debit/credit/balance (skip date and desc columns)
+    const numCols = [];
+    for (let c = 0; c < cols.length; c++) {
+      if (c === dateCol || c === descCol) continue;
+      const val = parseFloat(cols[c].replace(/,/g, '')) || 0;
+      numCols.push(val);
+    }
+
+    let debit = 0, credit = 0, balance = 0;
+    if (numCols.length >= 3) {
+      debit = numCols[0]; credit = numCols[1]; balance = numCols[2];
+    } else if (numCols.length === 2) {
+      debit = numCols[0]; credit = numCols[1];
+    } else if (numCols.length === 1) {
+      if (numCols[0] < 0) debit = Math.abs(numCols[0]); else credit = numCols[0];
+    }
+
+    // Skip rows with no monetary value at all
+    if (debit === 0 && credit === 0 && balance === 0) { skippedRows++; continue; }
+
+    parsedRows.push({ date: normDate, description: desc, debit, credit, balance });
+  }
+
+  if(!parsedRows.length) { toast('Could not parse any valid transactions. Check CSV format.', 'error'); return; }
 
   const preview = document.getElementById('parsed-preview');
   const totalDebit = parsedRows.reduce((a,r) => a+r.debit, 0);
@@ -9924,14 +10001,14 @@ function parseStatement() {
     ${parsedRows.length>20?`<div style="text-align:center;color:var(--text3);font-size:12px;padding:8px">...and ${parsedRows.length-20} more rows</div>`:''}
     </div>
     <div style="margin-top:10px;padding:10px;background:var(--surface3);border-radius:8px;font-size:13px;color:var(--text2)">
-      ✅ Parsed <strong>${parsedRows.length}</strong> transactions
+      ✅ Parsed <strong>${parsedRows.length}</strong> transactions${skippedRows ? ` · <span style="color:var(--text3)">${skippedRows} non-transaction rows skipped</span>` : ''}
     </div>`;
   document.getElementById('parsed-import-btn').style.display = 'block';
 
   // Auto-detect statement month from parsed dates
   autoDetectStmtMonth(parsedRows, 'stmt-month');
 
-  toast(`Parsed ${parsedRows.length} transactions!`);
+  toast(`Parsed ${parsedRows.length} transactions!${skippedRows ? ' Skipped ' + skippedRows + ' header/blank rows.' : ''}`);
 }
 
 function importParsedTransactions() {
@@ -10846,28 +10923,47 @@ function parseCCStatement() {
   const lines = text.split('\n').filter(l => l.trim());
   ccParsedRows = [];
 
-  lines.forEach((line, idx) => {
-    if (idx === 0) return; // skip header
-    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-    if (cols.length < 3) return;
+  const { headerIdx, dateCol, descCol, dataStart } = detectColumns(lines);
+  let skippedRows = 0;
 
-    let date = cols[0], desc = cols[1], amount = 0, type = 'debit';
+  for (let idx = dataStart; idx < lines.length; idx++) {
+    const cols = smartCSVSplit(lines[idx]);
+    if (cols.length < 3) { skippedRows++; continue; }
 
-    if (cols.length >= 4) {
-      // Date, Description, Amount, Type format
-      amount = Math.abs(parseFloat(cols[2]) || 0);
-      type = (cols[3] || '').toLowerCase().includes('credit') ? 'credit' : 'debit';
-    } else if (cols.length === 3) {
-      const amt = parseFloat(cols[2]) || 0;
-      if (amt < 0) { amount = Math.abs(amt); type = 'credit'; }
-      else { amount = amt; type = 'debit'; }
+    const rawDate = cols[dateCol] || '';
+    const desc = cols[descCol] || '';
+
+    // Skip if no valid date
+    if (!looksLikeDate(rawDate)) { skippedRows++; continue; }
+    const normDate = normalizeDate(rawDate);
+    if (!normDate || !/^\d{4}-\d{2}-\d{2}$/.test(normDate)) { skippedRows++; continue; }
+
+    // Skip if description is empty or looks like a header
+    if (!desc || desc.length < 2 || isHeaderWord(desc)) { skippedRows++; continue; }
+
+    // Find numeric columns
+    const numCols = [];
+    const typeCols = [];
+    for (let c = 0; c < cols.length; c++) {
+      if (c === dateCol || c === descCol) continue;
+      const val = parseFloat(cols[c].replace(/,/g, '')) || 0;
+      if (val !== 0) numCols.push(val);
+      if (/credit|cr|refund|payment/i.test(cols[c])) typeCols.push('credit');
+      else if (/debit|dr|purchase|spend/i.test(cols[c])) typeCols.push('debit');
     }
 
-    if (date && desc && amount > 0) {
-      const normDate = normalizeDate(date);
-      ccParsedRows.push({ date: normDate || date, description: desc, amount, type });
+    let amount = 0, type = 'debit';
+    if (numCols.length >= 1) {
+      amount = Math.abs(numCols[0]);
+      // Determine type from explicit type column, or from sign
+      if (typeCols.length) type = typeCols[0];
+      else if (numCols[0] < 0) type = 'credit';
     }
-  });
+
+    if (amount === 0) { skippedRows++; continue; }
+
+    ccParsedRows.push({ date: normDate, description: desc, amount, type });
+  }
 
   if (!ccParsedRows.length) { toast('Could not parse. Check format: Date,Description,Amount,Type', 'error'); return; }
 
@@ -10888,13 +10984,16 @@ function parseCCStatement() {
       </div>
     `).join('')}
     ${ccParsedRows.length > 25 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--text3)">+ ${ccParsedRows.length - 25} more rows...</div>` : ''}
+    </div>
+    <div style="margin-top:10px;padding:10px;background:var(--surface3);border-radius:8px;font-size:13px;color:var(--text2)">
+      ✅ Parsed <strong>${ccParsedRows.length}</strong> transactions${skippedRows ? ` · <span style="color:var(--text3)">${skippedRows} non-transaction rows skipped</span>` : ''}
     </div>`;
   document.getElementById('cc-parsed-import-btn').style.display = 'block';
 
   // Auto-detect statement month from parsed dates
   autoDetectStmtMonth(ccParsedRows, 'cc-stmt-month');
 
-  toast(`Parsed ${ccParsedRows.length} CC transactions!`);
+  toast(`Parsed ${ccParsedRows.length} CC transactions!${skippedRows ? ' Skipped ' + skippedRows + ' header/blank rows.' : ''}`);
 }
 
 function importCCParsedTransactions() {
