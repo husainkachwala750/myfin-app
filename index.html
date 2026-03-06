@@ -2711,6 +2711,105 @@
       </div>
     </div>
 
+    <!-- DOCUMENT VAULT -->
+    <div id="page-documents" class="page">
+      <div class="page-header">
+        <h2>📁 Document Vault</h2>
+        <p>Personal records, IDs, certificates, property docs &amp; contracts for each member</p>
+      </div>
+
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="doc-member-tabs"></div>
+
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px" id="doc-category-tabs">
+        <button class="btn btn-secondary btn-sm active" id="doctab-all"           onclick="switchDocTab('all')">All</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-identity"             onclick="switchDocTab('identity')">🪪 Identity &amp; IDs</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-education"            onclick="switchDocTab('education')">🎓 Education</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-property"             onclick="switchDocTab('property')">🏠 Property</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-vehicle"              onclick="switchDocTab('vehicle')">🚗 Vehicle</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-contracts"            onclick="switchDocTab('contracts')">📝 Contracts</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-financial"            onclick="switchDocTab('financial')">💰 Financial</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-medical"              onclick="switchDocTab('medical')">🏥 Medical</button>
+        <button class="btn btn-secondary btn-sm" id="doctab-other"                onclick="switchDocTab('other')">📋 Other</button>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="grid-4" id="doc-kpi-strip" style="margin-bottom:18px"></div>
+
+      <!-- Add Document Form -->
+      <div class="card" id="doc-add-panel" style="margin-bottom:18px">
+        <h3 style="margin:0 0 14px;font-size:16px;font-weight:600">➕ Add Document</h3>
+        <div class="grid-3" style="gap:12px">
+          <div>
+            <label class="form-label">Member</label>
+            <select id="doc-member" class="form-input"></select>
+          </div>
+          <div>
+            <label class="form-label">Category</label>
+            <select id="doc-category" class="form-input" onchange="updateDocTypeOptions()">
+              <option value="identity">🪪 Identity &amp; IDs</option>
+              <option value="education">🎓 Education</option>
+              <option value="property">🏠 Property</option>
+              <option value="vehicle">🚗 Vehicle</option>
+              <option value="contracts">📝 Contracts</option>
+              <option value="financial">💰 Financial</option>
+              <option value="medical">🏥 Medical</option>
+              <option value="other">📋 Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Document Type</label>
+            <select id="doc-type" class="form-input"></select>
+          </div>
+        </div>
+        <div class="grid-3" style="gap:12px;margin-top:12px">
+          <div>
+            <label class="form-label">Document Name / Title</label>
+            <input id="doc-name" class="form-input" placeholder="e.g. PAN Card, 10th Marksheet">
+          </div>
+          <div>
+            <label class="form-label">Document Number / ID</label>
+            <input id="doc-number" class="form-input" placeholder="e.g. ABCDE1234F">
+          </div>
+          <div>
+            <label class="form-label">Issue Date</label>
+            <input type="date" id="doc-issue-date" class="form-input">
+          </div>
+        </div>
+        <div class="grid-3" style="gap:12px;margin-top:12px">
+          <div>
+            <label class="form-label">Expiry Date</label>
+            <input type="date" id="doc-expiry-date" class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Issuing Authority</label>
+            <input id="doc-authority" class="form-input" placeholder="e.g. Income Tax Dept, RTO">
+          </div>
+          <div>
+            <label class="form-label">Status</label>
+            <select id="doc-status" class="form-input">
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="pending">Pending</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="form-label">Notes / Details</label>
+          <textarea id="doc-notes" class="form-input" rows="2" placeholder="Any additional details, reference numbers, linked assets..."></textarea>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="addDocument()">💾 Save Document</button>
+          <button class="btn btn-secondary" onclick="clearDocForm()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Documents List -->
+      <div id="doc-list"></div>
+    </div>
+
     <!-- BUSINESS MANAGER -->
     <div id="page-business" class="page">
       <div class="page-header">
@@ -3562,6 +3661,17 @@
           <div>
             <div class="setup-nav-title">Insurance Vault</div>
             <div class="setup-nav-desc">Policies & coverage</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-nav-section">
+        <div class="setup-nav-label">📁 Records</div>
+        <div class="setup-nav-item" onclick="showSetupPage('documents')" data-page="documents">
+          <span class="setup-nav-icon">📁</span>
+          <div>
+            <div class="setup-nav-title">Document Vault</div>
+            <div class="setup-nav-desc">IDs, certificates & property docs</div>
           </div>
         </div>
       </div>
@@ -4558,7 +4668,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 // All collections (object stores) and their key paths
 
@@ -5972,6 +6082,7 @@ const STORES = {
   wallets:      { keyPath: 'id', indexes: [['memberId','memberId']] },
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
+  documents:    { keyPath: 'id', indexes: [['memberId','memberId'],['category','category'],['type','type']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
 };
 
@@ -6280,7 +6391,7 @@ let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
   businesses:[], invStatements:[], insurances:[], insClaims:[],
-  ccStatements:[], stmtBatches:[], loans:[], wallets:[]
+  ccStatements:[], stmtBatches:[], loans:[], wallets:[], documents:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -14556,6 +14667,7 @@ const FEATURE_DEFS = [
   { id:'statements',   label:'Bank Statements',     emoji:'📄', color:'#94a3b8', tag:'optional', desc:'Upload and parse bank statements (CSV/TXT).',                             page:'statements',   navText:'Bank Statements',  core:false },
   { id:'insurance',    label:'Insurance Vault',     emoji:'🛡️', color:'#fb923c', tag:'optional', desc:'Manage all family insurance policies, claims and renewals.',              page:'insurance',    navText:'Insurance Vault',  core:false },
   { id:'advisor',      label:'AI Decision Advisor', emoji:'🧠', color:'#c084fc', tag:'optional', desc:'AI-powered financial advisor using Claude to analyse your data.',         page:'advisor',      navText:'Decision Advisor', core:false },
+  { id:'documents',    label:'Document Vault',      emoji:'📁', color:'#0ea5e9', tag:'optional', desc:'Store personal records — IDs, certificates, property docs, contracts & more per member.', page:'documents', navText:'Document Vault', core:false },
 
   // ── Business module ──
   { id:'business',     label:'Business Manager',    emoji:'🏢', color:'#fbbf24', tag:'business', desc:'Full business P&L, bank accounts, staff, assets, loans and tax tracking. Enable only if you run a business.', page:'business', navText:'Business Manager', core:false },
@@ -19277,7 +19389,7 @@ function showSetupPage(page) {
 }
 
 // Pages that belong in the setup panel — auto-open panel when navigated to
-var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','business','features','family-access']);
+var SETUP_PAGES = new Set(['members','bankdetails','creditcards','investments','insurance','documents','business','features','family-access']);
 
 // Single consolidated showPage — handles all page hooks
 function showPage(pageId) {
@@ -19296,6 +19408,7 @@ function showPage(pageId) {
   if (pageId === 'aichat') { renderAiChatSnapshot(); }
   if (pageId === 'portfolio') { buildPortfolioMemberTabs(); renderPortfolioMemberSummary(); switchPortfolioTab('overview'); }
   if (pageId === 'insurance') { buildInsMemberTabs(); renderInsMemberSummary(); switchInsTab('overview'); }
+  if (pageId === 'documents') { buildDocMemberTabs(); renderDocuments(); }
   // Close sidebar on mobile
   if (window.innerWidth <= 900) closeSidebar();
 }
@@ -19303,6 +19416,254 @@ function showPage(pageId) {
 
 // Handle OAuth redirects from Google Drive / OneDrive / Dropbox
 storageHandleOAuthRedirect();
+
+// =================== DOCUMENT VAULT ===================
+
+const DOC_CATEGORIES = {
+  identity:   { emoji:'🪪', label:'Identity & IDs',   types:['PAN Card','Aadhaar Card','Passport','Driving License','Voter ID','Ration Card','OCI Card','Government ID','Other ID'] },
+  education:  { emoji:'🎓', label:'Education',         types:['10th Marksheet','12th Marksheet','Degree Certificate','Diploma','Professional Certification','Transcript','Migration Certificate','Other Education'] },
+  property:   { emoji:'🏠', label:'Property',          types:['Sale Deed','Title Deed','Registry','Property Tax Receipt','Encumbrance Certificate','NOC','Building Plan','Possession Letter','Society Documents','Lease Agreement','Other Property'] },
+  vehicle:    { emoji:'🚗', label:'Vehicle',            types:['RC Book','Insurance','PUC Certificate','Fitness Certificate','Permit','Transfer Papers','Other Vehicle'] },
+  contracts:  { emoji:'📝', label:'Contracts',          types:['Rental Agreement','Employment Contract','Service Agreement','Loan Agreement','Power of Attorney','Will','MOU','NDA','Other Contract'] },
+  financial:  { emoji:'💰', label:'Financial',          types:['IT Return','Form 16','TDS Certificate','Bank Statement','Salary Slip','Loan Sanction Letter','NOC/Closure Letter','Other Financial'] },
+  medical:    { emoji:'🏥', label:'Medical',            types:['Health Report','Prescription','Lab Report','Vaccination Record','Discharge Summary','Medical Certificate','Other Medical'] },
+  other:      { emoji:'📋', label:'Other',              types:['Birth Certificate','Marriage Certificate','Domicile Certificate','Caste Certificate','Income Certificate','Character Certificate','Utility Bill','Warranty Card','Other'] }
+};
+
+let _docActiveTab = 'all';
+let _docActiveMember = '';
+
+function buildDocMemberTabs() {
+  buildMemberTabs('doc-member-tabs', _docActiveMember, (mid) => { _docActiveMember = mid; renderDocuments(); });
+  // Populate member select in form
+  const sel = document.getElementById('doc-member');
+  if (sel) {
+    sel.innerHTML = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  }
+  updateDocTypeOptions();
+}
+
+function updateDocTypeOptions() {
+  const cat = document.getElementById('doc-category')?.value || 'identity';
+  const sel = document.getElementById('doc-type');
+  if (!sel) return;
+  const types = DOC_CATEGORIES[cat]?.types || ['Other'];
+  sel.innerHTML = types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function switchDocTab(tab) {
+  _docActiveTab = tab;
+  document.querySelectorAll('#doc-category-tabs button').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('doctab-' + tab);
+  if (btn) btn.classList.add('active');
+  renderDocuments();
+}
+
+function addDocument() {
+  const memberId = document.getElementById('doc-member')?.value;
+  const category = document.getElementById('doc-category')?.value;
+  const type     = document.getElementById('doc-type')?.value;
+  const name     = document.getElementById('doc-name')?.value?.trim();
+  const number   = document.getElementById('doc-number')?.value?.trim();
+  const issueDate= document.getElementById('doc-issue-date')?.value;
+  const expiryDate=document.getElementById('doc-expiry-date')?.value;
+  const authority= document.getElementById('doc-authority')?.value?.trim();
+  const status   = document.getElementById('doc-status')?.value || 'active';
+  const notes    = document.getElementById('doc-notes')?.value?.trim();
+
+  if (!memberId) { toast('Please select a member', 'error'); return; }
+  if (!name && !type) { toast('Please enter a document name or select a type', 'error'); return; }
+
+  const doc = {
+    id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    memberId, category, type,
+    name: name || type,
+    number, issueDate, expiryDate,
+    authority, status, notes,
+    createdAt: new Date().toISOString()
+  };
+
+  state.documents.push(doc);
+  saveData();
+  clearDocForm();
+  renderDocuments();
+  toast('Document saved!', 'success');
+}
+
+function clearDocForm() {
+  ['doc-name','doc-number','doc-issue-date','doc-expiry-date','doc-authority','doc-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const st = document.getElementById('doc-status'); if (st) st.value = 'active';
+}
+
+function editDocument(id) {
+  const doc = state.documents.find(d => d.id === id);
+  if (!doc) return;
+
+  const memberOpts = state.members.map(m => `<option value="${m.id}" ${m.id===doc.memberId?'selected':''}>${esc(m.name)}</option>`).join('');
+  const catOpts = Object.entries(DOC_CATEGORIES).map(([k,v]) => `<option value="${k}" ${k===doc.category?'selected':''}>${v.emoji} ${v.label}</option>`).join('');
+  const statusOpts = ['active','expired','pending','archived'].map(s => `<option value="${s}" ${s===doc.status?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
+  const types = DOC_CATEGORIES[doc.category]?.types || ['Other'];
+  const typeOpts = types.map(t => `<option value="${t}" ${t===doc.type?'selected':''}>${t}</option>`).join('');
+
+  const html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label class="form-label">Member</label><select id="edit-doc-member" class="form-input">${memberOpts}</select></div>
+      <div><label class="form-label">Category</label><select id="edit-doc-category" class="form-input" onchange="updateEditDocTypes('${id}')">${catOpts}</select></div>
+      <div><label class="form-label">Type</label><select id="edit-doc-type" class="form-input">${typeOpts}</select></div>
+      <div><label class="form-label">Name / Title</label><input id="edit-doc-name" class="form-input" value="${esc(doc.name||'')}"></div>
+      <div><label class="form-label">Number / ID</label><input id="edit-doc-number" class="form-input" value="${esc(doc.number||'')}"></div>
+      <div><label class="form-label">Issue Date</label><input type="date" id="edit-doc-issue" class="form-input" value="${doc.issueDate||''}"></div>
+      <div><label class="form-label">Expiry Date</label><input type="date" id="edit-doc-expiry" class="form-input" value="${doc.expiryDate||''}"></div>
+      <div><label class="form-label">Authority</label><input id="edit-doc-authority" class="form-input" value="${esc(doc.authority||'')}"></div>
+      <div><label class="form-label">Status</label><select id="edit-doc-status" class="form-input">${statusOpts}</select></div>
+    </div>
+    <div style="margin-top:12px"><label class="form-label">Notes</label><textarea id="edit-doc-notes" class="form-input" rows="2">${esc(doc.notes||'')}</textarea></div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveEditDocument('${id}')">💾 Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-doc-modal')">Cancel</button>
+    </div>`;
+
+  let modal = document.getElementById('edit-doc-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-doc-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:640px"><h3 style="margin:0 0 16px">Edit Document</h3><div id="edit-doc-body"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('edit-doc-modal'); });
+  }
+  document.getElementById('edit-doc-body').innerHTML = html;
+  openModal('edit-doc-modal');
+}
+
+function updateEditDocTypes(docId) {
+  const cat = document.getElementById('edit-doc-category')?.value;
+  const sel = document.getElementById('edit-doc-type');
+  if (!sel || !cat) return;
+  const types = DOC_CATEGORIES[cat]?.types || ['Other'];
+  sel.innerHTML = types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function saveEditDocument(id) {
+  const doc = state.documents.find(d => d.id === id);
+  if (!doc) return;
+  doc.memberId   = document.getElementById('edit-doc-member')?.value || doc.memberId;
+  doc.category   = document.getElementById('edit-doc-category')?.value || doc.category;
+  doc.type       = document.getElementById('edit-doc-type')?.value || doc.type;
+  doc.name       = document.getElementById('edit-doc-name')?.value?.trim() || doc.name;
+  doc.number     = document.getElementById('edit-doc-number')?.value?.trim() || '';
+  doc.issueDate  = document.getElementById('edit-doc-issue')?.value || '';
+  doc.expiryDate = document.getElementById('edit-doc-expiry')?.value || '';
+  doc.authority  = document.getElementById('edit-doc-authority')?.value?.trim() || '';
+  doc.status     = document.getElementById('edit-doc-status')?.value || 'active';
+  doc.notes      = document.getElementById('edit-doc-notes')?.value?.trim() || '';
+  saveData();
+  closeModal('edit-doc-modal');
+  renderDocuments();
+  toast('Document updated!', 'success');
+}
+
+function deleteDocument(id) {
+  if (!confirm('Delete this document record?')) return;
+  state.documents = state.documents.filter(d => d.id !== id);
+  saveData();
+  renderDocuments();
+  toast('Document deleted');
+}
+
+function viewDocNote(id) {
+  const doc = state.documents.find(d => d.id === id);
+  if (doc?.notes) alert(doc.notes);
+}
+
+function renderDocuments() {
+  let docs = state.documents || [];
+
+  // Filter by member
+  if (_docActiveMember) docs = docs.filter(d => d.memberId === _docActiveMember);
+  // Filter by category tab
+  if (_docActiveTab !== 'all') docs = docs.filter(d => d.category === _docActiveTab);
+
+  // KPI strip
+  const allDocs = _docActiveMember ? state.documents.filter(d => d.memberId === _docActiveMember) : state.documents;
+  const kpi = document.getElementById('doc-kpi-strip');
+  if (kpi) {
+    const total = allDocs.length;
+    const active = allDocs.filter(d => d.status === 'active').length;
+    const expired = allDocs.filter(d => d.status === 'expired').length;
+    const expiring = allDocs.filter(d => {
+      if (!d.expiryDate || d.status === 'expired') return false;
+      const diff = (new Date(d.expiryDate) - new Date()) / (1000*60*60*24);
+      return diff >= 0 && diff <= 90;
+    }).length;
+    kpi.innerHTML = `
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:var(--primary)">${total}</div><div style="font-size:12px;color:var(--text2)">Total Documents</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#22c55e">${active}</div><div style="font-size:12px;color:var(--text2)">Active</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#ef4444">${expired}</div><div style="font-size:12px;color:var(--text2)">Expired</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#f59e0b">${expiring}</div><div style="font-size:12px;color:var(--text2)">Expiring Soon</div></div>`;
+  }
+
+  // Documents list
+  const container = document.getElementById('doc-list');
+  if (!container) return;
+
+  if (!docs.length) {
+    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--text2)">No documents found. Add your first document above.</div>';
+    return;
+  }
+
+  // Group by category
+  const grouped = {};
+  docs.forEach(d => {
+    const cat = d.category || 'other';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(d);
+  });
+
+  let html = '';
+  Object.entries(grouped).forEach(([cat, catDocs]) => {
+    const catInfo = DOC_CATEGORIES[cat] || DOC_CATEGORIES.other;
+    html += `<div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 12px;font-size:15px;font-weight:600">${catInfo.emoji} ${catInfo.label} <span style="font-weight:400;color:var(--text2);font-size:13px">(${catDocs.length})</span></h3>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:2px solid var(--border);text-align:left">
+            <th style="padding:8px 6px">Member</th>
+            <th style="padding:8px 6px">Type</th>
+            <th style="padding:8px 6px">Name</th>
+            <th style="padding:8px 6px">Number</th>
+            <th style="padding:8px 6px">Issue Date</th>
+            <th style="padding:8px 6px">Expiry</th>
+            <th style="padding:8px 6px">Status</th>
+            <th style="padding:8px 6px">Actions</th>
+          </tr></thead><tbody>`;
+    catDocs.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    catDocs.forEach(d => {
+      const member = state.members.find(m => m.id === d.memberId);
+      const statusColor = d.status==='active'?'#22c55e':d.status==='expired'?'#ef4444':d.status==='pending'?'#f59e0b':'#94a3b8';
+      const isExpiringSoon = d.expiryDate && d.status !== 'expired' && ((new Date(d.expiryDate) - new Date()) / (1000*60*60*24)) <= 90 && ((new Date(d.expiryDate) - new Date()) / (1000*60*60*24)) >= 0;
+      html += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px">${esc(member?.name||'—')}</td>
+        <td style="padding:8px 6px">${esc(d.type||'')}</td>
+        <td style="padding:8px 6px;font-weight:500">${esc(d.name||'')}</td>
+        <td style="padding:8px 6px;font-family:'DM Mono',monospace">${esc(d.number||'—')}</td>
+        <td style="padding:8px 6px">${d.issueDate||'—'}</td>
+        <td style="padding:8px 6px${isExpiringSoon?';color:#f59e0b;font-weight:600':''}">${d.expiryDate||'—'}${isExpiringSoon?' ⚠️':''}</td>
+        <td style="padding:8px 6px"><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor}">${d.status}</span></td>
+        <td style="padding:8px 6px;white-space:nowrap">
+          <button class="btn btn-secondary btn-sm" onclick="editDocument('${d.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteDocument('${d.id}')" style="padding:4px 8px;font-size:11px">🗑️</button>
+          ${d.notes?`<button class="btn btn-secondary btn-sm" onclick="viewDocNote('${d.id}')" style="padding:4px 8px;font-size:11px" title="View notes">📝</button>`:''}
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table></div></div>';
+  });
+
+  container.innerHTML = html;
+}
 
 // =================== ONBOARDING WIZARD ===================
 let _onboardStep = 0;
