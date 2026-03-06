@@ -1780,7 +1780,7 @@
           <div class="form-row-3">
             <div class="form-group"><label>Date</label><input type="date" id="txn-date"></div>
             <div class="form-group"><label>Type</label><select id="txn-type"><option value="credit">Credit (Income)</option><option value="debit">Debit (Expense)</option></select></div>
-            <div class="form-group"><label>Member</label><select id="txn-member"><option value="">Select member</option></select></div>
+            <div class="form-group" id="txn-member-group"><label>Member</label><select id="txn-member"><option value="">Select member</option></select></div>
           </div>
           <div class="form-row-3">
             <div class="form-group"><label>Description</label><input type="text" id="txn-desc" placeholder="Transaction description"></div>
@@ -6606,7 +6606,7 @@ function _showPageCore(id) {
   if(id==='dashboard') renderDashboard();
   if(id==='members') renderMembers();
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); renderExpenseAnalysis(); }
-  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
+  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderLoanAccounts(); populateLoanMemberSelect(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
@@ -7835,7 +7835,7 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length + (state.loans||[]).filter(l=>!id||l.memberId===id).length); renderBankAccounts(); renderLoanAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
   if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); renderCCStatementTable(); renderCCStmtSummary(); }
-  if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
+  if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
   if(filterKey === 'portfolio') { buildPortfolioMemberTabs(); renderPortfolioMemberSummary(); switchPortfolioTab(document.querySelector('.inv-tab.active')?.id?.replace('ptab-','') || 'overview'); }
   if(filterKey === 'insurance') { buildInsMemberTabs(); renderInsMemberSummary(); switchInsTab(document.querySelector('.ins-tab.active')?.id?.replace('instab-','') || 'overview'); }
 }
@@ -9234,14 +9234,32 @@ function populateContractMemberSelect() {
   if(val) sel.value = val;
 }
 
+// Show/hide member dropdown based on selected member tab
+function updateTxnMemberField() {
+  const mid = memberFilters.transactions || '';
+  const group = document.getElementById('txn-member-group');
+  const sel = document.getElementById('txn-member');
+  if (!group || !sel) return;
+  if (mid) {
+    // Member tab selected — hide dropdown, auto-assign
+    group.style.display = 'none';
+    sel.value = mid;
+  } else {
+    // Family view — show dropdown
+    group.style.display = '';
+  }
+}
+
 function addTransaction() {
   const amount = parseFloat(document.getElementById('txn-amount').value);
   if(!amount || amount <= 0) return toast('Enter valid amount', 'error');
+  // Use selected member tab if a specific member is active, otherwise use dropdown
+  const memberId = memberFilters.transactions || document.getElementById('txn-member').value;
   const txn = {
     id: uid(),
     date: document.getElementById('txn-date').value || today(),
     type: document.getElementById('txn-type').value,
-    memberId: document.getElementById('txn-member').value,
+    memberId,
     description: document.getElementById('txn-desc').value || 'Transaction',
     amount,
     category: document.getElementById('txn-category').value || '',
