@@ -4970,7 +4970,32 @@ async function fsEnsureAllFolders() {
       await fsGetFolder([...base, 'Documents', s]);
     }
     console.log('MyFin: All local folders created under ' + base.join('/') + ' ✅');
+    // Clean up old blank top-level folders from previous versions
+    await fsCleanupOldFolders();
   } catch(e) { console.warn('FS folder creation failed:', e); }
+}
+
+// ── Remove old blank folders created directly in root by previous code ──
+async function fsCleanupOldFolders() {
+  if (!_fsReady || !_fsRootDir) return;
+  const oldNames = ['Banks','Credit Cards','Investments','Expenses','Members',
+    'Transactions','Insurance','Loans','Documents','Backups'];
+  // Also clean up old Family_XXXXXXXX folders
+  for await (const [name, handle] of _fsRootDir) {
+    const isOldTopLevel = oldNames.includes(name);
+    const isOldFamily = name.startsWith('Family_');
+    if ((isOldTopLevel || isOldFamily) && handle.kind === 'directory') {
+      try {
+        // Check if folder is empty before deleting
+        let isEmpty = true;
+        for await (const _ of handle.values()) { isEmpty = false; break; }
+        if (isEmpty) {
+          await _fsRootDir.removeEntry(name, { recursive: false });
+          console.log('MyFin: Cleaned up old empty folder:', name);
+        }
+      } catch(e) { /* skip if not empty or permission issue */ }
+    }
+  }
 }
 
 // ── Generate a safe filename from record ──
