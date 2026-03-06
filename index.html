@@ -5121,35 +5121,18 @@ async function storagePushSupabase(familyId, pkg) {
   _syncVersion = version;
   const payload = { data: encrypted, synced_at: new Date().toISOString(), version };
 
-  // Try PATCH first (update existing row) — use return=representation to verify it worked
-  let patched = false;
+  // DELETE existing row then INSERT new one (avoids PATCH/RLS issues entirely)
   try {
-    const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify(payload)
-    });
-    patched = Array.isArray(res) ? res.length > 0 : !!res;
+    await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, { method: 'DELETE' });
   } catch(e) {
-    console.warn('PATCH failed:', e.message);
+    // DELETE failing is OK — row might not exist yet
+    console.warn('DELETE before sync (OK to fail):', e.message);
   }
-
-  // If PATCH didn't update any rows, INSERT new row
-  if (!patched) {
-    try {
-      await sbFetch('/rest/v1/family_data', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ family_id: familyId, ...payload })
-      });
-    } catch(e) {
-      // 409 = row exists but we can't update it — likely RLS policy issue
-      if (e.message?.includes('409') || e.message?.includes('23505')) {
-        throw new Error('Sync blocked: your Supabase RLS policy may need to allow UPDATE on family_data for authenticated users');
-      }
-      throw e;
-    }
-  }
+  await sbFetch('/rest/v1/family_data', {
+    method: 'POST',
+    headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ family_id: familyId, ...payload })
+  });
 
   localStorage.setItem('myfin_sync_version_' + familyId, String(version));
   localStorage.setItem('myfin_last_sync', new Date().toISOString());
