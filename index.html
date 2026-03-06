@@ -6790,7 +6790,7 @@ function addMember() {
   populateMemberSelects();
   populateContractMemberSelect();
   // Refresh member filter tabs everywhere
-  ['exp-member-tabs','inv-member-tabs','bank-member-tabs','cc-member-tabs'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML=''; });
+  ['exp-member-tabs','inv-member-tabs','bank-member-tabs','cc-member-tabs','doc-member-tabs'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML=''; });
   toast('Member added!');
   document.getElementById('m-name').value='';
   document.getElementById('m-age').value='';
@@ -6860,8 +6860,9 @@ function calcTotalIncome(m) {
 }
 
 function deleteMember(id) {
-  if(!confirm('Remove this member?')) return;
+  if(!confirm('Remove this member? All their linked records will also be removed.')) return;
   state.members = state.members.filter(m => m.id !== id);
+  state.documents = (state.documents||[]).filter(d => d.memberId !== id);
   saveData(); renderMembers(); populateMemberSelects(); toast('Member removed');
 }
 
