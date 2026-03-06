@@ -1481,7 +1481,7 @@
 
     <div class="nav-section">
       <div class="nav-label">Daily Tracking</div>
-      <div class="nav-item" onclick="showPage('expenses')" data-page="expenses"><span class="icon">💸</span> Expenses</div>
+      <div class="nav-item" onclick="showPage('expenses')" data-page="expenses"><span class="icon">📊</span> Expense Analysis</div>
       <div class="nav-item" onclick="showPage('transactions')" data-page="transactions"><span class="icon">🔄</span> Transactions</div>
       <div class="nav-item" onclick="showPage('statements')" data-page="statements"><span class="icon">📄</span> Statements</div>
     </div>
@@ -1706,15 +1706,8 @@
 
     <!-- EXPENSES -->
     <div id="page-expenses" class="page">
-      <div class="page-header"><h2>Expenses & Income</h2><p>Analyze spending patterns, income trends, and manage recurring contracts</p></div>
+      <div class="page-header"><h2>Expense & Income Analysis</h2><p>Analyze spending patterns and income trends</p></div>
       <div class="member-tabs" id="exp-member-tabs"></div>
-
-      <!-- Expense Type Tabs -->
-      <div class="contract-tabs">
-        <button class="contract-tab-btn active" id="exp-tab-regular" onclick="switchExpenseTab('regular')">📊 Analysis</button>
-        <button class="contract-tab-btn" id="exp-tab-contracts" onclick="switchExpenseTab('contracts')">📋 Contract / Recurring</button>
-        <button class="contract-tab-btn" id="exp-tab-autotag" onclick="switchExpenseTab('autotag')">🏷️ Auto-Tag Rules</button>
-      </div>
 
       <!-- ANALYSIS PANEL -->
       <div id="exp-regular-panel">
@@ -1761,26 +1754,96 @@
         </div>
       </div>
 
-      <!-- CONTRACT EXPENSES PANEL -->
-      <div id="exp-contracts-panel" style="display:none">
+    </div>
 
-        <!-- Summary stats -->
+    <!-- TRANSACTIONS -->
+    <div id="page-transactions" class="page">
+      <div class="page-header"><h2>Transactions</h2><p>All income & expense transactions — cash or bank</p></div>
+
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="txn-member-tabs"></div>
+
+      <!-- Transaction Sub-Tabs -->
+      <div class="contract-tabs">
+        <button class="contract-tab-btn active" id="txn-tab-transactions" onclick="switchTxnTab('transactions')">🔄 Transactions</button>
+        <button class="contract-tab-btn" id="txn-tab-contracts" onclick="switchTxnTab('contracts')">📋 Contracts / Recurring</button>
+        <button class="contract-tab-btn" id="txn-tab-autotag" onclick="switchTxnTab('autotag')">🏷️ Auto-Tag Rules</button>
+      </div>
+
+      <!-- TRANSACTIONS PANEL -->
+      <div id="txn-transactions-panel">
+        <!-- Member Summary Card -->
+        <div id="txn-member-summary" style="margin-bottom:20px"></div>
+
+        <div class="section-header"><h3>Add Transaction</h3></div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="form-row-3">
+            <div class="form-group"><label>Date</label><input type="date" id="txn-date"></div>
+            <div class="form-group"><label>Type</label><select id="txn-type"><option value="credit">Credit (Income)</option><option value="debit">Debit (Expense)</option></select></div>
+            <div class="form-group"><label>Member</label><select id="txn-member"><option value="">Select member</option></select></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Description</label><input type="text" id="txn-desc" placeholder="Transaction description"></div>
+            <div class="form-group"><label>Amount (₹)</label><input type="number" id="txn-amount" placeholder="0.00" step="0.01"></div>
+            <div class="form-group"><label>Category</label>
+              <select id="txn-category">
+                <option value="">— Select —</option>
+                <option>🛒 Groceries</option><option>🍕 Food & Dining</option><option>🚗 Transport</option>
+                <option>🏥 Healthcare</option><option>📚 Education</option><option>🎭 Entertainment</option>
+                <option>🏠 Housing & Rent</option><option>💡 Utilities</option><option>👗 Clothing</option>
+                <option>💊 Medicine</option><option>✈️ Travel</option><option>🎁 Gifts</option>
+                <option>💰 Salary</option><option>📈 Investment Income</option><option>🏦 Interest</option>
+                <option>🤝 Business Income</option><option>🔄 Transfer</option><option>📦 Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Payment Mode</label>
+              <select id="txn-mode">
+                <option value="Cash">💵 Cash</option>
+                <option value="UPI">📱 UPI</option>
+                <option value="Debit Card">💳 Debit Card</option>
+                <option value="Credit Card">💳 Credit Card</option>
+                <option value="Net Banking">🌐 Net Banking</option>
+                <option value="Cheque">📝 Cheque</option>
+                <option value="Auto-debit">🔄 Auto-debit</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Cash (No Bank)</option></select></div>
+            <div class="form-group"><label>Reference No.</label><input type="text" id="txn-ref" placeholder="Optional"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
+            <div class="form-group"><label>Notes</label><input type="text" id="txn-notes" placeholder="Optional notes"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addTransaction()" style="margin-top:8px">➕ Add Transaction</button>
+        </div>
+        <div class="card">
+          <div class="section-header"><h3>All Transactions</h3>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-danger btn-sm" onclick="bulkClearTransactions()" style="font-size:12px">🗑 Clear All</button>
+            </div>
+          </div>
+          <div id="transaction-table"></div>
+        </div>
+      </div>
+
+      <!-- CONTRACT / RECURRING PANEL -->
+      <div id="txn-contracts-panel" style="display:none">
         <div class="grid-4" id="contract-stats" style="margin-bottom:20px"></div>
 
-        <!-- Auto-post engine run button -->
         <div id="autopost-engine-bar" style="display:flex;align-items:center;gap:12px;background:rgba(6,214,160,0.07);border:1px solid rgba(6,214,160,0.25);border-radius:10px;padding:10px 16px;margin-bottom:18px;flex-wrap:wrap">
           <span style="font-size:18px">🤖</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:700;color:var(--seafoam)">Auto-Post Engine</div>
-            <div id="autopost-engine-status" style="font-size:11px;color:var(--text3);margin-top:1px">Checks all contracts with Auto-Post enabled and logs any missed/due expenses.</div>
+            <div id="autopost-engine-status" style="font-size:11px;color:var(--text3);margin-top:1px">Checks all contracts with Auto-Post enabled and logs any missed/due transactions.</div>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="triggerManualAutoPost()" style="border-color:rgba(6,214,160,0.4);color:var(--seafoam);white-space:nowrap">▶ Run Now</button>
         </div>
 
-        <!-- Add Contract Form -->
         <div class="card" style="margin-bottom:24px">
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleContractForm()">
-            <div class="card-title" style="margin-bottom:0">➕ Add New Contract / Recurring Expense</div>
+            <div class="card-title" style="margin-bottom:0">➕ Add New Contract / Recurring</div>
             <span id="contract-form-toggle-icon" style="font-size:18px;color:var(--accent)">▼</span>
           </div>
           <div id="contract-add-form" style="margin-top:18px">
@@ -1827,8 +1890,6 @@
               <div class="form-group"><label>Vendor / Provider</label><input type="text" id="con-vendor" placeholder="e.g. HDFC Bank, LIC, Jio..."></div>
               <div class="form-group"><label>Contract / Policy Number</label><input type="text" id="con-ref" placeholder="e.g. Policy No., Loan A/c, Sub ID"></div>
             </div>
-
-            <!-- Coverage / Insurance fields (shown for Insurance type) -->
             <div id="con-coverage-section">
               <div class="form-row-3">
                 <div class="form-group"><label>Coverage Type</label>
@@ -1859,7 +1920,6 @@
                 </div>
               </div>
             </div>
-
             <div class="form-row">
               <div class="form-group"><label>Alert Before Renewal (Days)</label>
                 <select id="con-alert-days">
@@ -1879,15 +1939,13 @@
               </div>
             </div>
             <div class="form-group"><label>Notes / Terms</label><input type="text" id="con-notes" placeholder="Any important terms, account details, contact info..."></div>
-
-            <!-- Auto-Post Setting -->
             <div style="background:rgba(6,214,160,0.07);border:1px solid rgba(6,214,160,0.25);border-radius:12px;padding:14px 16px;margin-top:8px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
                 <div>
                   <div style="font-size:13px;font-weight:700;color:var(--seafoam);display:flex;align-items:center;gap:6px">
-                    <span style="font-size:16px">🤖</span> Auto-Post Expense
+                    <span style="font-size:16px">🤖</span> Auto-Post Transaction
                   </div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:2px">Automatically add this to Expenses on each due date — no manual logging needed</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:2px">Automatically add this as a transaction on each due date</div>
                 </div>
                 <label class="toggle-switch" style="flex-shrink:0">
                   <input type="checkbox" id="con-auto-post" onchange="toggleAutoPostOptions('con')">
@@ -1901,7 +1959,7 @@
                     <input type="number" id="con-post-day" placeholder="e.g. 1, 5, 15, 25" min="1" max="31" value="1">
                   </div>
                   <div class="form-group">
-                    <label>Expense Category</label>
+                    <label>Category</label>
                     <select id="con-post-cat">
                       <option>🏠 Housing & Rent</option><option>💡 Utilities</option>
                       <option>📱 Subscriptions</option><option>🏦 Loan / EMI</option>
@@ -1911,18 +1969,11 @@
                     </select>
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-                  <span style="font-size:18px">💡</span>
-                  <span style="font-size:11px;color:var(--text3)">Every time you open the app, it checks for missed due dates and posts any overdue entries automatically with a summary notification.</span>
-                </div>
               </div>
             </div>
-
             <button class="btn btn-primary" onclick="addContract()" style="margin-top:12px;width:100%;padding:13px">📋 Save Contract</button>
           </div>
         </div>
-
-        <!-- Filter & sort -->
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
           <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1" id="contract-filter-tabs">
             <button class="contract-tab-btn active" onclick="filterContracts('all',this)">All</button>
@@ -1934,14 +1985,11 @@
             <button class="contract-tab-btn" onclick="filterContracts('Subscription',this)">📱 Subscriptions</button>
           </div>
         </div>
-
         <div id="contracts-list"></div>
       </div>
 
       <!-- AUTO-TAG RULES PANEL -->
-      <div id="exp-autotag-panel" style="display:none">
-
-        <!-- Settings -->
+      <div id="txn-autotag-panel" style="display:none">
         <div class="card" style="margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
             <div>
@@ -1956,18 +2004,13 @@
               </label>
             </div>
           </div>
-
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
             <button class="btn btn-primary" onclick="openAddRuleModal()">+ Add Custom Rule</button>
             <button class="btn btn-secondary" onclick="resetToDefaultRules()">↩️ Reset to Defaults</button>
             <button class="btn btn-secondary" onclick="tagUntaggedTransactions()">🏷️ Tag All Untagged</button>
           </div>
-
-          <!-- Stats -->
           <div class="grid-4" id="autotag-stats" style="margin-bottom:16px"></div>
         </div>
-
-        <!-- Built-in Rules -->
         <div class="card" style="margin-bottom:20px">
           <div class="section-header"><h3>Active Tagging Rules</h3>
             <span id="autotag-rule-count" style="font-size:12px;color:var(--text3)"></span>
@@ -1986,8 +2029,6 @@
             </table>
           </div>
         </div>
-
-        <!-- Tagging Review & Update -->
         <div class="card">
           <div class="section-header">
             <h3>Review &amp; Update Tags</h3>
@@ -2020,70 +2061,6 @@
           </div>
           <div id="tag-review-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:12px"></div>
         </div>
-      </div>
-
-    </div>
-
-    <!-- TRANSACTIONS -->
-    <div id="page-transactions" class="page">
-      <div class="page-header"><h2>Transactions</h2><p>All income & expense transactions — cash or bank</p></div>
-
-      <!-- Member Tabs -->
-      <div class="member-tabs" id="txn-member-tabs"></div>
-
-      <!-- Member Summary Card -->
-      <div id="txn-member-summary" style="margin-bottom:20px"></div>
-
-      <div class="section-header"><h3>Add Transaction</h3></div>
-      <div class="card" style="margin-bottom:24px">
-        <div class="form-row-3">
-          <div class="form-group"><label>Date</label><input type="date" id="txn-date"></div>
-          <div class="form-group"><label>Type</label><select id="txn-type"><option value="credit">Credit (Income)</option><option value="debit">Debit (Expense)</option></select></div>
-          <div class="form-group"><label>Member</label><select id="txn-member"><option value="">Select member</option></select></div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Description</label><input type="text" id="txn-desc" placeholder="Transaction description"></div>
-          <div class="form-group"><label>Amount (₹)</label><input type="number" id="txn-amount" placeholder="0.00" step="0.01"></div>
-          <div class="form-group"><label>Category</label>
-            <select id="txn-category">
-              <option value="">— Select —</option>
-              <option>🛒 Groceries</option><option>🍕 Food & Dining</option><option>🚗 Transport</option>
-              <option>🏥 Healthcare</option><option>📚 Education</option><option>🎭 Entertainment</option>
-              <option>🏠 Housing & Rent</option><option>💡 Utilities</option><option>👗 Clothing</option>
-              <option>💊 Medicine</option><option>✈️ Travel</option><option>🎁 Gifts</option>
-              <option>💰 Salary</option><option>📈 Investment Income</option><option>🏦 Interest</option>
-              <option>🤝 Business Income</option><option>🔄 Transfer</option><option>📦 Other</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Payment Mode</label>
-            <select id="txn-mode">
-              <option value="Cash">💵 Cash</option>
-              <option value="UPI">📱 UPI</option>
-              <option value="Debit Card">💳 Debit Card</option>
-              <option value="Credit Card">💳 Credit Card</option>
-              <option value="Net Banking">🌐 Net Banking</option>
-              <option value="Cheque">📝 Cheque</option>
-              <option value="Auto-debit">🔄 Auto-debit</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Cash (No Bank)</option></select></div>
-          <div class="form-group"><label>Reference No.</label><input type="text" id="txn-ref" placeholder="Optional"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
-          <div class="form-group"><label>Notes</label><input type="text" id="txn-notes" placeholder="Optional notes"></div>
-        </div>
-        <button class="btn btn-primary" onclick="addTransaction()" style="margin-top:8px">➕ Add Transaction</button>
-      </div>
-      <div class="card">
-        <div class="section-header"><h3>All Transactions</h3>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-danger btn-sm" onclick="bulkClearTransactions()" style="font-size:12px">🗑 Clear All</button>
-          </div>
-        </div>
-        <div id="transaction-table"></div>
       </div>
     </div>
 
@@ -2550,7 +2527,7 @@
             <h3>Imported Bank Statement History</h3>
             <div style="display:flex;gap:8px;align-items:center">
               <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('bank')" style="font-size:12px">⬇️ Download CSV</button>
-              <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+              <button class="btn btn-secondary btn-sm" onclick="showPage('transactions');setTimeout(()=>switchTxnTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
             </div>
           </div>
           <div id="statement-table"></div>
@@ -2612,7 +2589,7 @@
                 <option value="">All Cards</option>
               </select>
               <button class="btn btn-secondary btn-sm" onclick="downloadStatementCSV('cc')" style="font-size:12px">⬇️ Download CSV</button>
-              <button class="btn btn-secondary btn-sm" onclick="showPage('expenses');setTimeout(()=>switchExpenseTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
+              <button class="btn btn-secondary btn-sm" onclick="showPage('transactions');setTimeout(()=>switchTxnTab('autotag'),100)" style="font-size:12px">🏷️ Tag Review →</button>
             </div>
           </div>
           <div style="overflow-x:auto">
@@ -3590,7 +3567,7 @@
       <span class="bn-icon">📊</span><span class="bn-label">Home</span>
     </div>
     <div class="bottom-nav-item" id="bn-expenses" data-page="expenses" onclick="showPage('expenses');setActiveBottomNav('bn-expenses')">
-      <span class="bn-icon">💸</span><span class="bn-label">Expenses</span>
+      <span class="bn-icon">📊</span><span class="bn-label">Analysis</span>
     </div>
     <div class="bottom-nav-item" id="bn-investments" data-page="investments" onclick="showPage('investments');setActiveBottomNav('bn-investments')">
       <span class="bn-icon">📈</span><span class="bn-label">Invest</span>
@@ -6593,7 +6570,7 @@ function _showPageCore(id) {
   if(id==='dashboard') renderDashboard();
   if(id==='members') renderMembers();
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); renderExpenseAnalysis(); }
-  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
+  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderLoanAccounts(); populateLoanMemberSelect(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
@@ -8088,12 +8065,18 @@ function getDaysRemaining(endDate) {
 }
 
 function switchExpenseTab(tab) {
-  document.getElementById('exp-regular-panel').style.display = tab === 'regular' ? 'block' : 'none';
-  document.getElementById('exp-contracts-panel').style.display = tab === 'contracts' ? 'block' : 'none';
-  document.getElementById('exp-autotag-panel').style.display = tab === 'autotag' ? 'block' : 'none';
-  document.getElementById('exp-tab-regular').classList.toggle('active', tab === 'regular');
-  document.getElementById('exp-tab-contracts').classList.toggle('active', tab === 'contracts');
-  document.getElementById('exp-tab-autotag').classList.toggle('active', tab === 'autotag');
+  // Legacy — redirect to transactions tabs
+  if (tab === 'contracts') { showPage('transactions'); setTimeout(() => switchTxnTab('contracts'), 100); return; }
+  if (tab === 'autotag') { showPage('transactions'); setTimeout(() => switchTxnTab('autotag'), 100); return; }
+}
+
+function switchTxnTab(tab) {
+  document.getElementById('txn-transactions-panel').style.display = tab === 'transactions' ? 'block' : 'none';
+  document.getElementById('txn-contracts-panel').style.display = tab === 'contracts' ? 'block' : 'none';
+  document.getElementById('txn-autotag-panel').style.display = tab === 'autotag' ? 'block' : 'none';
+  document.getElementById('txn-tab-transactions').classList.toggle('active', tab === 'transactions');
+  document.getElementById('txn-tab-contracts').classList.toggle('active', tab === 'contracts');
+  document.getElementById('txn-tab-autotag').classList.toggle('active', tab === 'autotag');
   if(tab === 'contracts') renderContracts();
   if(tab === 'autotag') renderAutoTagPanel();
 }
