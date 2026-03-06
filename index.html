@@ -5085,14 +5085,21 @@ async function storageBootLoad(familyId) {
     showStoragePicker(familyId, true);
     return;
   }
+  // Ensure token is fresh before syncing
+  try { await sbRefreshToken(); } catch(e) { console.warn('Token refresh on boot:', e); }
   setSyncStatus('syncing');
-  const loaded = await storagePullData(familyId);
-  if (loaded) {
-    setSyncStatus('synced');
-  } else {
-    // Cloud returned no data — that's normal for new accounts, not an error
-    console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
-    setSyncStatus('synced');
+  try {
+    const loaded = await storagePullData(familyId);
+    if (loaded) {
+      setSyncStatus('synced');
+    } else {
+      // Cloud returned no data — that's normal for new accounts, not an error
+      console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
+      setSyncStatus('synced');
+    }
+  } catch(e) {
+    console.warn('[MyFin Boot] Sync pull error:', e);
+    setSyncStatus('error');
   }
 }
 
