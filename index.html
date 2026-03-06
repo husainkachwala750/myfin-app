@@ -830,10 +830,10 @@
   .feature-card::before  { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--feat-color,var(--accent)); border-radius:3px 3px 0 0; opacity:.8; }
   .feat-toggle { position:relative; width:46px; height:26px; flex-shrink:0; }
   .feat-toggle input { opacity:0; width:0; height:0; position:absolute; }
-  .feat-toggle-track { position:absolute; inset:0; background:rgba(100,116,139,0.3); border-radius:13px; cursor:pointer; transition:background .25s; border:1.5px solid rgba(100,116,139,0.25); }
-  .feat-toggle input:checked + .feat-toggle-track { background:rgba(26,115,232,0.3); border-color:rgba(26,115,232,0.5); }
-  .feat-toggle-track::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; background:#64748b; border-radius:50%; transition:all .25s; box-shadow:0 1px 3px rgba(0,0,0,0.4); }
-  .feat-toggle input:checked + .feat-toggle-track::after { left:23px; background:var(--accent); box-shadow:0 0 8px rgba(37,99,235,0.5); }
+  .feat-toggle-track { position:absolute; inset:0; background:#e2e8f0; border-radius:13px; cursor:pointer; transition:background .25s; border:1.5px solid #cbd5e1; }
+  .feat-toggle input:checked + .feat-toggle-track { background:rgba(37,99,235,0.2); border-color:rgba(37,99,235,0.4); }
+  .feat-toggle-track::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; background:#94a3b8; border-radius:50%; transition:all .25s; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+  .feat-toggle input:checked + .feat-toggle-track::after { left:23px; background:var(--primary); box-shadow:0 0 6px rgba(37,99,235,0.3); }
   .feat-tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
   .feat-tag-core     { background:rgba(148,163,184,0.15); color:#94a3b8; }
   .feat-tag-optional { background:rgba(26,115,232,0.12); color:var(--accent); border:1px solid rgba(26,115,232,0.2); }
@@ -14542,7 +14542,7 @@ function renderFeaturesGrid() {
       label: 'Optional Modules',
       icon: '🔧',
       sublabel: 'Turn off what you don\'t use. Your data is always preserved and can be restored by re-enabling.',
-      accent: '#00e5ff'
+      accent: '#2563eb'
     },
     {
       tag: 'business',
@@ -14572,7 +14572,7 @@ function renderFeaturesGrid() {
   el.innerHTML = `
 
     <!-- ── Hero summary bar ── -->
-    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:30px;padding:20px 24px;background:linear-gradient(135deg,rgba(0,180,216,0.08),rgba(6,214,160,0.05));border:1px solid var(--border);border-radius:18px">
+    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:30px;padding:20px 24px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-sm)">
       <div style="font-size:42px;flex-shrink:0">⚙️</div>
       <div style="flex:1;min-width:200px">
         <div style="font-size:17px;font-weight:800;margin-bottom:4px">Features &amp; Settings</div>
@@ -14633,7 +14633,7 @@ function renderFeaturesGrid() {
             const count   = dataCounts[f.id];
             const hasData = count !== null && count > 0;
             const tagLabels   = { core:'Always On', optional:'Optional', business:'Business', pro:'Pro' };
-            const tagColors   = { core:'#64748b', optional:'#00e5ff', business:'#fbbf24', pro:'#a78bfa' };
+            const tagColors   = { core:'#64748b', optional:'#2563eb', business:'#d97706', pro:'#a78bfa' };
             const tagBgs      = { core:'rgba(100,116,139,0.12)', optional:'rgba(37,99,235,0.08)', business:'rgba(251,191,36,0.1)', pro:'rgba(167,139,250,0.1)' };
             const tColor = tagColors[f.tag] || '#00e5ff';
             const tBg    = tagBgs[f.tag]    || 'rgba(37,99,235,0.08)';
@@ -14641,12 +14641,12 @@ function renderFeaturesGrid() {
             return `
             <div style="
               position:relative; overflow:hidden;
-              background:${on ? 'linear-gradient(135deg,rgba(12,50,75,0.98),rgba(6,30,48,0.98))' : 'rgba(5,20,35,0.7)'};
-              border:1.5px solid ${on ? f.color + '55' : 'rgba(100,116,139,0.2)'};
+              background:var(--surface);
+              border:1.5px solid ${on ? f.color + '44' : 'var(--border)'};
               border-radius:16px; padding:18px;
               transition:all .25s;
               ${!f.core && !on ? 'opacity:.65;' : ''}
-              box-shadow:${on ? '0 4px 20px ' + f.color + '12' : 'none'};
+              box-shadow:${on ? '0 2px 12px ' + f.color + '10' : 'var(--shadow-xs)'};
             ">
               <!-- Top colour strip -->
               <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${on ? f.color : 'rgba(100,116,139,0.25)'};border-radius:3px 3px 0 0"></div>
@@ -14686,7 +14686,7 @@ function renderFeaturesGrid() {
 
               <!-- Status footer (non-core only) -->
               ${!f.core ? `
-              <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--surface3);display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px">
                 <div style="display:flex;align-items:center;gap:5px">
                   <span style="width:7px;height:7px;border-radius:50%;background:${on ? 'var(--seafoam)' : '#475569'};display:inline-block"></span>
                   <span style="font-size:11px;color:${on ? 'var(--seafoam)' : 'var(--text3)'}">
@@ -14694,7 +14694,7 @@ function renderFeaturesGrid() {
                   </span>
                 </div>
                 ${on ? `<button onclick="showPage('${f.page}')" style="font-size:11px;padding:4px 10px;background:rgba(26,115,232,0.08);border:1px solid rgba(26,115,232,0.25);color:var(--accent);border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap"
-                  onmouseover="this.style.background='rgba(37,99,235,0.08)'" onmouseout="this.style.background='rgba(0,229,255,0.08)'">
+                  onmouseover="this.style.background='rgba(37,99,235,0.12)'" onmouseout="this.style.background='rgba(37,99,235,0.06)'">
                   Open →
                 </button>` : ''}
               </div>` : ''}
