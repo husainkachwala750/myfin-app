@@ -5112,43 +5112,17 @@ async function storagePushSupabase(familyId, pkg) {
   const encrypted = await encryptStateForCloud(pkg);
   const version = (_syncVersion || 0) + 1;
   _syncVersion = version;
-  const payload = {
-    family_id: familyId,
-    data: encrypted,
-    synced_at: new Date().toISOString(),
-    version
-  };
-  // Try PATCH (update) first — works if row already exists
-  try {
-    const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
-      method: 'PATCH',
-      headers: { 'Prefer': 'return=representation' },
-      body: JSON.stringify({
-        data: encrypted,
-        synced_at: payload.synced_at,
-        version
-      })
-    });
-    // If PATCH returned empty array, row doesn't exist yet — do INSERT
-    if (Array.isArray(res) && res.length === 0) {
-      await sbFetch('/rest/v1/family_data', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify(payload)
-      });
-    }
-  } catch(e) {
-    // Fallback: if PATCH fails, try INSERT
-    if (e.message?.includes('404') || e.message?.includes('406')) {
-      await sbFetch('/rest/v1/family_data', {
-        method: 'POST',
-        headers: { 'Prefer': 'return=representation' },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      throw e;
-    }
-  }
+  // Upsert using PostgREST on_conflict parameter
+  await sbFetch('/rest/v1/family_data?on_conflict=family_id', {
+    method: 'POST',
+    headers: { 'Prefer': 'return=minimal,resolution=merge-duplicates' },
+    body: JSON.stringify({
+      family_id: familyId,
+      data: encrypted,
+      synced_at: new Date().toISOString(),
+      version
+    })
+  });
   localStorage.setItem('myfin_sync_version_' + familyId, String(version));
   localStorage.setItem('myfin_last_sync', new Date().toISOString());
 }
