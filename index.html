@@ -1130,9 +1130,142 @@
 
   .file-upload-label { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text2); transition: all 0.2s; }
   .file-upload-label:hover { border-color: var(--accent); color: var(--text); }
+
+  /* =================== ONBOARDING WIZARD =================== */
+  #onboarding-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:2000; display:none; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
+  #onboarding-overlay.open { display:flex; }
+  .onboard-card { background:var(--surface); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.15); max-width:520px; width:92%; max-height:90vh; overflow-y:auto; padding:32px 28px; position:relative; }
+  .onboard-header { text-align:center; margin-bottom:24px; }
+  .onboard-header h2 { font-size:22px; font-weight:700; color:var(--text); margin:0 0 6px; }
+  .onboard-header p { font-size:14px; color:var(--text2); margin:0; }
+  .onboard-steps { display:flex; gap:6px; justify-content:center; margin-bottom:24px; }
+  .onboard-step-dot { width:10px; height:10px; border-radius:50%; background:var(--border); transition:all 0.3s; }
+  .onboard-step-dot.active { background:var(--primary); transform:scale(1.3); }
+  .onboard-step-dot.done { background:#22c55e; }
+  .onboard-body { min-height:180px; }
+  .onboard-step { display:none; }
+  .onboard-step.active { display:block; }
+  .onboard-step-icon { font-size:48px; text-align:center; margin-bottom:12px; }
+  .onboard-step h3 { font-size:18px; font-weight:600; color:var(--text); margin:0 0 8px; text-align:center; }
+  .onboard-step p { font-size:13px; color:var(--text2); text-align:center; margin:0 0 16px; line-height:1.5; }
+  .onboard-checklist { list-style:none; padding:0; margin:0 0 16px; }
+  .onboard-checklist li { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#f8fafc; border-radius:8px; margin-bottom:6px; font-size:14px; color:var(--text); border:1px solid var(--border); }
+  .onboard-checklist li .ob-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+  .onboard-checklist li.done .ob-check { background:#22c55e; border-color:#22c55e; color:#fff; }
+  .onboard-actions { display:flex; gap:10px; justify-content:center; margin-top:20px; }
+  .onboard-actions button { padding:10px 24px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+  .onboard-btn-primary { background:var(--primary); color:#fff; }
+  .onboard-btn-primary:hover { opacity:0.9; }
+  .onboard-btn-secondary { background:var(--bg); color:var(--text2); border:1px solid var(--border) !important; }
+  .onboard-btn-secondary:hover { background:var(--border); }
+  .onboard-btn-skip { background:transparent; color:var(--text2); font-size:13px; }
+  .onboard-btn-skip:hover { color:var(--text); }
+  @media(max-width:600px) {
+    .onboard-card { padding:24px 16px; }
+    .onboard-actions { flex-direction:column; }
+    .onboard-actions button { width:100%; }
+  }
 </style>
 </head>
 <body>
+
+<!-- ==================== ONBOARDING WIZARD ==================== -->
+<div id="onboarding-overlay">
+  <div class="onboard-card">
+    <div class="onboard-steps" id="onboard-dots"></div>
+    <div class="onboard-body" id="onboard-body">
+
+      <!-- Step 0: Welcome -->
+      <div class="onboard-step active" data-step="0">
+        <div class="onboard-step-icon">&#x1F44B;</div>
+        <h3>Welcome to MyFin!</h3>
+        <p>Let's set up your personal finance dashboard in a few quick steps. You can skip any step and come back later.</p>
+        <ul class="onboard-checklist">
+          <li><span class="ob-check"></span> Add family members</li>
+          <li><span class="ob-check"></span> Set up bank accounts</li>
+          <li><span class="ob-check"></span> Add credit cards</li>
+          <li><span class="ob-check"></span> Track investments</li>
+        </ul>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardNext()">Get Started</button>
+          <button class="onboard-btn-skip" onclick="onboardFinish()">Skip setup</button>
+        </div>
+      </div>
+
+      <!-- Step 1: Members -->
+      <div class="onboard-step" data-step="1">
+        <div class="onboard-step-icon">&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;&#x200D;&#x1F466;</div>
+        <h3>Add Family Members</h3>
+        <p>Add people whose finances you want to track. Each member gets their own profile for accounts, investments, and expenses.</p>
+        <div id="onboard-members-list" style="margin-bottom:12px"></div>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardGoToPage('members')">+ Add Member</button>
+        </div>
+        <div class="onboard-actions" style="margin-top:10px">
+          <button class="onboard-btn-secondary" onclick="onboardNext()">Next Step</button>
+          <button class="onboard-btn-skip" onclick="onboardSkip()">Skip</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Bank Accounts -->
+      <div class="onboard-step" data-step="2">
+        <div class="onboard-step-icon">&#x1F3E6;</div>
+        <h3>Add Bank Accounts</h3>
+        <p>Add your savings, current, or salary accounts. You can upload bank statements later to auto-import transactions.</p>
+        <div id="onboard-banks-list" style="margin-bottom:12px"></div>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardGoToPage('bankdetails')">+ Add Bank Account</button>
+        </div>
+        <div class="onboard-actions" style="margin-top:10px">
+          <button class="onboard-btn-secondary" onclick="onboardNext()">Next Step</button>
+          <button class="onboard-btn-skip" onclick="onboardSkip()">Skip</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Credit Cards -->
+      <div class="onboard-step" data-step="3">
+        <div class="onboard-step-icon">&#x1F4B3;</div>
+        <h3>Add Credit Cards</h3>
+        <p>Track your credit cards with limits, due dates, and billing cycles. Import CC statements to track spending.</p>
+        <div id="onboard-cards-list" style="margin-bottom:12px"></div>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardGoToPage('creditcards')">+ Add Credit Card</button>
+        </div>
+        <div class="onboard-actions" style="margin-top:10px">
+          <button class="onboard-btn-secondary" onclick="onboardNext()">Next Step</button>
+          <button class="onboard-btn-skip" onclick="onboardSkip()">Skip</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Investments -->
+      <div class="onboard-step" data-step="4">
+        <div class="onboard-step-icon">&#x1F4C8;</div>
+        <h3>Add Investments</h3>
+        <p>Track mutual funds, stocks, FDs, gold, PPF, NPS, and more. MyFin supports 12+ asset types.</p>
+        <div id="onboard-inv-list" style="margin-bottom:12px"></div>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardGoToPage('investments')">+ Add Investment</button>
+        </div>
+        <div class="onboard-actions" style="margin-top:10px">
+          <button class="onboard-btn-secondary" onclick="onboardNext()">Next Step</button>
+          <button class="onboard-btn-skip" onclick="onboardSkip()">Skip</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Complete -->
+      <div class="onboard-step" data-step="5">
+        <div class="onboard-step-icon">&#x1F389;</div>
+        <h3>You're All Set!</h3>
+        <p>Your finance dashboard is ready. You can always add more data from the sidebar navigation.</p>
+        <ul class="onboard-checklist" id="onboard-summary"></ul>
+        <div class="onboard-actions">
+          <button class="onboard-btn-primary" onclick="onboardFinish()">Go to Dashboard</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <!-- ==================== AUTH OVERLAY ==================== -->
 <div id="auth-overlay">
@@ -18763,6 +18896,8 @@ async function bootFamilyApp(familyId) {
   initApp();
   applyAccountTypeLabels();
   renderDashboard();
+  // Show onboarding wizard for first-time users
+  if (shouldShowOnboarding()) setTimeout(startOnboarding, 500);
   setTimeout(runAutoPostEngine, 300);
   // Release sync lock after full boot — allow future saves to sync
   setTimeout(() => { _bootingSyncLock = false; }, 2000);
@@ -19168,6 +19303,123 @@ function showPage(pageId) {
 
 // Handle OAuth redirects from Google Drive / OneDrive / Dropbox
 storageHandleOAuthRedirect();
+
+// =================== ONBOARDING WIZARD ===================
+let _onboardStep = 0;
+const ONBOARD_TOTAL_STEPS = 6; // 0=welcome,1=members,2=banks,3=cards,4=investments,5=done
+function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function shouldShowOnboarding() {
+  if (localStorage.getItem('myfin_onboarding_done')) return false;
+  const hasData = state.members.length || state.bankAccounts.length || state.creditCards.length || state.investments.length;
+  return !hasData;
+}
+
+function startOnboarding() {
+  _onboardStep = 0;
+  renderOnboardDots();
+  showOnboardStep(0);
+  document.getElementById('onboarding-overlay').classList.add('open');
+}
+
+function renderOnboardDots() {
+  const container = document.getElementById('onboard-dots');
+  container.innerHTML = '';
+  for (let i = 0; i < ONBOARD_TOTAL_STEPS; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'onboard-step-dot' + (i === _onboardStep ? ' active' : '') + (i < _onboardStep ? ' done' : '');
+    container.appendChild(dot);
+  }
+}
+
+function showOnboardStep(step) {
+  _onboardStep = step;
+  document.querySelectorAll('.onboard-step').forEach(el => el.classList.remove('active'));
+  const target = document.querySelector(`.onboard-step[data-step="${step}"]`);
+  if (target) target.classList.add('active');
+  renderOnboardDots();
+  refreshOnboardLists();
+}
+
+function onboardNext() {
+  if (_onboardStep < ONBOARD_TOTAL_STEPS - 1) {
+    showOnboardStep(_onboardStep + 1);
+  }
+  if (_onboardStep === ONBOARD_TOTAL_STEPS - 1) renderOnboardSummary();
+}
+
+function onboardSkip() { onboardNext(); }
+
+function onboardFinish() {
+  localStorage.setItem('myfin_onboarding_done', '1');
+  document.getElementById('onboarding-overlay').classList.remove('open');
+  renderDashboard();
+}
+
+function onboardGoToPage(page) {
+  // Hide onboarding, navigate to page, show "Back to Setup" button
+  document.getElementById('onboarding-overlay').classList.remove('open');
+  showPage(page);
+  // Add floating return button
+  let btn = document.getElementById('onboard-return-btn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'onboard-return-btn';
+    btn.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:1500;background:var(--primary);color:#fff;border:none;padding:12px 20px;border-radius:24px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,0.4);transition:all 0.2s;';
+    btn.textContent = '\u2190 Back to Setup';
+    btn.onclick = function() {
+      btn.remove();
+      document.getElementById('onboarding-overlay').classList.add('open');
+      refreshOnboardLists();
+    };
+    document.body.appendChild(btn);
+  }
+}
+
+function refreshOnboardLists() {
+  // Members
+  const ml = document.getElementById('onboard-members-list');
+  if (ml) {
+    ml.innerHTML = state.members.length
+      ? state.members.map(m => `<div style="padding:6px 12px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:13px;color:var(--text);border:1px solid #bbf7d0">&#x2705; ${esc(m.name)}</div>`).join('')
+      : '<div style="font-size:13px;color:var(--text2);text-align:center">No members added yet</div>';
+  }
+  // Banks
+  const bl = document.getElementById('onboard-banks-list');
+  if (bl) {
+    bl.innerHTML = state.bankAccounts.length
+      ? state.bankAccounts.map(b => `<div style="padding:6px 12px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:13px;color:var(--text);border:1px solid #bbf7d0">&#x2705; ${esc(b.bankName)} - ${esc(b.accountType||'')}</div>`).join('')
+      : '<div style="font-size:13px;color:var(--text2);text-align:center">No bank accounts added yet</div>';
+  }
+  // Credit Cards
+  const cl = document.getElementById('onboard-cards-list');
+  if (cl) {
+    cl.innerHTML = state.creditCards.length
+      ? state.creditCards.map(c => `<div style="padding:6px 12px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:13px;color:var(--text);border:1px solid #bbf7d0">&#x2705; ${esc(c.bankName||c.cardName||'')} ${esc(c.network||'')}</div>`).join('')
+      : '<div style="font-size:13px;color:var(--text2);text-align:center">No credit cards added yet</div>';
+  }
+  // Investments
+  const il = document.getElementById('onboard-inv-list');
+  if (il) {
+    il.innerHTML = state.investments.length
+      ? state.investments.map(inv => `<div style="padding:6px 12px;background:#f0fdf4;border-radius:6px;margin-bottom:4px;font-size:13px;color:var(--text);border:1px solid #bbf7d0">&#x2705; ${esc(inv.name||inv.type||'')} - ${esc(inv.type||'')}</div>`).join('')
+      : '<div style="font-size:13px;color:var(--text2);text-align:center">No investments added yet</div>';
+  }
+}
+
+function renderOnboardSummary() {
+  const el = document.getElementById('onboard-summary');
+  if (!el) return;
+  const items = [
+    { label: 'Family Members', count: state.members.length },
+    { label: 'Bank Accounts', count: state.bankAccounts.length },
+    { label: 'Credit Cards', count: state.creditCards.length },
+    { label: 'Investments', count: state.investments.length },
+  ];
+  el.innerHTML = items.map(i =>
+    `<li class="${i.count ? 'done' : ''}"><span class="ob-check">${i.count ? '&#x2713;' : ''}</span> ${i.label}: <strong>${i.count}</strong> added</li>`
+  ).join('');
+}
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
