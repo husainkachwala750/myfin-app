@@ -5367,9 +5367,11 @@ async function storageBootLoad(familyId) {
       storagePullData(familyId),
       new Promise(resolve => setTimeout(() => resolve(false), 10000))
     ]);
-    setSyncStatus(loaded ? 'synced' : 'synced'); // even if no cloud data, local data is fine
+    _storageReady = true;
+    setSyncStatus('synced');
   } catch(e) {
     console.warn('[MyFin Boot] Pull failed:', e.message);
+    _storageReady = true;
     setSyncStatus('error');
   }
   // Lock stays on — released by bootFamilyApp after full init
@@ -5876,6 +5878,7 @@ async function storagePickerSelect(providerId, familyId) {
       } else {
         toast('☁️ MyFin Cloud connected! Add data to get started.', 'success');
       }
+      _storageReady = true;
       setSyncStatus('synced');
       break;
     case 'local':
