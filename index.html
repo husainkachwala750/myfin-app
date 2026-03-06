@@ -1539,7 +1539,10 @@
         <h2 id="dash-title">Family Dashboard</h2>
         <p id="dash-subtitle">Complete overview of your family finances</p>
       </div>
-      <div class="security-bar">🔐 Your data is encrypted and synced to the secure cloud database. Available across all your devices.</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div class="security-bar" style="flex:1;margin:0">🔐 Your data is encrypted and synced to the secure cloud database. Available across all your devices.</div>
+        <button class="btn btn-secondary btn-sm" onclick="openSampleDataModal()" style="font-size:11px;padding:4px 10px;white-space:nowrap">📦 Sample Data</button>
+      </div>
 
       <!-- View Toggle + Member Selector -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
@@ -4514,6 +4517,32 @@
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('edit-bizloan-modal')">Cancel</button>
       <button class="btn btn-primary" style="flex:2" onclick="saveEditBizLoan()">💾 Save Changes</button>
     </div>
+  </div>
+</div>
+
+<!-- Sample Data Modal -->
+<div class="modal-overlay" id="sample-data-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h3>📦 Load Sample Data</h3><button class="close-btn" onclick="closeModal('sample-data-modal')">✕</button></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Generate realistic sample transactions, expenses, and statements for testing.</div>
+    <div class="form-row">
+      <div class="form-group"><label>Month</label><input type="month" id="sample-month" style="font-size:13px"></div>
+      <div class="form-group"><label>Member</label><select id="sample-member" style="font-size:13px"><option value="">All Members</option></select></div>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>What to generate</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="sample-txns" checked style="accent-color:var(--accent)"> Transactions (30-50)</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="sample-stmt" checked style="accent-color:var(--accent)"> Bank Statement</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="sample-cc-stmt" style="accent-color:var(--accent)"> CC Statement</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" id="sample-investments" style="accent-color:var(--accent)"> Investments</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="generateSampleData()">⚡ Generate</button>
+      <button class="btn btn-danger btn-sm" onclick="clearAllSampleData()" style="font-size:12px">🗑 Clear Sample</button>
+    </div>
+    <div id="sample-data-result" style="margin-top:12px"></div>
   </div>
 </div>
 
@@ -10441,6 +10470,291 @@ dz.addEventListener('drop', e => {
   reader.onload = ev => { document.getElementById('statement-paste').value = ev.target.result; toast('File dropped. Click Parse Statement.'); };
   reader.readAsText(file);
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  SAMPLE DATA GENERATOR
+// ═══════════════════════════════════════════════════════════════
+
+function openSampleDataModal() {
+  const monthInput = document.getElementById('sample-month');
+  if (monthInput) monthInput.value = new Date().toISOString().slice(0, 7);
+  const memberSel = document.getElementById('sample-member');
+  if (memberSel) {
+    memberSel.innerHTML = '<option value="">All Members</option>' + state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  }
+  document.getElementById('sample-data-result').innerHTML = '';
+  openModal('sample-data-modal');
+}
+
+function generateSampleData() {
+  const ym = document.getElementById('sample-month')?.value;
+  if (!ym) return toast('Select a month', 'error');
+  const mid = document.getElementById('sample-member')?.value || '';
+  const genTxns = document.getElementById('sample-txns')?.checked;
+  const genStmt = document.getElementById('sample-stmt')?.checked;
+  const genCCStmt = document.getElementById('sample-cc-stmt')?.checked;
+  const genInv = document.getElementById('sample-investments')?.checked;
+
+  const year = parseInt(ym.slice(0, 4));
+  const month = parseInt(ym.slice(5, 7));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const members = mid ? state.members.filter(m => m.id === mid) : state.members;
+  if (!members.length) return toast('No members found. Add members first.', 'error');
+
+  const randDay = () => String(Math.floor(Math.random() * daysInMonth) + 1).padStart(2, '0');
+  const randAmt = (min, max) => Math.round((min + Math.random() * (max - min)) * 100) / 100;
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  const expenseDescs = [
+    { d: 'Swiggy Order', c: '🍕 Food & Dining', mode: 'UPI', min: 150, max: 800 },
+    { d: 'Zomato Delivery', c: '🍕 Food & Dining', mode: 'UPI', min: 200, max: 700 },
+    { d: 'BigBasket Groceries', c: '🛒 Groceries', mode: 'UPI', min: 500, max: 3000 },
+    { d: 'DMart Shopping', c: '🛒 Groceries', mode: 'Debit Card', min: 800, max: 5000 },
+    { d: 'Reliance Fresh', c: '🛒 Groceries', mode: 'UPI', min: 300, max: 2000 },
+    { d: 'Uber Ride', c: '🚗 Transport', mode: 'UPI', min: 100, max: 500 },
+    { d: 'Ola Auto', c: '🚗 Transport', mode: 'UPI', min: 50, max: 300 },
+    { d: 'Metro Card Recharge', c: '🚗 Transport', mode: 'UPI', min: 200, max: 500 },
+    { d: 'Petrol - IndianOil', c: '🚗 Transport', mode: 'Debit Card', min: 1000, max: 4000 },
+    { d: 'Apollo Pharmacy', c: '💊 Medicine', mode: 'UPI', min: 100, max: 2000 },
+    { d: 'Amazon Purchase', c: '📦 Other', mode: 'Credit Card', min: 500, max: 8000 },
+    { d: 'Flipkart Order', c: '📦 Other', mode: 'Credit Card', min: 300, max: 5000 },
+    { d: 'Myntra Fashion', c: '👗 Clothing', mode: 'Credit Card', min: 500, max: 4000 },
+    { d: 'Netflix Subscription', c: '🎭 Entertainment', mode: 'Auto-debit', min: 199, max: 649 },
+    { d: 'Hotstar Premium', c: '🎭 Entertainment', mode: 'Auto-debit', min: 299, max: 499 },
+    { d: 'Electricity Bill - BESCOM', c: '💡 Utilities', mode: 'Net Banking', min: 800, max: 3500 },
+    { d: 'Water Bill', c: '💡 Utilities', mode: 'UPI', min: 200, max: 600 },
+    { d: 'Jio Recharge', c: '💡 Utilities', mode: 'UPI', min: 199, max: 999 },
+    { d: 'Airtel Broadband', c: '💡 Utilities', mode: 'Auto-debit', min: 499, max: 1499 },
+    { d: 'Society Maintenance', c: '🏠 Housing & Rent', mode: 'Cheque', min: 3000, max: 8000 },
+    { d: 'Rent Payment', c: '🏠 Housing & Rent', mode: 'Net Banking', min: 15000, max: 35000 },
+    { d: 'Doctor Consultation', c: '🏥 Healthcare', mode: 'Cash', min: 500, max: 2000 },
+    { d: 'School Fees', c: '📚 Education', mode: 'Net Banking', min: 5000, max: 20000 },
+    { d: 'Movie Tickets - PVR', c: '🎭 Entertainment', mode: 'UPI', min: 300, max: 1200 },
+    { d: 'Restaurant - Barbeque Nation', c: '🍕 Food & Dining', mode: 'Credit Card', min: 1500, max: 5000 },
+    { d: 'Gym Membership', c: '🏥 Healthcare', mode: 'UPI', min: 1000, max: 3000 },
+    { d: 'Gift - Birthday', c: '🎁 Gifts', mode: 'UPI', min: 500, max: 5000 },
+    { d: 'Chai/Snacks', c: '🍕 Food & Dining', mode: 'Cash', min: 20, max: 200 },
+    { d: 'ATM Withdrawal', c: '📦 Other', mode: 'Debit Card', min: 2000, max: 10000 },
+  ];
+
+  const incomeDescs = [
+    { d: 'Salary Credit', c: '💰 Salary', min: 30000, max: 150000 },
+    { d: 'Freelance Payment', c: '🤝 Business Income', min: 5000, max: 50000 },
+    { d: 'Interest Credit', c: '🏦 Interest', min: 100, max: 5000 },
+    { d: 'Dividend Received', c: '📈 Investment Income', min: 500, max: 10000 },
+    { d: 'Cashback Reward', c: '📦 Other', min: 50, max: 500 },
+    { d: 'Refund - Amazon', c: '📦 Other', min: 200, max: 3000 },
+    { d: 'UPI Transfer Received', c: '🔄 Transfer', min: 500, max: 20000 },
+  ];
+
+  let txnCount = 0, stmtCount = 0, ccCount = 0, invCount = 0;
+  const sampleTag = 'sample_' + ym;
+
+  // Generate Transactions
+  if (genTxns) {
+    const numTxns = 30 + Math.floor(Math.random() * 20);
+    for (let i = 0; i < numTxns; i++) {
+      const isIncome = Math.random() < 0.2;
+      const member = pick(members);
+      const tpl = isIncome ? pick(incomeDescs) : pick(expenseDescs);
+      const day = randDay();
+      const bankAcct = state.bankAccounts.find(b => b.memberId === member.id) || state.bankAccounts[0];
+
+      state.transactions.push({
+        id: uid(),
+        date: `${ym}-${day}`,
+        type: isIncome ? 'credit' : 'debit',
+        memberId: member.id,
+        description: tpl.d,
+        amount: randAmt(tpl.min, tpl.max),
+        category: tpl.c,
+        mode: tpl.mode || (isIncome ? 'Net Banking' : 'UPI'),
+        bankId: bankAcct?.id || '',
+        ref: '',
+        notes: '',
+        _sample: sampleTag
+      });
+      txnCount++;
+    }
+  }
+
+  // Generate Bank Statement
+  if (genStmt) {
+    const banks = mid ? state.bankAccounts.filter(b => b.memberId === mid) : state.bankAccounts;
+    banks.forEach(bank => {
+      const member = state.members.find(m => m.id === bank.memberId) || members[0];
+      const numRows = 15 + Math.floor(Math.random() * 20);
+      const batchId = uid();
+      let balance = bank.balance || 50000 + Math.random() * 200000;
+
+      for (let i = 0; i < numRows; i++) {
+        const isCredit = Math.random() < 0.3;
+        const tpl = isCredit ? pick(incomeDescs) : pick(expenseDescs);
+        const amt = randAmt(tpl.min, tpl.max);
+        const day = String(Math.min(i + 1, daysInMonth)).padStart(2, '0');
+        const stmtId = uid();
+
+        if (isCredit) balance += amt; else balance -= amt;
+        if (balance < 1000) balance = 5000 + Math.random() * 20000;
+
+        const txn = {
+          id: uid(), date: `${ym}-${day}`, type: isCredit ? 'credit' : 'debit',
+          memberId: member.id, description: tpl.d, amount: amt,
+          bankId: bank.id, ref: '', stmtId, batchId, _sample: sampleTag
+        };
+        state.transactions.push(txn);
+        state.statements.push({
+          id: stmtId, bankId: bank.id, memberId: member.id,
+          txnIds: [txn.id], batchId,
+          date: `${ym}-${day}`, description: tpl.d,
+          debit: isCredit ? 0 : amt, credit: isCredit ? amt : 0,
+          balance: Math.round(balance * 100) / 100, _sample: sampleTag
+        });
+        stmtCount++;
+      }
+
+      if (!state.stmtBatches) state.stmtBatches = [];
+      state.stmtBatches.push({
+        id: batchId, type: 'bank', bankId: bank.id,
+        bankLabel: bank.bankName + ' (...' + (bank.accountNumber || '').slice(-4) + ')',
+        memberId: member.id, memberName: member.name,
+        month: ym, rowCount: numRows,
+        totalDebit: state.statements.filter(s => s.batchId === batchId).reduce((a, s) => a + (s.debit || 0), 0),
+        totalCredit: state.statements.filter(s => s.batchId === batchId).reduce((a, s) => a + (s.credit || 0), 0),
+        closingBalance: Math.round(balance * 100) / 100,
+        uploadedAt: new Date().toISOString(), source: 'sample', _sample: sampleTag
+      });
+    });
+  }
+
+  // Generate CC Statement
+  if (genCCStmt) {
+    const cards = mid ? (state.creditCards || []).filter(c => c.memberId === mid) : (state.creditCards || []);
+    cards.forEach(card => {
+      const member = state.members.find(m => m.id === card.memberId) || members[0];
+      const numRows = 10 + Math.floor(Math.random() * 15);
+      const batchId = uid();
+      const ccDescs = expenseDescs.filter(e => e.mode === 'Credit Card' || Math.random() < 0.3);
+
+      for (let i = 0; i < numRows; i++) {
+        const isPayment = Math.random() < 0.1;
+        const tpl = pick(ccDescs.length ? ccDescs : expenseDescs);
+        const amt = isPayment ? randAmt(5000, 30000) : randAmt(tpl.min, tpl.max);
+        const day = randDay();
+        const stmtId = uid();
+        const txn = {
+          id: uid(), date: `${ym}-${day}`, type: isPayment ? 'credit' : 'debit',
+          memberId: member.id, description: isPayment ? 'Payment Received - Thank You' : tpl.d,
+          amount: amt, cardId: card.id, ref: '', stmtId, batchId, _sample: sampleTag
+        };
+        state.transactions.push(txn);
+        (state.ccStatements = state.ccStatements || []).push({
+          id: stmtId, cardId: card.id, memberId: member.id,
+          txnId: txn.id, batchId,
+          date: `${ym}-${day}`, description: txn.description,
+          amount: amt, type: txn.type, _sample: sampleTag
+        });
+        ccCount++;
+      }
+
+      if (!state.stmtBatches) state.stmtBatches = [];
+      state.stmtBatches.push({
+        id: batchId, type: 'cc', cardId: card.id,
+        cardLabel: card.bankName + ' ••••' + card.last4,
+        memberId: member.id, memberName: member.name,
+        month: ym, rowCount: numRows,
+        totalDebit: state.transactions.filter(t => t.batchId === batchId && t.type === 'debit').reduce((a, t) => a + (t.amount || 0), 0),
+        totalCredit: state.transactions.filter(t => t.batchId === batchId && t.type === 'credit').reduce((a, t) => a + (t.amount || 0), 0),
+        closingBalance: 0,
+        uploadedAt: new Date().toISOString(), source: 'sample', _sample: sampleTag
+      });
+    });
+  }
+
+  // Generate Investments
+  if (genInv) {
+    const invTypes = [
+      { type: '📈 Mutual Fund', names: ['HDFC Nifty 50 Direct Growth', 'SBI Bluechip Direct Growth', 'Axis Midcap Direct Growth', 'Parag Parikh Flexi Cap Direct Growth', 'Mirae Asset Large Cap Direct Growth'] },
+      { type: '📊 Stocks / Equity', names: ['Reliance Industries', 'TCS', 'HDFC Bank', 'Infosys', 'ITC', 'Bharti Airtel'] },
+      { type: '🏦 Fixed Deposit', names: ['HDFC FD 1 Year', 'SBI FD 2 Year', 'ICICI FD 3 Year'] },
+      { type: '💰 PPF / EPF', names: ['PPF Account', 'EPF Balance'] },
+    ];
+    members.forEach(member => {
+      const numInv = 2 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < numInv; i++) {
+        const typeObj = pick(invTypes);
+        const name = pick(typeObj.names);
+        const invested = randAmt(10000, 200000);
+        const returns = (Math.random() - 0.2) * 0.3; // -20% to +30%
+        state.investments.push({
+          id: uid(), memberId: member.id,
+          type: typeObj.type, name,
+          invested, currentValue: Math.round(invested * (1 + returns) * 100) / 100,
+          units: typeObj.type.includes('Mutual') ? Math.round(invested / (50 + Math.random() * 200) * 1000) / 1000 : 0,
+          purchaseDate: `${year - 1}-${String(month).padStart(2, '0')}-01`,
+          notes: '', _sample: sampleTag
+        });
+        invCount++;
+      }
+    });
+  }
+
+  recalcAllBalances();
+  saveData();
+
+  // Refresh visible pages
+  if (document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+  if (document.getElementById('page-transactions')?.classList.contains('active')) { buildTxnMemberTabs(); renderTransactions(); }
+  if (document.getElementById('page-statements')?.classList.contains('active')) { renderStmtBatches(); renderStmtTracker(); renderStatementTable(); renderCCStatementTable(); }
+  if (document.getElementById('page-expenses')?.classList.contains('active')) renderExpenseAnalysis();
+  if (document.getElementById('page-investments')?.classList.contains('active')) renderInvestments();
+
+  const monthLabel = new Date(ym + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  const parts = [];
+  if (txnCount) parts.push(`${txnCount} transactions`);
+  if (stmtCount) parts.push(`${stmtCount} bank stmt rows`);
+  if (ccCount) parts.push(`${ccCount} CC stmt rows`);
+  if (invCount) parts.push(`${invCount} investments`);
+
+  document.getElementById('sample-data-result').innerHTML = `
+    <div style="padding:10px;background:rgba(6,214,160,0.08);border-radius:8px;font-size:12px;color:var(--text2)">
+      ✅ Generated for <strong>${monthLabel}</strong>: ${parts.join(' · ')}
+    </div>`;
+  toast(`Sample data loaded for ${monthLabel}!`);
+}
+
+function clearAllSampleData() {
+  const before = {
+    txns: state.transactions.length,
+    stmts: state.statements.length,
+    ccStmts: (state.ccStatements || []).length,
+    batches: (state.stmtBatches || []).length,
+    inv: state.investments.length
+  };
+
+  state.transactions = state.transactions.filter(t => !t._sample);
+  state.statements = state.statements.filter(s => !s._sample);
+  state.ccStatements = (state.ccStatements || []).filter(s => !s._sample);
+  state.stmtBatches = (state.stmtBatches || []).filter(b => !b._sample);
+  state.investments = state.investments.filter(i => !i._sample);
+  state.expenses = state.expenses.filter(e => !e._sample);
+
+  const removed = (before.txns - state.transactions.length) + (before.stmts - state.statements.length) +
+    (before.ccStmts - (state.ccStatements || []).length) + (before.batches - (state.stmtBatches || []).length) +
+    (before.inv - state.investments.length);
+
+  if (!removed) { toast('No sample data to clear', 'error'); return; }
+
+  recalcAllBalances();
+  saveData();
+  renderDashboard();
+
+  document.getElementById('sample-data-result').innerHTML = `
+    <div style="padding:10px;background:rgba(255,107,107,0.08);border-radius:8px;font-size:12px;color:var(--danger)">
+      🗑 Cleared ${removed} sample records
+    </div>`;
+  toast(`Cleared ${removed} sample records`);
+}
 
 function loadSampleStatement(bank) {
   const samples = {
