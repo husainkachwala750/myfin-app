@@ -1819,11 +1819,21 @@
             <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
             <div class="form-group"><label>Notes</label><input type="text" id="txn-notes" placeholder="Optional notes"></div>
           </div>
+          <div class="form-group" style="margin-top:4px">
+            <label>Tags</label>
+            <div id="txn-tags-wrap" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:32px;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+              <input type="text" id="txn-tags-input" placeholder="Type tag & press Enter" style="border:none;background:transparent;outline:none;font-size:13px;flex:1;min-width:100px;color:var(--text)">
+            </div>
+          </div>
           <button class="btn btn-primary" onclick="addTransaction()" style="margin-top:8px">➕ Add Transaction</button>
         </div>
         <div class="card">
           <div class="section-header"><h3>All Transactions</h3>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="txn-tag-filter" onchange="renderTransactions()" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)">
+                <option value="">All Tags</option>
+                <option value="__untagged__">Untagged</option>
+              </select>
               <button class="btn btn-danger btn-sm" onclick="bulkClearTransactions()" style="font-size:12px">🗑 Clear All</button>
             </div>
           </div>
@@ -4141,6 +4151,12 @@
       <div class="form-group"><label>Amount (₹)</label><input type="number" id="et-amount" placeholder="0.00" step="0.01"></div>
     </div>
     <div class="form-group"><label>Reference / Cheque No.</label><input type="text" id="et-ref" placeholder="Optional reference"></div>
+    <div class="form-group">
+      <label>Tags</label>
+      <div id="et-tags-wrap" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:32px;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+        <input type="text" id="et-tags-input" placeholder="Type tag & press Enter" style="border:none;background:transparent;outline:none;font-size:13px;flex:1;min-width:100px;color:var(--text)">
+      </div>
+    </div>
     <input type="hidden" id="et-id">
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('edit-txn-modal')">Cancel</button>
@@ -6664,7 +6680,7 @@ function _showPageCore(id) {
   if(id==='dashboard') renderDashboard();
   if(id==='members') renderMembers();
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); renderExpenseAnalysis(); }
-  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
+  if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); initTagInput('txn-tags-input','txn-tags-wrap'); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.wallets||[]).filter(w=>!mid||w.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderWallets(); renderLoanAccounts(); populateLoanMemberSelect(); populateWalletMemberSelect(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
@@ -7105,6 +7121,8 @@ function editTxn(id) {
   document.getElementById('et-desc').value   = t.description || '';
   document.getElementById('et-amount').value = t.amount  || '';
   document.getElementById('et-ref').value    = t.ref     || '';
+  setTagPills('et-tags-wrap', 'et-tags-input', t.tags || []);
+  initTagInput('et-tags-input', 'et-tags-wrap');
   openModal('edit-txn-modal');
 }
 function saveEditTxn() {
@@ -7120,6 +7138,7 @@ function saveEditTxn() {
   t.description = document.getElementById('et-desc').value.trim() || 'Transaction';
   t.amount      = amount;
   t.ref         = document.getElementById('et-ref').value.trim();
+  t.tags        = getTagsFromWrap('et-tags-wrap');
   saveData(); renderTransactions(); refreshExpenseAnalysisIfVisible(); closeModal('edit-txn-modal'); toast('✅ Transaction updated');
 }
 
@@ -9313,6 +9332,78 @@ function updateTxnMemberField() {
   }
 }
 
+// ── TAG HELPERS ──
+function initTagInput(inputId, wrapId) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.onkeydown = function(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const tag = inp.value.trim().replace(/,/g,'');
+      if (tag) { addTagPill(wrapId, inputId, tag); inp.value = ''; }
+    }
+    if (e.key === 'Backspace' && !inp.value) {
+      const pills = document.getElementById(wrapId).querySelectorAll('.tag-pill');
+      if (pills.length) pills[pills.length-1].remove();
+    }
+  };
+}
+function addTagPill(wrapId, inputId, tag) {
+  const wrap = document.getElementById(wrapId);
+  const inp = document.getElementById(inputId);
+  // Avoid duplicates
+  const existing = [...wrap.querySelectorAll('.tag-pill')].map(p => p.dataset.tag);
+  if (existing.includes(tag)) return;
+  const pill = document.createElement('span');
+  pill.className = 'tag-pill';
+  pill.dataset.tag = tag;
+  pill.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:rgba(0,119,182,0.12);color:var(--primary);border-radius:12px;font-size:12px;font-weight:600;cursor:default';
+  pill.innerHTML = `🏷️ ${tag}<span onclick="this.parentElement.remove()" style="cursor:pointer;margin-left:2px;opacity:0.6;font-size:14px">&times;</span>`;
+  wrap.insertBefore(pill, inp);
+}
+function getTagsFromWrap(wrapId) {
+  return [...document.getElementById(wrapId).querySelectorAll('.tag-pill')].map(p => p.dataset.tag);
+}
+function clearTagPills(wrapId, inputId) {
+  const wrap = document.getElementById(wrapId);
+  const inp = document.getElementById(inputId);
+  wrap.querySelectorAll('.tag-pill').forEach(p => p.remove());
+  if (inp) inp.value = '';
+}
+function setTagPills(wrapId, inputId, tags) {
+  clearTagPills(wrapId, inputId);
+  (tags || []).forEach(t => addTagPill(wrapId, inputId, t));
+}
+function getAllUniqueTags() {
+  const tags = new Set();
+  state.transactions.forEach(t => (t.tags||[]).forEach(tag => tags.add(tag)));
+  return [...tags].sort();
+}
+function refreshTagFilter() {
+  const sel = document.getElementById('txn-tag-filter');
+  if (!sel) return;
+  const val = sel.value;
+  const tags = getAllUniqueTags();
+  sel.innerHTML = '<option value="">All Tags</option><option value="__untagged__">Untagged</option>' +
+    tags.map(t => `<option value="${t}">🏷️ ${t}</option>`).join('');
+  sel.value = val;
+}
+function quickTagTxn(id) {
+  const tag = prompt('Enter tag name:');
+  if (!tag || !tag.trim()) return;
+  const t = state.transactions.find(x => x.id === id);
+  if (!t) return;
+  if (!t.tags) t.tags = [];
+  const cleaned = tag.trim();
+  if (!t.tags.includes(cleaned)) { t.tags.push(cleaned); saveData(); renderTransactions(); }
+}
+function removeTagFromTxn(id, tag) {
+  const t = state.transactions.find(x => x.id === id);
+  if (!t || !t.tags) return;
+  t.tags = t.tags.filter(tg => tg !== tag);
+  saveData(); renderTransactions();
+}
+
 function addTransaction() {
   const amount = parseFloat(document.getElementById('txn-amount').value);
   if(!amount || amount <= 0) return toast('Enter valid amount', 'error');
@@ -9330,7 +9421,8 @@ function addTransaction() {
     bankId: '',
     walletId: '',
     ref: document.getElementById('txn-ref').value,
-    notes: document.getElementById('txn-notes')?.value || ''
+    notes: document.getElementById('txn-notes')?.value || '',
+    tags: getTagsFromWrap('txn-tags-wrap')
   };
   // Handle bank or wallet selection
   const acctVal = document.getElementById('txn-bank').value;
@@ -9354,13 +9446,20 @@ function addTransaction() {
   document.getElementById('txn-ref').value='';
   document.getElementById('txn-notes').value='';
   document.getElementById('txn-category').value='';
+  clearTagPills('txn-tags-wrap', 'txn-tags-input');
 }
 
 function renderTransactions() {
   const mid = memberFilters.transactions || '';
   let txns = [...state.transactions];
   if (mid) txns = txns.filter(t => t.memberId === mid);
-  const rows = filterByPeriod(txns).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  // Tag filter
+  const tagFilter = document.getElementById('txn-tag-filter')?.value || '';
+  refreshTagFilter();
+  let filtered = filterByPeriod(txns);
+  if (tagFilter === '__untagged__') filtered = filtered.filter(t => !t.tags || !t.tags.length);
+  else if (tagFilter) filtered = filtered.filter(t => (t.tags||[]).includes(tagFilter));
+  const rows = filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const container = document.getElementById('transaction-table');
   if(!rows.length) { container.innerHTML = '<div class="empty-state" style="padding:32px"><p>No transactions yet</p></div>'; return; }
 
@@ -9378,15 +9477,16 @@ function renderTransactions() {
     const bank = state.bankAccounts.find(b => b.id === t.bankId) || {};
     const cat = t.category || t.autoTagCategory || '';
     const mode = t.mode || (t.bankId ? 'Bank' : 'Cash');
+    const tagPills = (t.tags||[]).map(tg => `<span style="display:inline-flex;align-items:center;gap:2px;padding:1px 6px;background:rgba(0,119,182,0.10);color:var(--primary);border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap">🏷️${tg}<span onclick="removeTagFromTxn('${t.id}','${tg.replace(/'/g,"\\'")}')" style="cursor:pointer;opacity:0.5;font-size:12px">&times;</span></span>`).join('');
     return `<tr>
       <td>${t.date}</td>
       <td>${m.name||'—'}</td>
-      <td>${t.description}${cat ? `<div style="font-size:11px;color:var(--text3)">${cat}</div>` : ''}</td>
+      <td>${t.description}${cat ? `<div style="font-size:11px;color:var(--text3)">${cat}</div>` : ''}${tagPills ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px">${tagPills}</div>` : ''}</td>
       <td style="font-size:12px">${mode}</td>
       <td style="font-size:12px;color:var(--text3)">${bank.bankName||'—'}</td>
       <td><span class="badge ${t.type==='credit'?'badge-green':'badge-red'}">${t.type==='credit'?'Credit':'Debit'}</span></td>
       <td class="${t.type==='credit'?'amount-credit':'amount-debit'}">${t.type==='credit'?'+':'-'}${fmt(t.amount)}</td>
-      <td style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm btn-icon" onclick="editTxn('${t.id}')" title="Edit">✏️</button><button class="btn btn-danger btn-sm btn-icon" onclick="deleteTxn('${t.id}')" title="Delete">🗑</button></td>
+      <td style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm btn-icon" onclick="quickTagTxn('${t.id}')" title="Add Tag">🏷️</button><button class="btn btn-secondary btn-sm btn-icon" onclick="editTxn('${t.id}')" title="Edit">✏️</button><button class="btn btn-danger btn-sm btn-icon" onclick="deleteTxn('${t.id}')" title="Delete">🗑</button></td>
     </tr>`;
   }
 
