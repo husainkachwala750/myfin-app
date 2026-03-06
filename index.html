@@ -5146,13 +5146,19 @@ const STORAGE_PROVIDERS = {
   supabase: {
     label: 'MyFin Cloud',
     icon:  '☁️',
-    desc:  "Easiest option — stored securely on MyFin's servers",
+    desc:  "Easiest option — stored securely on MyFin's servers with AES-256 encryption",
     color: '#1a73e8',
+  },
+  offline: {
+    label: 'Offline (Device Only)',
+    icon:  '📱',
+    desc:  'Data stays on this device in browser storage — no internet needed',
+    color: '#059669',
   },
   local: {
     label: 'Local Folder',
     icon:  '💻',
-    desc:  'Save to a folder on this PC or Mac',
+    desc:  'Save to a folder on this PC or Mac (Chrome/Edge only)',
     color: '#0891b2',
   },
   gdrive: {
@@ -5305,6 +5311,8 @@ async function storagePushData(familyId) {
   if (!familyId || _pushInProgress) return;
   const provider = storageGetProvider();
   if (!provider) return;
+  // Offline mode: data is already saved to IDB by saveData() — no external push needed
+  if (provider === 'offline') { setSyncStatus('synced'); return; }
   _pushInProgress = true;
   setSyncStatus('syncing');
   try {
@@ -5336,6 +5344,8 @@ async function storagePushData(familyId) {
 async function storagePullData(familyId) {
   const provider = storageGetProvider();
   if (!provider) return false;
+  // Offline mode: data is already loaded from IDB by initFamilyDatabase() — no external pull
+  if (provider === 'offline') return true;
   try {
     let pkg = null;
     switch(provider) {
@@ -5911,6 +5921,13 @@ async function storagePickerSelect(providerId, familyId) {
   const oldProvider = storageGetProvider();
 
   switch(providerId) {
+    case 'offline':
+      storageSetProvider('offline');
+      _storageReady = true;
+      setSyncStatus('synced');
+      renderDashboard();
+      toast('📱 Offline mode — data saved on this device only', 'success');
+      break;
     case 'supabase':
       storageSetProvider('supabase');
       // Try pulling existing data from cloud first
