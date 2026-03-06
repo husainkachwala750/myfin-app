@@ -5085,21 +5085,13 @@ async function storageBootLoad(familyId) {
     showStoragePicker(familyId, true);
     return;
   }
-  // Ensure token is fresh before syncing
-  try { await sbRefreshToken(); } catch(e) { console.warn('Token refresh on boot:', e); }
   setSyncStatus('syncing');
-  try {
-    const loaded = await storagePullData(familyId);
-    if (loaded) {
-      setSyncStatus('synced');
-    } else {
-      // Cloud returned no data — that's normal for new accounts, not an error
-      console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
-      setSyncStatus('synced');
-    }
-  } catch(e) {
-    console.warn('[MyFin Boot] Sync pull error:', e);
-    setSyncStatus('error');
+  const loaded = await storagePullData(familyId);
+  if (loaded) {
+    setSyncStatus('synced');
+  } else {
+    console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
+    setSyncStatus('synced');
   }
 }
 
@@ -5128,12 +5120,16 @@ async function storagePushSupabase(familyId, pkg) {
 }
 
 async function storagePullSupabase(familyId) {
+  console.log('[MyFin Sync] Pulling from Supabase for family:', familyId);
   const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
+  console.log('[MyFin Sync] Pull response:', res ? (Array.isArray(res) ? res.length + ' rows' : 'non-array') : 'null');
   if (!res || !res.length) return null;
   const row = res[0];
   if (!row?.data) return null;
   // Decrypt sensitive fields
-  return await decryptStateFromCloud(row.data);
+  const decrypted = await decryptStateFromCloud(row.data);
+  console.log('[MyFin Sync] Decrypted data keys:', decrypted ? Object.keys(decrypted).join(',') : 'null');
+  return decrypted;
 }
 
 // ════════════════════════════════════════════════════════════════
