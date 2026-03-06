@@ -10145,12 +10145,13 @@ function renderStmtTracker() {
   const now = new Date();
   const currentYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
-  // Find earliest month from batches or transactions
+  // Find earliest month from batches or transactions (only valid YYYY-MM)
+  const isValidYM = ym => /^\d{4}-\d{2}$/.test(ym) && parseInt(ym.slice(0,4)) > 2000;
   let earliest = currentYM;
-  batches.forEach(b => { if (b.month && b.month < earliest) earliest = b.month; });
+  batches.forEach(b => { if (b.month && isValidYM(b.month) && b.month < earliest) earliest = b.month; });
   (state.transactions || []).forEach(t => {
     const ym = t.date?.slice(0,7);
-    if (ym && ym < earliest) earliest = ym;
+    if (ym && isValidYM(ym) && ym < earliest) earliest = ym;
   });
 
   // Go back at least 6 months from current
@@ -10158,11 +10159,16 @@ function renderStmtTracker() {
   const sixAgoYM = `${sixAgo.getFullYear()}-${String(sixAgo.getMonth()+1).padStart(2,'0')}`;
   if (sixAgoYM < earliest) earliest = sixAgoYM;
 
+  // Cap at max 24 months to prevent runaway loops
+  const maxMonthsBack = new Date(now.getFullYear(), now.getMonth() - 23, 1);
+  const maxBackYM = `${maxMonthsBack.getFullYear()}-${String(maxMonthsBack.getMonth()+1).padStart(2,'0')}`;
+  if (earliest < maxBackYM) earliest = maxBackYM;
+
   // Generate month list from earliest to current
   const months = [];
   let [y, m] = earliest.split('-').map(Number);
   const [cy, cm] = currentYM.split('-').map(Number);
-  while (y < cy || (y === cy && m <= cm)) {
+  while ((y < cy || (y === cy && m <= cm)) && months.length < 36) {
     months.push(`${y}-${String(m).padStart(2,'0')}`);
     m++;
     if (m > 12) { m = 1; y++; }
@@ -10999,7 +11005,7 @@ function renderMonthlyBalances() {
   batches.forEach(b => {
     if (selectedAccount !== 'all' && b.bankId !== selectedAccount) return;
     const month = b.month; // e.g. "2025-01"
-    if (!month) return;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return;
     if (!monthData[month]) monthData[month] = { income: 0, expense: 0, closingBalances: [] };
     if (b.closingBalance > 0) {
       monthData[month].closingBalances.push({ bankId: b.bankId, balance: b.closingBalance });
@@ -11014,7 +11020,7 @@ function renderMonthlyBalances() {
       if (!matchBank) return;
     }
     const month = t.date?.slice(0, 7);
-    if (!month) return;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return;
     if (!monthData[month]) monthData[month] = { income: 0, expense: 0, closingBalances: [] };
     if (t.type === 'credit') monthData[month].income += (t.amount || 0);
     else monthData[month].expense += (t.amount || 0);
