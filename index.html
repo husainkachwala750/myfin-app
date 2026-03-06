@@ -2411,7 +2411,7 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Bank Account</label><select id="stmt-bank"><option value="">Select account</option></select></div>
-                <div class="form-group"><label>Statement Month</label><input type="month" id="stmt-month"></div>
+                <div class="form-group"><label>Statement Month <span style="font-size:10px;color:var(--accent);font-weight:400">(auto-detected)</span></label><input type="month" id="stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
                 <button class="btn btn-primary" style="flex:2" onclick="parseStatement()">⚡ Parse Statement</button>
@@ -2478,7 +2478,7 @@
               </div>
               <div class="form-row">
                 <div class="form-group"><label>Select Credit Card</label><select id="stmt-cc"><option value="">Select card</option></select></div>
-                <div class="form-group"><label>Statement Month</label><input type="month" id="cc-stmt-month"></div>
+                <div class="form-group"><label>Statement Month <span style="font-size:10px;color:var(--accent);font-weight:400">(auto-detected)</span></label><input type="month" id="cc-stmt-month"></div>
               </div>
               <div style="display:flex;gap:10px">
                 <button class="btn btn-primary" style="flex:2" onclick="parseCCStatement()">⚡ Parse CC Statement</button>
@@ -9491,6 +9491,64 @@ function loadSampleStatement(bank) {
 
 let _lastParsedRawCSV = ''; // store raw CSV for saving with batch
 
+// Auto-detect the statement month from parsed row dates
+function autoDetectStmtMonth(rows, inputId) {
+  if (!rows.length) return;
+  const el = document.getElementById(inputId);
+  if (!el) return;
+
+  // Collect all YYYY-MM from parsed dates
+  const monthCounts = {};
+  rows.forEach(r => {
+    const d = normalizeDate(r.date);
+    if (!d) return;
+    const ym = d.slice(0, 7); // "YYYY-MM"
+    monthCounts[ym] = (monthCounts[ym] || 0) + 1;
+  });
+
+  // Pick the month with the most transactions
+  const sorted = Object.entries(monthCounts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length) {
+    el.value = sorted[0][0];
+  }
+}
+
+// Normalize various date formats to YYYY-MM-DD
+function normalizeDate(dateStr) {
+  if (!dateStr) return '';
+  const s = dateStr.trim();
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // DD-MM-YYYY or DD/MM/YYYY
+  let m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+
+  // MM/DD/YYYY (US format) — only if month <= 12
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m && parseInt(m[1]) <= 12) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+
+  // DD Mon YYYY or DD-Mon-YYYY (e.g. "14 Mar 2026", "14-Mar-2026")
+  m = s.match(/^(\d{1,2})[\s-](\w{3})[\s-](\d{4})$/i);
+  if (m) {
+    const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+    const mon = months[m[2].toLowerCase().slice(0,3)];
+    if (mon) return `${m[3]}-${mon}-${m[1].padStart(2,'0')}`;
+  }
+
+  // Fallback: try Date.parse
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+
+  return s; // return as-is if unparseable
+}
+
+// Generate a dedup key for a transaction row (date+desc+amount)
+function stmtTxnDedupKey(date, description, amount, bankOrCardId) {
+  return `${date}|${(description||'').trim().toLowerCase()}|${amount}|${bankOrCardId}`;
+}
+
 function parseStatement() {
   const text = document.getElementById('statement-paste').value.trim();
   if(!text) return toast('Paste statement text or upload a file', 'error');
@@ -9516,7 +9574,10 @@ function parseStatement() {
       const amt = parseFloat(cols[2])||0;
       if(amt < 0) debit = Math.abs(amt); else credit = amt;
     }
-    if(date && desc) parsedRows.push({ date, description: desc, debit, credit, balance });
+    if(date && desc) {
+      const normDate = normalizeDate(date);
+      parsedRows.push({ date: normDate || date, description: desc, debit, credit, balance });
+    }
   });
 
   if(!parsedRows.length) { toast('Could not parse. Check CSV format.', 'error'); return; }
@@ -9541,6 +9602,10 @@ function parseStatement() {
       ✅ Parsed <strong>${parsedRows.length}</strong> transactions
     </div>`;
   document.getElementById('parsed-import-btn').style.display = 'block';
+
+  // Auto-detect statement month from parsed dates
+  autoDetectStmtMonth(parsedRows, 'stmt-month');
+
   toast(`Parsed ${parsedRows.length} transactions!`);
 }
 
@@ -9553,23 +9618,42 @@ function importParsedTransactions() {
   const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
+  let skipCount = 0;
   const batchId = uid();
   const bank = state.bankAccounts.find(b => b.id === bankId);
   const bankLabel = bank ? bank.bankName + ' (...' + (bank.accountNumber||'').slice(-4) + ')' : 'Unknown Bank';
 
+  // Build dedup index of existing transactions for this bank
+  const existingKeys = new Set();
+  (state.transactions || []).forEach(t => {
+    if (t.bankId === bankId) {
+      // Key on credit
+      if (t.type === 'credit') existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, bankId));
+      else existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, bankId));
+    }
+  });
+
   parsedRows.forEach(r => {
+    // Check for duplicates — skip if this exact txn already exists
+    const creditKey = r.credit > 0 ? stmtTxnDedupKey(r.date, r.description, r.credit, bankId) : null;
+    const debitKey = r.debit > 0 ? stmtTxnDedupKey(r.date, r.description, r.debit, bankId) : null;
+    const isDuplicate = (creditKey && existingKeys.has(creditKey)) || (debitKey && existingKeys.has(debitKey));
+    if (isDuplicate) { skipCount++; return; }
+
     const stmtId = uid();
     const txnIds = [];
     if(r.credit > 0) {
       const txn = { id: uid(), date: r.date, type: 'credit', memberId, description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
+      existingKeys.add(creditKey); // add to set so intra-batch dupes are caught too
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
     if(r.debit > 0) {
       const txn = { id: uid(), date: r.date, type: 'debit', memberId, description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
       state.transactions.push(txn);
       txnIds.push(txn.id);
+      existingKeys.add(debitKey);
       if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
     }
     state.statements.push({ id: stmtId, bankId, memberId, txnIds, batchId, ...r });
@@ -9604,10 +9688,15 @@ function importParsedTransactions() {
   renderStmtBatches();
   renderStmtMemberSummary();
   renderBankAccounts();
-  toast(`Imported ${parsedRows.length} transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses/income.` : '') + (closingBalance > 0 ? ` Bank balance updated to ${fmt(closingBalance)}.` : ''));
+  const importedCount = parsedRows.length - skipCount;
+  let msg = `Imported ${importedCount} transactions!`;
+  if (skipCount) msg += ` Skipped ${skipCount} duplicates.`;
+  if (tagCount) msg += ` Auto-tagged ${tagCount} as expenses/income.`;
+  if (closingBalance > 0) msg += ` Bank balance updated to ${fmt(closingBalance)}.`;
+  toast(msg, skipCount && !importedCount ? 'warning' : 'success');
   parsedRows = [];
   _lastParsedRawCSV = '';
-  document.getElementById('parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All transactions imported successfully!</p></div>';
+  document.getElementById('parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${importedCount} transactions imported${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
   document.getElementById('parsed-import-btn').style.display = 'none';
   document.getElementById('statement-paste').value = '';
 }
@@ -10085,7 +10174,10 @@ function parseCCStatement() {
       else { amount = amt; type = 'debit'; }
     }
 
-    if (date && desc && amount > 0) ccParsedRows.push({ date, description: desc, amount, type });
+    if (date && desc && amount > 0) {
+      const normDate = normalizeDate(date);
+      ccParsedRows.push({ date: normDate || date, description: desc, amount, type });
+    }
   });
 
   if (!ccParsedRows.length) { toast('Could not parse. Check format: Date,Description,Amount,Type', 'error'); return; }
@@ -10109,6 +10201,10 @@ function parseCCStatement() {
     ${ccParsedRows.length > 25 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--text3)">+ ${ccParsedRows.length - 25} more rows...</div>` : ''}
     </div>`;
   document.getElementById('cc-parsed-import-btn').style.display = 'block';
+
+  // Auto-detect statement month from parsed dates
+  autoDetectStmtMonth(ccParsedRows, 'cc-stmt-month');
+
   toast(`Parsed ${ccParsedRows.length} CC transactions!`);
 }
 
@@ -10122,19 +10218,34 @@ function importCCParsedTransactions() {
   const card = (state.creditCards || []).find(c => c.id === cardId);
   const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
+  let skipCount = 0;
   const batchId = uid();
   const cardLabel = card ? card.bankName + ' ' + card.network + ' .....' + card.last4 : 'Unknown Card';
 
   if (!state.ccStatements) state.ccStatements = [];
 
+  // Build dedup index of existing CC transactions for this card
+  const existingKeys = new Set();
+  (state.transactions || []).forEach(t => {
+    if (t.cardId === cardId) {
+      existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, cardId));
+    }
+  });
+
   ccParsedRows.forEach(r => {
+    const descWithCard = r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : '');
+    // Check both raw description and description-with-card-suffix for dedup
+    const key1 = stmtTxnDedupKey(r.date, descWithCard, r.amount, cardId);
+    const key2 = stmtTxnDedupKey(r.date, r.description, r.amount, cardId);
+    if (existingKeys.has(key1) || existingKeys.has(key2)) { skipCount++; return; }
+
     const stmtId = uid();
     const txn = {
       id: uid(),
       date: r.date,
       type: r.type === 'credit' ? 'credit' : 'debit',
       memberId: ccMemberId || card?.memberId || '',
-      description: r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : ''),
+      description: descWithCard,
       amount: r.amount,
       bankId: '',
       ref: '',
@@ -10144,6 +10255,7 @@ function importCCParsedTransactions() {
       batchId,
     };
     state.transactions.push(txn);
+    existingKeys.add(key1);
     if (shouldTag && r.type === 'debit') {
       const res = autoCreateFromTransaction(txn);
       if (res) tagCount++;
@@ -10177,10 +10289,15 @@ function importCCParsedTransactions() {
   renderStmtBatches();
   renderStmtMemberSummary();
   const updatedCard = (state.creditCards||[]).find(c => c.id === cardId);
-  toast(`Imported ${ccParsedRows.length} CC transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses.` : '') + (updatedCard ? ` Outstanding: ${fmt(updatedCard.outstanding)}.` : ''));
+  const ccImported = ccParsedRows.length - skipCount;
+  let ccMsg = `Imported ${ccImported} CC transactions!`;
+  if (skipCount) ccMsg += ` Skipped ${skipCount} duplicates.`;
+  if (tagCount) ccMsg += ` Auto-tagged ${tagCount} as expenses.`;
+  if (updatedCard) ccMsg += ` Outstanding: ${fmt(updatedCard.outstanding)}.`;
+  toast(ccMsg, skipCount && !ccImported ? 'warning' : 'success');
   ccParsedRows = [];
   _lastCCParsedRawCSV = '';
-  document.getElementById('cc-parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All CC transactions imported!</p></div>';
+  document.getElementById('cc-parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${ccImported} CC transactions imported${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
   document.getElementById('cc-parsed-import-btn').style.display = 'none';
   document.getElementById('cc-statement-paste').value = '';
 }
@@ -12296,8 +12413,7 @@ function initApp() {
   if(txnDateEl) txnDateEl.value = today();
   const invDateEl = document.getElementById('inv-date');
   if(invDateEl) invDateEl.value = today();
-  const stmtMonthEl = document.getElementById('stmt-month');
-  if(stmtMonthEl) stmtMonthEl.value = today().slice(0,7);
+  // Statement month is auto-detected from parsed data — no default needed
   populateMemberSelects();
   populateBankSelects();
   applyFeatureVisibility();  // hide/show nav items based on enabled features
