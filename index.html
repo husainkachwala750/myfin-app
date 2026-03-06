@@ -5086,12 +5086,16 @@ async function storageBootLoad(familyId) {
     return;
   }
   setSyncStatus('syncing');
-  const loaded = await storagePullData(familyId);
-  if (loaded) {
-    setSyncStatus('synced');
-  } else {
-    console.log('[MyFin Boot] No cloud data found — starting fresh with provider:', provider);
-    setSyncStatus('synced');
+  // Pull with 10s timeout so app doesn't hang forever
+  try {
+    const loaded = await Promise.race([
+      storagePullData(familyId),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 10000))
+    ]);
+    setSyncStatus(loaded ? 'synced' : 'synced');
+  } catch(e) {
+    console.warn('[MyFin Boot] Sync failed or timed out:', e.message);
+    setSyncStatus(navigator.onLine ? 'error' : 'offline');
   }
 }
 
@@ -16470,9 +16474,17 @@ async function bootFamilyApp(familyId) {
   try {
     await initFamilyDatabase(familyId);
     console.log('[MyFin Boot] After IDB load:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
-    // Load data from user's chosen storage provider
+  } catch(e) {
+    console.warn('IDB load error:', e);
+  }
+  // Load data from cloud — don't let it block the app
+  try {
     await storageBootLoad(familyId);
     console.log('[MyFin Boot] After cloud sync:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
+  } catch(e) {
+    console.warn('Cloud sync error:', e);
+  }
+  try {
     // If state is still empty, try migrating from old generic DB / localStorage
     const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
     if (!hasData) {
@@ -16481,7 +16493,7 @@ async function bootFamilyApp(familyId) {
       console.log('[MyFin Boot] After migration:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
     }
   } catch(e) {
-    console.warn('Boot data load error:', e);
+    console.warn('Migration error:', e);
   }
   recalcAllBalances(); // Ensure bank/CC balances are fresh from statements/transactions
   initApp();
