@@ -1199,6 +1199,7 @@
         <h3>Welcome to MyFin!</h3>
         <p>Let's set up your personal finance dashboard in a few quick steps. You can skip any step and come back later.</p>
         <ul class="onboard-checklist">
+          <li><span class="ob-check"></span> Choose where to store your data</li>
           <li><span class="ob-check"></span> Add family members</li>
           <li><span class="ob-check"></span> Set up bank accounts</li>
           <li><span class="ob-check"></span> Add credit cards</li>
@@ -1210,8 +1211,20 @@
         </div>
       </div>
 
-      <!-- Step 1: Members -->
+      <!-- Step 1: Storage Selection -->
       <div class="onboard-step" data-step="1">
+        <div class="onboard-step-icon">&#x1F512;</div>
+        <h3>Where Should We Store Your Data?</h3>
+        <p>Your financial data stays <strong>100% in your control</strong>. Choose where it lives — you can change this later in settings.</p>
+        <div id="onboard-storage-list" style="display:grid;gap:8px;margin-bottom:12px"></div>
+        <div id="onboard-storage-selected" style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;margin-bottom:12px;font-size:13px;color:var(--text);border:1px solid #bbf7d0;text-align:center"></div>
+        <div class="onboard-actions" style="margin-top:10px">
+          <button class="onboard-btn-secondary" onclick="onboardNext()" id="onboard-storage-next" style="display:none">Next Step</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Members -->
+      <div class="onboard-step" data-step="2">
         <div class="onboard-step-icon">&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;&#x200D;&#x1F466;</div>
         <h3>Add Family Members</h3>
         <p>Add people whose finances you want to track. Each member gets their own profile for accounts, investments, and expenses.</p>
@@ -1225,8 +1238,8 @@
         </div>
       </div>
 
-      <!-- Step 2: Bank Accounts -->
-      <div class="onboard-step" data-step="2">
+      <!-- Step 3: Bank Accounts -->
+      <div class="onboard-step" data-step="3">
         <div class="onboard-step-icon">&#x1F3E6;</div>
         <h3>Add Bank Accounts</h3>
         <p>Add your savings, current, or salary accounts. You can upload bank statements later to auto-import transactions.</p>
@@ -1240,8 +1253,8 @@
         </div>
       </div>
 
-      <!-- Step 3: Credit Cards -->
-      <div class="onboard-step" data-step="3">
+      <!-- Step 4: Credit Cards -->
+      <div class="onboard-step" data-step="4">
         <div class="onboard-step-icon">&#x1F4B3;</div>
         <h3>Add Credit Cards</h3>
         <p>Track your credit cards with limits, due dates, and billing cycles. Import CC statements to track spending.</p>
@@ -1255,8 +1268,8 @@
         </div>
       </div>
 
-      <!-- Step 4: Investments -->
-      <div class="onboard-step" data-step="4">
+      <!-- Step 5: Investments -->
+      <div class="onboard-step" data-step="5">
         <div class="onboard-step-icon">&#x1F4C8;</div>
         <h3>Add Investments</h3>
         <p>Track mutual funds, stocks, FDs, gold, PPF, NPS, and more. MyFin supports 12+ asset types.</p>
@@ -1270,8 +1283,8 @@
         </div>
       </div>
 
-      <!-- Step 5: Complete -->
-      <div class="onboard-step" data-step="5">
+      <!-- Step 6: Complete -->
+      <div class="onboard-step" data-step="6">
         <div class="onboard-step-icon">&#x1F389;</div>
         <h3>You're All Set!</h3>
         <p>Your finance dashboard is ready. You can always add more data from the sidebar navigation.</p>
@@ -5418,7 +5431,14 @@ async function storageBootLoad(familyId) {
   if (provider) {
     storageSetProvider(provider);
   } else {
-    // Truly first time — show storage picker
+    // Truly first time — let onboarding wizard handle storage selection if applicable
+    if (!localStorage.getItem('myfin_onboarding_done')) {
+      // Onboarding will show — skip standalone picker, use offline until user picks in wizard
+      _storageReady = true;
+      setSyncStatus('synced');
+      return;
+    }
+    // Not first time but no provider — show standalone storage picker
     showStoragePicker(familyId, true);
     return;
   }
@@ -19836,7 +19856,7 @@ function renderDocuments() {
 
 // =================== ONBOARDING WIZARD ===================
 let _onboardStep = 0;
-const ONBOARD_TOTAL_STEPS = 6; // 0=welcome,1=members,2=banks,3=cards,4=investments,5=done
+const ONBOARD_TOTAL_STEPS = 7; // 0=welcome,1=storage,2=members,3=banks,4=cards,5=investments,6=done
 function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
 function shouldShowOnboarding() {
@@ -19906,7 +19926,49 @@ function onboardGoToPage(page) {
   }
 }
 
+function onboardSelectStorage(providerId) {
+  const familyId = window._currentFamilyId;
+  storageSetProvider(providerId);
+  _storageReady = true;
+  setSyncStatus('synced');
+  window._onboardStoragePicked = providerId;
+  const p = STORAGE_PROVIDERS[providerId];
+  const selDiv = document.getElementById('onboard-storage-selected');
+  if (selDiv) {
+    selDiv.style.display = 'block';
+    selDiv.innerHTML = '&#x2705; <strong>' + esc(p.label) + '</strong> selected';
+  }
+  const nextBtn = document.getElementById('onboard-storage-next');
+  if (nextBtn) nextBtn.style.display = '';
+  // If supabase, kick off a background pull
+  if (providerId === 'supabase' && familyId) {
+    storagePullData(familyId).catch(()=>{});
+  }
+}
+
 function refreshOnboardLists() {
+  // Storage options
+  const sl = document.getElementById('onboard-storage-list');
+  if (sl) {
+    const currentProvider = storageGetProvider() || window._onboardStoragePicked;
+    sl.innerHTML = Object.entries(STORAGE_PROVIDERS).map(([id, p]) => {
+      const isSelected = id === currentProvider;
+      return `<button onclick="onboardSelectStorage('${id}')"
+        style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;border:1.5px solid ${isSelected ? p.color : '#e4e9f0'};background:${isSelected ? p.color+'11' : '#fff'};cursor:pointer;text-align:left;width:100%;transition:all .15s"
+        onmouseover="if(!this.classList.contains('sel'))this.style.borderColor='${p.color}'"
+        onmouseout="if(!this.classList.contains('sel'))this.style.borderColor='#e4e9f0'">
+        <span style="font-size:20px">${p.icon}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px;color:#111827">${p.label}</div>
+          <div style="font-size:11px;color:#6b7a90">${p.desc}</div>
+        </div>
+        ${isSelected ? '<span style="color:#22c55e;font-size:18px">&#x2713;</span>' : '<span style="color:#ccc">&#x203A;</span>'}
+      </button>`;
+    }).join('');
+    // Show next button if already selected
+    const nextBtn = document.getElementById('onboard-storage-next');
+    if (nextBtn && currentProvider) nextBtn.style.display = '';
+  }
   // Members
   const ml = document.getElementById('onboard-members-list');
   if (ml) {
@@ -19940,14 +20002,17 @@ function refreshOnboardLists() {
 function renderOnboardSummary() {
   const el = document.getElementById('onboard-summary');
   if (!el) return;
+  const provider = storageGetProvider() || window._onboardStoragePicked;
+  const pLabel = provider ? (STORAGE_PROVIDERS[provider]?.label || provider) : 'Not set';
   const items = [
-    { label: 'Family Members', count: state.members.length },
-    { label: 'Bank Accounts', count: state.bankAccounts.length },
-    { label: 'Credit Cards', count: state.creditCards.length },
-    { label: 'Investments', count: state.investments.length },
+    { label: 'Data Storage', value: pLabel, done: !!provider },
+    { label: 'Family Members', value: state.members.length + ' added', done: state.members.length > 0 },
+    { label: 'Bank Accounts', value: state.bankAccounts.length + ' added', done: state.bankAccounts.length > 0 },
+    { label: 'Credit Cards', value: state.creditCards.length + ' added', done: state.creditCards.length > 0 },
+    { label: 'Investments', value: state.investments.length + ' added', done: state.investments.length > 0 },
   ];
   el.innerHTML = items.map(i =>
-    `<li class="${i.count ? 'done' : ''}"><span class="ob-check">${i.count ? '&#x2713;' : ''}</span> ${i.label}: <strong>${i.count}</strong> added</li>`
+    `<li class="${i.done ? 'done' : ''}"><span class="ob-check">${i.done ? '&#x2713;' : ''}</span> ${i.label}: <strong>${i.value}</strong></li>`
   ).join('');
 }
 
