@@ -4936,37 +4936,40 @@ async function fsGetFolder(pathParts) {
   return dir;
 }
 
-// ── Create all base folders upfront ──
+// ── Create all base folders upfront under MyFin/Family_xxx root ──
 async function fsEnsureAllFolders() {
   if (!_fsReady || !_fsRootDir) return;
+  const familyId = window._currentFamilyId;
+  if (!familyId) return;
+  const base = storageLocalFamilyPath(familyId);
   try {
-    const allFolders = [
-      ['Banks'],
-      ['Credit Cards'],
-      ['Investments'],
-      ['Investments', 'Mutual Funds'],
-      ['Investments', 'Stocks'],
-      ['Investments', 'Fixed Deposits'],
-      ['Investments', 'PPF & PF'],
-      ['Investments', 'Gold & Commodities'],
-      ['Investments', 'Real Estate'],
-      ['Investments', 'Crypto'],
-      ['Investments', 'Bonds'],
-      ['Investments', 'NPS & Pension'],
-      ['Expenses'],
-      ['Members'],
-      ['Transactions'],
-      ['Insurance'],
-      ['Loans'],
-      ['Documents'],
-      ['Documents', 'Contracts'],
-      ['Documents', 'Businesses'],
-      ['Backups'],
+    const subFolders = [
+      'Banks',
+      'Credit Cards',
+      'Investments',
+      'Expenses',
+      'Members',
+      'Transactions',
+      'Insurance',
+      'Loans',
+      'Documents',
+      'Backups',
     ];
-    for (const path of allFolders) {
-      await fsGetFolder(path);
+    const invSubs = [
+      'Mutual Funds', 'Stocks', 'Fixed Deposits', 'PPF & PF',
+      'Gold & Commodities', 'Real Estate', 'Crypto', 'Bonds', 'NPS & Pension',
+    ];
+    const docSubs = ['Contracts', 'Businesses'];
+    for (const f of subFolders) {
+      await fsGetFolder([...base, f]);
     }
-    console.log('MyFin: All local folders created ✅');
+    for (const s of invSubs) {
+      await fsGetFolder([...base, 'Investments', s]);
+    }
+    for (const s of docSubs) {
+      await fsGetFolder([...base, 'Documents', s]);
+    }
+    console.log('MyFin: All local folders created under ' + base.join('/') + ' ✅');
   } catch(e) { console.warn('FS folder creation failed:', e); }
 }
 
