@@ -5371,6 +5371,17 @@ async function storageBootLoad(familyId) {
   if (!provider) {
     provider = await storageRestoreProviderFromCloud();
   }
+  // If still no provider, check if data exists in Supabase (auto-detect)
+  if (!provider) {
+    try {
+      const existing = await storagePullSupabase(familyId);
+      if (existing) {
+        provider = 'supabase';
+        storageSetProvider('supabase');
+        console.log('[MyFin Boot] Auto-detected supabase provider from existing cloud data');
+      }
+    } catch(e) { console.warn('Auto-detect provider failed:', e); }
+  }
   if (!provider) {
     // Truly first time — show storage picker
     showStoragePicker(familyId, true);
@@ -5383,6 +5394,8 @@ async function storageBootLoad(familyId) {
       storagePullData(familyId),
       new Promise(resolve => setTimeout(() => resolve(false), 10000))
     ]);
+    // Re-persist provider to localStorage in case it was cleared
+    localStorage.setItem(STORAGE_KEY, provider);
     _storageReady = true;
     setSyncStatus('synced');
   } catch(e) {
