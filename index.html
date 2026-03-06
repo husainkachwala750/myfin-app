@@ -9396,7 +9396,16 @@ function populateBankSelects2() {
   // Show only banks belonging to selected member (or all if no member selected)
   const filteredBanks = mid ? state.bankAccounts.filter(b => b.memberId === mid) : state.bankAccounts;
   const bankOpts = filteredBanks.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
-  if(el) el.innerHTML = '<option value="">Select account</option>' + bankOpts;
+  if(el) {
+    const prevVal = el.value;
+    el.innerHTML = '<option value="">Select account</option>' + bankOpts;
+    // Restore previous selection if still valid, or auto-select if only one bank
+    if (filteredBanks.find(b => b.id === prevVal)) {
+      el.value = prevVal;
+    } else if (filteredBanks.length === 1) {
+      el.value = filteredBanks[0].id;
+    }
+  }
 }
 
 function handleStatementUpload(e) {
@@ -9650,14 +9659,15 @@ function importParsedTransactions() {
   if(!parsedRows.length) return;
   const bankId = document.getElementById('stmt-bank').value;
   if(!bankId) return toast('Please select a bank account before importing', 'error');
-  const memberId = memberFilters.statements || window._currentMemberId || '';
+  const bank = state.bankAccounts.find(b => b.id === bankId);
+  // Use member filter, then bank's own memberId as fallback
+  const memberId = memberFilters.statements || bank?.memberId || window._currentMemberId || '';
   const memberName = memberId ? (state.members.find(m => m.id === memberId)?.name || '') : '';
   const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
   let skipCount = 0;
   const batchId = uid();
-  const bank = state.bankAccounts.find(b => b.id === bankId);
   const bankLabel = bank ? bank.bankName + ' (...' + (bank.accountNumber||'').slice(-4) + ')' : 'Unknown Bank';
 
   // Build dedup index of existing transactions for this bank
@@ -10478,7 +10488,14 @@ function populateCCStmtSelect() {
   const mid = memberFilters.statements || '';
   const cards = mid ? (state.creditCards||[]).filter(c => c.memberId === mid) : (state.creditCards || []);
   const opts = cards.map(c => `<option value="${c.id}">${c.bankName} ${c.network} ••••${c.last4}</option>`).join('');
+  const prevVal = sel.value;
   sel.innerHTML = '<option value="">Select card</option>' + opts;
+  // Restore previous selection if still valid, or auto-select if only one card
+  if (cards.find(c => c.id === prevVal)) {
+    sel.value = prevVal;
+  } else if (cards.length === 1) {
+    sel.value = cards[0].id;
+  }
   if (filterSel) filterSel.innerHTML = '<option value="">All Cards</option>' + opts;
 }
 
@@ -10574,10 +10591,11 @@ function importCCParsedTransactions() {
   if (!ccParsedRows.length) return;
   const cardId = document.getElementById('stmt-cc').value;
   if(!cardId) return toast('Please select a credit card before importing', 'error');
-  const ccMemberId = memberFilters.statements || window._currentMemberId || '';
+  const card = (state.creditCards || []).find(c => c.id === cardId);
+  // Use member filter, then card's own memberId as fallback
+  const ccMemberId = memberFilters.statements || card?.memberId || window._currentMemberId || '';
   const ccMemberName = ccMemberId ? (state.members.find(m => m.id === ccMemberId)?.name || '') : '';
   const ccMonth = document.getElementById('cc-stmt-month')?.value || '';
-  const card = (state.creditCards || []).find(c => c.id === cardId);
   const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
   let tagCount = 0;
   let skipCount = 0;
