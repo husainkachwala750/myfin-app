@@ -5092,10 +5092,15 @@ async function storageBootLoad(familyId) {
       storagePullData(familyId),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout — check your connection')), 15000))
     ]);
-    setSyncStatus(loaded ? 'synced' : 'synced');
+    if (loaded) {
+      setSyncStatus('synced');
+    } else {
+      setSyncStatus('synced');
+      console.log('[MyFin Boot] No cloud data — using local');
+    }
   } catch(e) {
-    console.warn('[MyFin Boot] Sync failed or timed out:', e.message);
-    setSyncStatus(navigator.onLine ? 'error' : 'offline');
+    console.warn('[MyFin Boot] Sync failed:', e.message);
+    setSyncStatus('error');
     toast('Cloud sync failed: ' + e.message, 'error');
   }
 }
@@ -5125,15 +5130,16 @@ async function storagePushSupabase(familyId, pkg) {
 }
 
 async function storagePullSupabase(familyId) {
-  console.log('[MyFin Sync] Pulling from Supabase for family:', familyId);
+  toast('Pulling data from cloud...', 'success');
   const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
-  console.log('[MyFin Sync] Pull response:', res ? (Array.isArray(res) ? res.length + ' rows' : 'non-array') : 'null');
-  if (!res || !res.length) return null;
+  if (!res || !res.length) { toast('No cloud data found for this account', 'error'); return null; }
   const row = res[0];
-  if (!row?.data) return null;
+  if (!row?.data) { toast('Cloud data is empty', 'error'); return null; }
   // Decrypt sensitive fields
   const decrypted = await decryptStateFromCloud(row.data);
-  console.log('[MyFin Sync] Decrypted data keys:', decrypted ? Object.keys(decrypted).join(',') : 'null');
+  const members = decrypted?.members?.length || 0;
+  const stmts = decrypted?.statements?.length || 0;
+  toast('Loaded: ' + members + ' members, ' + stmts + ' statements');
   return decrypted;
 }
 
@@ -6364,7 +6370,7 @@ function toast(msg, type='success') {
   el.className = 'toast' + (type === 'error' ? ' toast-error' : '');
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  setTimeout(() => el.remove(), type === 'error' ? 8000 : 3000);
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
