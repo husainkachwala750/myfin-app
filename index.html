@@ -1313,14 +1313,14 @@
     <div class="auth-logo">
       <div class="auth-logo-icon">💰</div>
       <h1>MyFin</h1>
-      <p>Family Finance Manager</p>
+      <p>Personal & Family Finance Manager</p>
     </div>
 
     <!-- SCREEN 1: Family Select / Login / Register -->
     <div id="auth-screen-main">
       <div class="auth-tabs" id="auth-tabs">
         <button class="auth-tab active" onclick="switchAuthTab('login')">🔑 Login</button>
-        <button class="auth-tab" onclick="switchAuthTab('register')">🏠 New Family</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">✨ Register</button>
       </div>
 
       <!-- Login form -->
@@ -1338,17 +1338,24 @@
         <div style="text-align:center;margin-top:6px">
           <span onclick="showForgotPassword()" style="font-size:12px;color:var(--accent);cursor:pointer;opacity:0.8">Forgot password?</span>
         </div>
-        <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
+        <div class="auth-switch">New here? <span onclick="switchAuthTab('register')">Create Account →</span></div>
       </div>
 
       <!-- Register form -->
       <div id="auth-register-form" class="auth-form" style="display:none">
-        <div>
+        <div style="margin-bottom:12px">
+          <label class="auth-label">Account Type</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" id="reg-type-personal" class="auth-type-btn active" onclick="switchRegType('personal')" style="flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--accent);background:var(--accent)15;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;transition:all .2s">👤 Personal</button>
+            <button type="button" id="reg-type-family" class="auth-type-btn" onclick="switchRegType('family')" style="flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text3);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s">👨‍👩‍👧‍👦 Family</button>
+          </div>
+        </div>
+        <div id="reg-family-name-row" style="display:none">
           <label class="auth-label">Family Name</label>
           <input type="text" class="auth-input" id="auth-reg-family" placeholder="e.g. The Sharma Family">
         </div>
         <div>
-          <label class="auth-label">Your Name (Admin)</label>
+          <label class="auth-label" id="reg-name-label">Your Name</label>
           <input type="text" class="auth-input" id="auth-reg-name" placeholder="Your full name">
         </div>
         <div>
@@ -1364,8 +1371,8 @@
           <input type="password" class="auth-input" id="auth-reg-confirm" placeholder="Re-enter password" onkeydown="if(event.key==='Enter')doFamilyRegister()">
         </div>
         <div id="auth-reg-error" class="auth-error"></div>
-        <button class="auth-btn" onclick="doFamilyRegister()">🏠 Create Family</button>
-        <div class="auth-switch">Already have a family? <span onclick="switchAuthTab('login')">Login →</span></div>
+        <button class="auth-btn" id="auth-reg-btn" onclick="doFamilyRegister()">👤 Create Account</button>
+        <div class="auth-switch">Already have an account? <span onclick="switchAuthTab('login')">Login →</span></div>
       </div>
     </div>
 
@@ -6489,7 +6496,7 @@ function addMember() {
 function renderMembers() {
   const grid = document.getElementById('members-grid');
   if(!state.members.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">👨‍👩‍👧‍👦</div><p>No family members yet. Add your first member!</p></div>';
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">👨‍👩‍👧‍👦</div><p>${isPersonalMode() ? 'Set up your profile to get started!' : 'No family members yet. Add your first member!'}</p></div>`;
     return;
   }
   grid.innerHTML = state.members.map(m => {
@@ -7641,15 +7648,22 @@ const memberFilters = { expenses: '', investments: '', bank: '', creditcards: ''
 function buildMemberTabs(containerId, filterKey, onSelect, countFn) {
   const el = document.getElementById(containerId);
   if(!el) return;
+  // Personal mode with single member: hide member tabs entirely
+  if (isPersonalMode() && state.members.length <= 1) {
+    el.innerHTML = '';
+    memberFilters[filterKey] = state.members.length === 1 ? state.members[0].id : '';
+    return;
+  }
   const allCount = countFn('');
+  const allLabel = isPersonalMode() ? '📊 All' : '👨‍👩‍👧‍👦 All Family';
   const tabs = [
     `<div class="member-tab member-tab-all ${!memberFilters[filterKey]?'active':''}" onclick="selectMemberTab('${filterKey}','',this,'${containerId}')">
-      👨‍👩‍👧‍👦 All Family <span class="tab-count">${allCount}</span>
+      ${allLabel} <span class="tab-count">${allCount}</span>
     </div>`
   ];
   state.members.forEach(m => {
     const cnt = countFn(m.id);
-    tabs.push(`<div class="member-tab ${memberFilters[filterKey]===m.id?'active':''}" 
+    tabs.push(`<div class="member-tab ${memberFilters[filterKey]===m.id?'active':''}"
       style="border-color:${memberFilters[filterKey]===m.id?m.color||'var(--accent)':'transparent'};${memberFilters[filterKey]===m.id?`background:${m.color||'#00e5ff'}18;color:var(--text)`:''};"
       onclick="selectMemberTab('${filterKey}','${m.id}',this,'${containerId}')">
       <div class="tab-avatar" style="background:${m.color||'#00e5ff'}22;border:1.5px solid ${m.color||'#00e5ff'};color:${m.color||'#00e5ff'}">${m.name[0].toUpperCase()}</div>
@@ -10335,12 +10349,12 @@ function switchDashView(view) {
   document.getElementById('view-toggle-member').classList.toggle('active', view === 'member');
   document.getElementById('member-selector-wrap').style.display = view === 'member' ? 'block' : 'none';
   if(view === 'family') {
-    document.getElementById('dash-title').textContent = 'Family Dashboard';
-    document.getElementById('dash-subtitle').textContent = 'Complete overview of your family finances';
+    document.getElementById('dash-title').textContent = isPersonalMode() ? 'My Dashboard' : 'Family Dashboard';
+    document.getElementById('dash-subtitle').textContent = isPersonalMode() ? 'Complete overview of your personal finances' : 'Complete overview of your family finances';
     renderFamilyDashboard();
   } else {
     document.getElementById('dash-title').textContent = 'Member Dashboard';
-    document.getElementById('dash-subtitle').textContent = 'Individual financial profile for each family member';
+    document.getElementById('dash-subtitle').textContent = isPersonalMode() ? 'Your financial profile' : 'Individual financial profile for each family member';
     renderMemberAvatarBar();
     if(!activeMemberId && state.members.length) activeMemberId = state.members[0].id;
     if(activeMemberId) renderMemberDashboard(activeMemberId);
@@ -12132,7 +12146,7 @@ function initApp() {
 const FEATURE_DEFS = [
   // ── Core (always on, cannot be disabled) ──
   { id:'dashboard',    label:'Dashboard',           emoji:'📊', color:'#1a73e8', tag:'core',     desc:'Family financial overview, KPIs and quick stats.',                        page:'dashboard',    navText:'Dashboard',        core:true  },
-  { id:'members',      label:'Family Members',      emoji:'👨‍👩‍👧‍👦', color:'#06d6a0', tag:'core',     desc:'Add and manage up to 200 family members with profiles.',                  page:'members',      navText:'Family Members',   core:true  },
+  { id:'members',      label:'Members',             emoji:'👨‍👩‍👧‍👦', color:'#06d6a0', tag:'core',     desc:'Add and manage member profiles.',                                         page:'members',      navText:'Members',          core:true, _familyLabel:'Family Members', _personalLabel:'My Profile' },
   { id:'expenses',     label:'Expenses',            emoji:'💸', color:'#f87171', tag:'core',     desc:'Track and categorise daily family expenses.',                             page:'expenses',     navText:'Expenses',         core:true  },
   { id:'transactions', label:'Transactions',        emoji:'🔄', color:'#60a5fa', tag:'core',     desc:'Full ledger of income and payment transactions.',                         page:'transactions', navText:'Transactions',     core:true  },
   { id:'reports',      label:'Reports & Analytics', emoji:'📋', color:'#a78bfa', tag:'core',     desc:'Financial summaries, trends and insights.',                               page:'reports',      navText:'Reports',          core:true  },
@@ -15709,14 +15723,14 @@ function exportPortfolioPDF() {
     <div class="auth-logo">
       <div class="auth-logo-icon">💰</div>
       <h1>MyFin</h1>
-      <p>Family Finance Manager</p>
+      <p>Personal & Family Finance Manager</p>
     </div>
 
     <!-- SCREEN 1: Family Select / Login / Register -->
     <div id="auth-screen-main">
       <div class="auth-tabs" id="auth-tabs">
         <button class="auth-tab active" onclick="switchAuthTab('login')">🔑 Login</button>
-        <button class="auth-tab" onclick="switchAuthTab('register')">🏠 New Family</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">✨ Register</button>
       </div>
 
       <!-- Login form -->
@@ -15733,17 +15747,24 @@ function exportPortfolioPDF() {
         </div>
         <div id="auth-login-error" class="auth-error">Incorrect password. Please try again.</div>
         <button class="auth-btn" onclick="doFamilyLogin()" id="auth-login-btn">🔓 Login</button>
-        <div class="auth-switch">No family yet? <span onclick="switchAuthTab('register')">Create one →</span></div>
+        <div class="auth-switch">New here? <span onclick="switchAuthTab('register')">Create Account →</span></div>
       </div>
 
       <!-- Register form -->
       <div id="auth-register-form" class="auth-form" style="display:none">
-        <div>
+        <div style="margin-bottom:12px">
+          <label class="auth-label">Account Type</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" id="reg-type-personal2" class="auth-type-btn active" onclick="switchRegType('personal')" style="flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--accent);background:var(--accent)15;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;transition:all .2s">👤 Personal</button>
+            <button type="button" id="reg-type-family2" class="auth-type-btn" onclick="switchRegType('family')" style="flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text3);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s">👨‍👩‍👧‍👦 Family</button>
+          </div>
+        </div>
+        <div id="reg-family-name-row2" style="display:none">
           <label class="auth-label">Family Name</label>
           <input type="text" class="auth-input" id="auth-reg-family" placeholder="e.g. The Sharma Family">
         </div>
         <div>
-          <label class="auth-label">Admin Name (You)</label>
+          <label class="auth-label" id="reg-name-label2">Your Name</label>
           <input type="text" class="auth-input" id="auth-reg-name" placeholder="Your full name">
         </div>
         <div>
@@ -15755,8 +15776,8 @@ function exportPortfolioPDF() {
           <input type="password" class="auth-input" id="auth-reg-confirm" placeholder="Re-enter password" onkeydown="if(event.key==='Enter')doFamilyRegister()">
         </div>
         <div id="auth-reg-error" class="auth-error"></div>
-        <button class="auth-btn" onclick="doFamilyRegister()">🏠 Create Family</button>
-        <div class="auth-switch">Already have a family? <span onclick="switchAuthTab('login')">Login →</span></div>
+        <button class="auth-btn" id="auth-reg-btn2" onclick="doFamilyRegister()">👤 Create Account</button>
+        <div class="auth-switch">Already have an account? <span onclick="switchAuthTab('login')">Login →</span></div>
       </div>
     </div>
 
@@ -15971,6 +15992,102 @@ async function sbSignOut(accessToken) {
   }).catch(()=>{});
 }
 
+// ── Account Type (Personal vs Family) ─────────────────────
+let _regAccountType = 'personal';
+
+function switchRegType(type) {
+  _regAccountType = type;
+  // Update buttons in both forms
+  ['','2'].forEach(suffix => {
+    const pBtn = document.getElementById('reg-type-personal' + suffix);
+    const fBtn = document.getElementById('reg-type-family' + suffix);
+    const famRow = document.getElementById('reg-family-name-row' + suffix);
+    const nameLabel = document.getElementById('reg-name-label' + suffix);
+    const regBtn = document.getElementById('auth-reg-btn' + suffix);
+    if (pBtn) {
+      if (type === 'personal') {
+        pBtn.style.borderColor = 'var(--accent)'; pBtn.style.background = 'var(--accent)15'; pBtn.style.color = 'var(--accent)'; pBtn.style.fontWeight = '700';
+        if(fBtn) { fBtn.style.borderColor = 'var(--border)'; fBtn.style.background = 'transparent'; fBtn.style.color = 'var(--text3)'; fBtn.style.fontWeight = '600'; }
+      } else {
+        if(fBtn) { fBtn.style.borderColor = 'var(--accent)'; fBtn.style.background = 'var(--accent)15'; fBtn.style.color = 'var(--accent)'; fBtn.style.fontWeight = '700'; }
+        pBtn.style.borderColor = 'var(--border)'; pBtn.style.background = 'transparent'; pBtn.style.color = 'var(--text3)'; pBtn.style.fontWeight = '600';
+      }
+    }
+    if (famRow) famRow.style.display = type === 'family' ? '' : 'none';
+    if (nameLabel) nameLabel.textContent = type === 'personal' ? 'Your Name' : 'Your Name (Admin)';
+    if (regBtn) { regBtn.innerHTML = type === 'personal' ? '👤 Create Account' : '👨‍👩‍👧‍👦 Create Family'; }
+  });
+}
+
+function isPersonalMode() {
+  const session = getSession();
+  return session?.account_type === 'personal';
+}
+
+function getAccountLabel(familyWord, personalWord) {
+  return isPersonalMode() ? (personalWord || 'My') : (familyWord || 'Family');
+}
+
+function applyAccountTypeLabels() {
+  const personal = isPersonalMode();
+  // Dashboard title
+  const dt = document.getElementById('dash-title');
+  if (dt) dt.textContent = personal ? 'My Dashboard' : 'Family Dashboard';
+  // Members page header
+  const mph = document.querySelector('#page-members .page-header h2');
+  if (mph) mph.textContent = personal ? 'My Profile' : 'Family Members';
+  const mpp = document.querySelector('#page-members .page-header p');
+  if (mpp) mpp.textContent = personal ? 'Manage your profile and income sources' : 'Manage family member profiles and income sources';
+  // Members section title
+  const mst = document.querySelector('#page-members h3');
+  if (mst) mst.textContent = personal ? 'Profile & Access' : 'Family Members & Access';
+  // Navigation items with "Family Members"
+  document.querySelectorAll('.more-drawer-item').forEach(el => {
+    if (el.textContent.includes('Family Members')) {
+      const icon = el.querySelector('.icon');
+      el.innerHTML = (icon ? icon.outerHTML + ' ' : '') + (personal ? 'My Profile' : 'Family Members');
+    }
+  });
+  document.querySelectorAll('.setup-nav-title').forEach(el => {
+    if (el.textContent.trim() === 'Family Members') el.textContent = personal ? 'My Profile' : 'Family Members';
+  });
+  document.querySelectorAll('.setup-nav-label').forEach(el => {
+    if (el.textContent.includes('Family')) el.textContent = personal ? '👤 Personal' : '👨‍👩‍👧‍👦 Family';
+  });
+  // "Family View" button on dashboard
+  document.querySelectorAll('button, .dash-view-btn, [class*="view"]').forEach(el => {
+    if (el.textContent.includes('Family View')) {
+      el.innerHTML = el.innerHTML.replace('Family View', personal ? 'My View' : 'Family View');
+    }
+  });
+  // Hide member-related UI in personal mode with single member
+  if (personal && state.members.length <= 1) {
+    // Hide "Add Member" buttons
+    document.querySelectorAll('[onclick*="addMember"], [onclick*="showAddMember"]').forEach(el => {
+      if (!el.closest('.page-header')) el.style.display = 'none';
+    });
+  }
+  // Features list label
+  const featuresLabels = document.querySelectorAll('.feature-label, .setup-nav-title');
+  featuresLabels.forEach(el => {
+    if (el.textContent.trim() === 'Family Members') el.textContent = personal ? 'My Profile' : 'Family Members';
+  });
+  // Dashboard view toggle: hide Family/Member toggle in personal mode with single member
+  if (personal && state.members.length <= 1) {
+    const viewToggle = document.getElementById('view-toggle-family')?.parentElement;
+    if (viewToggle) viewToggle.style.display = 'none';
+  }
+  // Update "Family View" / "Member View" button text
+  const vtf = document.getElementById('view-toggle-family');
+  if (vtf) vtf.innerHTML = personal ? '📊 My View' : '👨‍👩‍👧‍👦 Family View';
+  // Continue as Family Admin button
+  document.querySelectorAll('button').forEach(el => {
+    if (el.textContent.includes('Continue as Family Admin')) {
+      el.innerHTML = el.innerHTML.replace('Continue as Family Admin', personal ? 'Continue' : 'Continue as Family Admin');
+    }
+  });
+}
+
 // ── Session ───────────────────────────────────────────────
 function getSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); } catch { return null; }
@@ -16075,10 +16192,22 @@ async function doFamilyLogin() {
     const userId = authData.user?.id;
     const accessToken = authData.access_token;
 
-    // 2. Get family record
+    // 2. Get family record + account_type from user_metadata
     setSession({ access_token: accessToken, user_id: userId });
     const family = await sbGetFamily(userId);
-    if (!family) throw new Error('No family found for this account. Please register first.');
+    if (!family) throw new Error('No account found. Please register first.');
+
+    // Restore account_type from Supabase user_metadata
+    let accountType = 'family';
+    try {
+      const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
+      });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        accountType = userData?.user_metadata?.account_type || 'family';
+      }
+    } catch(e) { /* fallback to family */ }
 
     // 3. Get members
     const members = await sbGetFamilyMembers(family.id);
@@ -16093,21 +16222,27 @@ async function doFamilyLogin() {
       member_name: adminMember?.name || 'Admin',
       is_admin: true,
       email,
+      account_type: accountType,
       login_time: Date.now(),
       all_members: members
     };
     setSession(fullSession);
     cacheSessionLocally(fullSession);
 
-    // Check if family has non-admin members for PIN login
-    const nonAdmins = members.filter(m=>!m.is_admin);
-    if (nonAdmins.length > 0) {
-      _pendingFamilyId = family.id;
-      _pendingFamilySupabaseId = family.id;
-      _pendingSession = fullSession;
-      showMemberSelectFromSupabase(family, members);
-    } else {
+    // Personal mode: skip member select, go straight to app
+    if (accountType === 'personal') {
       startSession(fullSession);
+    } else {
+      // Check if family has non-admin members for PIN login
+      const nonAdmins = members.filter(m=>!m.is_admin);
+      if (nonAdmins.length > 0) {
+        _pendingFamilyId = family.id;
+        _pendingFamilySupabaseId = family.id;
+        _pendingSession = fullSession;
+        showMemberSelectFromSupabase(family, members);
+      } else {
+        startSession(fullSession);
+      }
     }
 
     btn.disabled=false; btn.textContent='Login';
@@ -16120,21 +16255,25 @@ async function doFamilyLogin() {
 }
 
 async function doFamilyRegister() {
-  const familyName = document.getElementById('auth-reg-family').value.trim();
+  const isPersonal = _regAccountType === 'personal';
+  const familyName = isPersonal ? '' : document.getElementById('auth-reg-family').value.trim();
   const adminName  = document.getElementById('auth-reg-name').value.trim();
   const email      = document.getElementById('auth-reg-email').value.trim();
   const password   = document.getElementById('auth-reg-password').value;
   const confirm    = document.getElementById('auth-reg-confirm').value;
   const errEl      = document.getElementById('auth-reg-error');
   const btn        = document.querySelector('#auth-register-form .auth-btn');
+  const btnLabel   = isPersonal ? 'Create Account' : 'Create Family';
 
   errEl.textContent = ''; errEl.classList.remove('show');
 
-  if (!familyName) { errEl.textContent = 'Enter your family name.'; errEl.classList.add('show'); return; }
+  if (!isPersonal && !familyName) { errEl.textContent = 'Enter your family name.'; errEl.classList.add('show'); return; }
   if (!adminName)  { errEl.textContent = 'Enter your name.'; errEl.classList.add('show'); return; }
   if (!email)      { errEl.textContent = 'Enter your email.'; errEl.classList.add('show'); return; }
   if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
   if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+  const displayName = isPersonal ? adminName : familyName;
 
   btn.disabled = true; btn.textContent = 'Creating…';
   try {
@@ -16149,53 +16288,63 @@ async function doFamilyRegister() {
       const loginData = await sbSignIn(email, password);
       accessToken = loginData.access_token;
     } catch(e) {
-      // Email confirmation may be required
       errEl.textContent = 'Account created! Please check your email to confirm, then login.';
       errEl.style.color = '#06d6a0';
       errEl.classList.add('show');
-      btn.disabled = false; btn.textContent = 'Create Family';
+      btn.disabled = false; btn.textContent = btnLabel;
       return;
     }
 
     setSession({ access_token: accessToken, user_id: userId });
 
-    // 3. Create family
-    const family = await sbCreateFamily(userId, familyName);
-    if (!family) throw new Error('Failed to create family record.');
+    // 3. Create family record (used for both personal & family accounts)
+    const family = await sbCreateFamily(userId, displayName);
+    if (!family) throw new Error('Failed to create account record.');
 
-    // 4. Add admin member
+    // 4. Add member (self for personal, admin for family)
     const memberId = generateId();
     await sbUpsertFamilyMember({
       id: memberId,
       family_id: family.id,
       name: adminName,
-      role: 'Admin',
+      role: isPersonal ? 'Owner' : 'Admin',
       is_admin: true,
       color: '#0096c7'
     });
 
-    // 5. Start session — storage picker will show on boot (first time)
+    // 5. Save account_type to Supabase user_metadata
+    const acctType = isPersonal ? 'personal' : 'family';
+    try {
+      await fetch(SUPABASE_URL + '/auth/v1/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken },
+        body: JSON.stringify({ data: { account_type: acctType } })
+      });
+    } catch(e) { console.warn('Could not save account_type:', e); }
+
+    // 6. Start session
     const session = {
       access_token: accessToken,
       user_id: userId,
       family_id: family.id,
-      family_name: familyName,
+      family_name: displayName,
       member_id: memberId,
       member_name: adminName,
       is_admin: true,
       email,
+      account_type: acctType,
       login_time: Date.now(),
-      all_members: [{ id: memberId, name: adminName, role: 'Admin', is_admin: true, color: '#0096c7' }]
+      all_members: [{ id: memberId, name: adminName, role: isPersonal ? 'Owner' : 'Admin', is_admin: true, color: '#0096c7' }]
     };
     setSession(session);
     cacheSessionLocally(session);
     startSession(session);
 
-    btn.disabled = false; btn.textContent = 'Create Family';
+    btn.disabled = false; btn.textContent = btnLabel;
   } catch(e) {
     errEl.textContent = e.message;
     errEl.classList.add('show');
-    btn.disabled = false; btn.textContent = 'Create Family';
+    btn.disabled = false; btn.textContent = btnLabel;
   }
 }
 
@@ -16276,7 +16425,7 @@ function loginAsFamilyAdmin() {
 function cacheSessionLocally(session) {
   const cached = JSON.parse(localStorage.getItem('myfin_offline_sessions')||'[]');
   const idx = cached.findIndex(s=>s.email===session.email);
-  const entry = { email: session.email, family_name: session.family_name, family_id: session.family_id, cached_at: Date.now() };
+  const entry = { email: session.email, family_name: session.family_name, family_id: session.family_id, account_type: session.account_type || 'family', cached_at: Date.now() };
   if(idx>=0) cached[idx]=entry; else cached.push(entry);
   localStorage.setItem('myfin_offline_sessions', JSON.stringify(cached));
 }
@@ -16304,6 +16453,8 @@ function updateSessionUI() {
   const session=getSession();
   const bn=document.getElementById('family-badge-name'); if(bn) bn.textContent=session?.family_name||'Family';
   const ba=document.getElementById('family-badge-avatar'); if(ba) ba.textContent=(session?.family_name||'F').charAt(0).toUpperCase();
+  // Update dynamic labels based on account type
+  applyAccountTypeLabels();
 }
 
 async function bootFamilyApp(familyId) {
@@ -16331,6 +16482,7 @@ async function bootFamilyApp(familyId) {
   }
   recalcAllBalances(); // Ensure bank/CC balances are fresh from statements/transactions
   initApp();
+  applyAccountTypeLabels(); // Update labels based on personal/family mode
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
   // Show sync status
@@ -16475,6 +16627,21 @@ async function logoutUser() {
   const bb=document.getElementById('family-badge-btn'); if(bb) bb.style.display='none';
   _pendingFamilyId=null; _pendingSession=null;
   switchAuthTab('login');
+}
+
+function switchAuthTab(tab) {
+  const loginForm = document.getElementById('auth-login-form');
+  const regForm = document.getElementById('auth-register-form');
+  const tabs = document.querySelectorAll('#auth-tabs .auth-tab');
+  if (tab === 'register') {
+    if (loginForm) loginForm.style.display = 'none';
+    if (regForm) regForm.style.display = '';
+    tabs.forEach((t,i) => t.classList.toggle('active', i === 1));
+  } else {
+    if (loginForm) loginForm.style.display = '';
+    if (regForm) regForm.style.display = 'none';
+    tabs.forEach((t,i) => t.classList.toggle('active', i === 0));
+  }
 }
 
 function showAuthScreen() {
