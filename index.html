@@ -1619,6 +1619,19 @@
           </div>
         </div>
 
+        <!-- Monthly Balance Tracker -->
+        <div class="card" style="margin-bottom:24px">
+          <div class="section-header">
+            <h3>Monthly Balances</h3>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="dash-balance-account" onchange="renderMonthlyBalances()" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(0,150,199,0.25);background:rgba(0,150,199,0.06);color:var(--text);font-size:12px">
+                <option value="all">All Accounts</option>
+              </select>
+            </div>
+          </div>
+          <div id="dash-monthly-balances"></div>
+        </div>
+
         <div class="card">
           <div class="section-header"><h3>Recent Transactions</h3><button class="btn btn-secondary btn-sm" onclick="showPage('transactions')">View All</button></div>
           <div id="recent-txn-wrapper" style="overflow:hidden;border-radius:10px;border:1px solid #e4e9f0;display:none">
@@ -10574,6 +10587,145 @@ function renderFamilyDashboard() {
       <td class="${t.type==='credit'?'amount-credit':'amount-debit'}">${t.type==='credit'?'+':'-'}${fmt(t.amount)}</td>
     </tr>`;
   }).join('');
+
+  // Render monthly balances card
+  renderMonthlyBalances();
+}
+
+function renderMonthlyBalances() {
+  const container = document.getElementById('dash-monthly-balances');
+  const accountSelect = document.getElementById('dash-balance-account');
+  if (!container) return;
+
+  // Populate account dropdown (only rebuild if options changed)
+  const banks = state.bankAccounts || [];
+  const expectedOpts = 1 + banks.length;
+  if (accountSelect && accountSelect.options.length !== expectedOpts) {
+    const curVal = accountSelect.value;
+    accountSelect.innerHTML = '<option value="all">All Accounts</option>' +
+      banks.map(b => `<option value="${b.id}">${b.bankName || b.name || 'Account'}</option>`).join('');
+    accountSelect.value = curVal || 'all';
+  }
+  const selectedAccount = accountSelect?.value || 'all';
+
+  // Build monthly data from transactions and statement batches
+  const batches = (state.stmtBatches || []).filter(b => b.type === 'bank');
+  const txns = state.transactions || [];
+
+  // Collect months from batches and transactions
+  const monthData = {}; // { "2025-01": { income, expense, closingBalances: [{bankId, balance}] } }
+
+  // From statement batches — closing balances per month per bank
+  batches.forEach(b => {
+    if (selectedAccount !== 'all' && b.bankId !== selectedAccount) return;
+    const month = b.month; // e.g. "2025-01"
+    if (!month) return;
+    if (!monthData[month]) monthData[month] = { income: 0, expense: 0, closingBalances: [] };
+    if (b.closingBalance > 0) {
+      monthData[month].closingBalances.push({ bankId: b.bankId, balance: b.closingBalance });
+    }
+  });
+
+  // From transactions — income & expense per month
+  txns.forEach(t => {
+    if (selectedAccount !== 'all') {
+      // Filter by bank account if selected
+      const matchBank = t.bankId === selectedAccount || t.accountId === selectedAccount;
+      if (!matchBank) return;
+    }
+    const month = t.date?.slice(0, 7);
+    if (!month) return;
+    if (!monthData[month]) monthData[month] = { income: 0, expense: 0, closingBalances: [] };
+    if (t.type === 'credit') monthData[month].income += (t.amount || 0);
+    else monthData[month].expense += (t.amount || 0);
+  });
+
+  const months = Object.keys(monthData).sort().slice(-12); // last 12 months
+
+  if (!months.length) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No monthly data yet. Import bank statements or add transactions to see monthly balances.</div>';
+    return;
+  }
+
+  // Compute net flow and running balance
+  const rows = months.map(m => {
+    const d = monthData[m];
+    const closingTotal = d.closingBalances.reduce((a, c) => a + c.balance, 0);
+    const net = d.income - d.expense;
+    return { month: m, income: d.income, expense: d.expense, net, closingBalance: closingTotal };
+  });
+
+  // Determine if we have closing balances to show
+  const hasClosing = rows.some(r => r.closingBalance > 0);
+
+  // Bar chart — show net flow per month (green positive, red negative)
+  const maxVal = Math.max(...rows.map(r => Math.max(Math.abs(r.net), r.closingBalance || 0)), 1);
+  const chartHeight = 140;
+
+  const barsHtml = rows.map(r => {
+    const netH = Math.max(4, (Math.abs(r.net) / maxVal) * chartHeight);
+    const netColor = r.net >= 0 ? 'rgba(6,214,160,0.75)' : 'rgba(255,107,107,0.75)';
+    const closingH = hasClosing ? Math.max(4, ((r.closingBalance || 0) / maxVal) * chartHeight) : 0;
+    const monthLabel = r.month.slice(5); // "01", "02" etc
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mName = monthNames[parseInt(monthLabel) - 1] || monthLabel;
+
+    if (hasClosing) {
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0">
+        <div style="display:flex;gap:2px;align-items:flex-end;height:${chartHeight}px;width:100%">
+          <div style="flex:1;background:rgba(0,229,255,0.5);border-radius:3px 3px 0 0;height:${closingH}px" title="Closing Balance: ${fmt(r.closingBalance)}"></div>
+          <div style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" title="Net: ${r.net>=0?'+':''}${fmt(r.net)}"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text3);white-space:nowrap">${mName}</div>
+      </div>`;
+    } else {
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0">
+        <div style="display:flex;align-items:flex-end;height:${chartHeight}px;width:100%">
+          <div style="flex:1;background:${netColor};border-radius:3px 3px 0 0;height:${netH}px" title="Net: ${r.net>=0?'+':''}${fmt(r.net)}"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text3);white-space:nowrap">${mName}</div>
+      </div>`;
+    }
+  }).join('');
+
+  // Table view below chart
+  const tableRows = rows.map(r => {
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const [y, m] = r.month.split('-');
+    const mLabel = monthNames[parseInt(m) - 1] + ' ' + y;
+    const netClass = r.net >= 0 ? 'amount-credit' : 'amount-debit';
+    const netSign = r.net >= 0 ? '+' : '';
+    return `<tr>
+      <td style="font-weight:600;font-size:12px">${mLabel}</td>
+      <td style="color:var(--seafoam);font-family:'DM Mono',monospace;font-size:12px">${r.income ? '+' + fmt(r.income) : '—'}</td>
+      <td style="color:var(--danger);font-family:'DM Mono',monospace;font-size:12px">${r.expense ? '-' + fmt(r.expense) : '—'}</td>
+      <td class="${netClass}" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700">${netSign}${fmt(r.net)}</td>
+      ${hasClosing ? `<td style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${r.closingBalance ? fmt(r.closingBalance) : '—'}</td>` : ''}
+    </tr>`;
+  }).join('');
+
+  const legendItems = hasClosing
+    ? `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(0,229,255,0.5);display:inline-block"></span>Closing Balance</span>
+       <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(6,214,160,0.75);display:inline-block"></span>Net Positive</span>
+       <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,107,107,0.75);display:inline-block"></span>Net Negative</span>`
+    : `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(6,214,160,0.75);display:inline-block"></span>Net Positive</span>
+       <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:2px;background:rgba(255,107,107,0.75);display:inline-block"></span>Net Negative</span>`;
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:6px;padding:0 4px;margin-bottom:8px;position:relative">${barsHtml}</div>
+    <div style="display:flex;gap:16px;margin:10px 0 16px;flex-wrap:wrap">${legendItems}</div>
+    <div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(0,150,199,0.12)">
+      <table style="width:100%;font-size:12px">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 12px">Month</th>
+          <th style="text-align:left;padding:8px 12px">Income</th>
+          <th style="text-align:left;padding:8px 12px">Expenses</th>
+          <th style="text-align:left;padding:8px 12px">Net Flow</th>
+          ${hasClosing ? '<th style="text-align:left;padding:8px 12px">Closing Balance</th>' : ''}
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
 }
 
 function renderMemberDashboard(memberId) {
