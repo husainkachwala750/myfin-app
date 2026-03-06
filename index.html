@@ -2192,13 +2192,14 @@
 
     <!-- BANK DETAILS -->
     <div id="page-bankdetails" class="page">
-      <div class="page-header"><h2>Bank &amp; Loan Accounts</h2><p>Securely store bank accounts and track loan repayments</p></div>
+      <div class="page-header"><h2>Bank, Wallet &amp; Loan Accounts</h2><p>Manage bank accounts, cash wallets, and track loan repayments</p></div>
       <div class="security-bar">🔒 Bank details are AES-256 encrypted on your device before being saved to the secure cloud database. Account numbers are never stored in plain text.</div>
       <div class="member-tabs" id="bank-member-tabs"></div>
 
       <!-- Account Type Toggle -->
       <div style="display:flex;gap:4px;background:rgba(0,150,199,0.08);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content">
         <button class="dash-toggle-btn active" id="bank-form-tab-bank" onclick="switchBankFormTab('bank')">🏦 Bank Account</button>
+        <button class="dash-toggle-btn" id="bank-form-tab-wallet" onclick="switchBankFormTab('wallet')">👛 Wallet</button>
         <button class="dash-toggle-btn" id="bank-form-tab-loan" onclick="switchBankFormTab('loan')">🏠 Loan Account</button>
       </div>
 
@@ -2227,6 +2228,29 @@
           </div>
           <div class="form-group"><label>Notes / Nominee</label><input type="text" id="bank-notes" placeholder="Nominee name, purpose, etc."></div>
           <button class="btn btn-primary" onclick="addBankAccount()">🏦 Save Bank Account</button>
+        </div>
+      </div>
+
+      <!-- Wallet Form -->
+      <div id="bank-form-wallet" style="display:none">
+        <div class="section-header"><h3>Add Wallet</h3></div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="form-row-3">
+            <div class="form-group"><label>Owner</label><select id="wallet-member"><option value="">Select member</option></select></div>
+            <div class="form-group"><label>Wallet Name</label><input type="text" id="wallet-name" placeholder="e.g. Main Wallet, Office Cash, Home Safe"></div>
+            <div class="form-group"><label>Type</label>
+              <select id="wallet-type">
+                <option>Cash Wallet</option><option>Home Safe</option><option>Office Cash</option>
+                <option>Travel Wallet</option><option>Piggy Bank</option><option>Locker</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Current Balance (₹)</label><input type="number" id="wallet-balance" placeholder="0.00" step="0.01"></div>
+            <div class="form-group"><label>Currency</label><div id="wallet-currency-wrap"></div></div>
+            <div class="form-group"><label>Notes</label><input type="text" id="wallet-notes" placeholder="Location, purpose, etc."></div>
+          </div>
+          <button class="btn btn-primary" onclick="addWallet()">👛 Save Wallet</button>
         </div>
       </div>
 
@@ -2275,6 +2299,10 @@
       <div class="card" style="margin-bottom:20px">
         <div class="section-header"><h3>Bank Accounts</h3><span id="bank-total-balance" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--accent)"></span></div>
         <div id="bank-accounts-list"></div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header"><h3>👛 Wallets</h3><span id="wallet-total-balance" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--accent)"></span></div>
+        <div id="wallet-list"></div>
       </div>
       <div class="card">
         <div class="section-header"><h3>Loan Accounts</h3><span id="loan-total-outstanding" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--danger)"></span></div>
@@ -4553,7 +4581,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 // All collections (object stores) and their key paths
 
@@ -5964,6 +5992,7 @@ const STORES = {
   ccStatements: { keyPath: 'id', indexes: [['cardId','cardId'],['date','date']] },
   stmtBatches:  { keyPath: 'id', indexes: [['type','type']] },
   loans:        { keyPath: 'id', indexes: [['memberId','memberId']] },
+  wallets:      { keyPath: 'id', indexes: [['memberId','memberId']] },
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
@@ -6274,7 +6303,7 @@ let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
   businesses:[], invStatements:[], insurances:[], insClaims:[],
-  ccStatements:[], stmtBatches:[], loans:[]
+  ccStatements:[], stmtBatches:[], loans:[], wallets:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -6637,7 +6666,7 @@ function _showPageCore(id) {
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); renderExpenseAnalysis(); }
   if(id==='transactions') { populateMemberSelects(); populateBankSelects(); populateContractMemberSelect(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
-  if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderLoanAccounts(); populateLoanMemberSelect(); }
+  if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.wallets||[]).filter(w=>!mid||w.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderWallets(); renderLoanAccounts(); populateLoanMemberSelect(); populateWalletMemberSelect(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
   if(id==='statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
@@ -7861,7 +7890,7 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   memberFilters[filterKey] = memberId;
   if(filterKey === 'expenses') { renderExpenseAnalysis(); }
   if(filterKey === 'investments') { buildMemberTabs('inv-member-tabs','investments',()=>0, id=>state.investments.filter(i=>!id||i.memberId===id).length); renderInvestments(); }
-  if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length + (state.loans||[]).filter(l=>!id||l.memberId===id).length); renderBankAccounts(); renderLoanAccounts(); }
+  if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length + (state.wallets||[]).filter(w=>!id||w.memberId===id).length + (state.loans||[]).filter(l=>!id||l.memberId===id).length); renderBankAccounts(); renderWallets(); renderLoanAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
   if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
@@ -9298,10 +9327,25 @@ function addTransaction() {
     amount,
     category: document.getElementById('txn-category').value || '',
     mode: document.getElementById('txn-mode').value || 'Cash',
-    bankId: document.getElementById('txn-bank').value,
+    bankId: '',
+    walletId: '',
     ref: document.getElementById('txn-ref').value,
     notes: document.getElementById('txn-notes')?.value || ''
   };
+  // Handle bank or wallet selection
+  const acctVal = document.getElementById('txn-bank').value;
+  if (acctVal && acctVal.startsWith('wallet:')) {
+    txn.walletId = acctVal.replace('wallet:', '');
+    txn.mode = txn.mode || 'Cash';
+    // Update wallet balance
+    const wallet = (state.wallets || []).find(w => w.id === txn.walletId);
+    if (wallet) {
+      if (txn.type === 'debit') wallet.balance = (wallet.balance || 0) - amount;
+      else wallet.balance = (wallet.balance || 0) + amount;
+    }
+  } else {
+    txn.bankId = acctVal;
+  }
   state.transactions.push(txn);
   recalcAllBalances();
   saveData(); renderTransactions(); refreshExpenseAnalysisIfVisible(); toast('Transaction added!');
@@ -9448,7 +9492,9 @@ function populateBankSelects() {
   const el = document.getElementById('txn-bank');
   if(!el) return;
   const val = el.value;
-  el.innerHTML = '<option value="">Select Bank</option>' + state.bankAccounts.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  const bankOpts = state.bankAccounts.map(b => `<option value="${b.id}">🏦 ${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  const walletOpts = (state.wallets||[]).map(w => `<option value="wallet:${w.id}">👛 ${w.name}</option>`).join('');
+  el.innerHTML = '<option value="">Cash (No Account)</option>' + bankOpts + (walletOpts ? '<option disabled>── Wallets ──</option>' + walletOpts : '');
   el.value = val;
 }
 
@@ -9692,10 +9738,13 @@ function populateLoanMemberSelect() {
 
 function switchBankFormTab(tab) {
   document.getElementById('bank-form-bank').style.display = tab === 'bank' ? '' : 'none';
+  document.getElementById('bank-form-wallet').style.display = tab === 'wallet' ? '' : 'none';
   document.getElementById('bank-form-loan').style.display = tab === 'loan' ? '' : 'none';
   document.getElementById('bank-form-tab-bank').classList.toggle('active', tab === 'bank');
+  document.getElementById('bank-form-tab-wallet').classList.toggle('active', tab === 'wallet');
   document.getElementById('bank-form-tab-loan').classList.toggle('active', tab === 'loan');
   if (tab === 'loan') populateLoanLinkedBankSelect();
+  if (tab === 'wallet') populateWalletMemberSelect();
 }
 
 function populateLoanLinkedBankSelect() {
@@ -9864,6 +9913,124 @@ function deleteLoanAccount(id) {
   saveData();
   renderLoanAccounts();
   toast('Loan account removed');
+}
+
+// =================== WALLETS ===================
+function populateWalletMemberSelect() {
+  const el = document.getElementById('wallet-member');
+  if (!el) return;
+  el.innerHTML = '<option value="">Select member</option>' + state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function addWallet() {
+  const name = document.getElementById('wallet-name')?.value.trim();
+  if (!name) return toast('Enter wallet name', 'error');
+  const wallet = {
+    id: uid(),
+    memberId: document.getElementById('wallet-member')?.value || '',
+    name,
+    type: document.getElementById('wallet-type')?.value || 'Cash Wallet',
+    balance: parseFloat(document.getElementById('wallet-balance')?.value) || 0,
+    currency: document.getElementById('wallet-currency')?.value || getBaseCurrency(),
+    notes: document.getElementById('wallet-notes')?.value || '',
+    createdAt: today()
+  };
+  if (!state.wallets) state.wallets = [];
+  state.wallets.push(wallet);
+  saveData();
+  renderWallets();
+  toast('Wallet added!');
+  ['wallet-name', 'wallet-balance', 'wallet-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+}
+
+function renderWallets() {
+  const mid = memberFilters.bank || '';
+  const wallets = mid ? (state.wallets || []).filter(w => w.memberId === mid) : (state.wallets || []);
+  const list = document.getElementById('wallet-list');
+  const totalEl = document.getElementById('wallet-total-balance');
+  if (!list) return;
+
+  const totalBal = wallets.reduce((a, w) => a + (w.balance || 0), 0);
+  if (totalEl) totalEl.textContent = 'Total: ' + fmt(totalBal);
+
+  if (!wallets.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:24px"><p style="font-size:13px">No wallets added yet</p></div>';
+    return;
+  }
+
+  const typeIcons = { 'Cash Wallet': '👛', 'Home Safe': '🏠', 'Office Cash': '🏢', 'Travel Wallet': '✈️', 'Piggy Bank': '🐷', 'Locker': '🔐', 'Other': '💰' };
+
+  // Group by member
+  if (!mid && state.members.length > 1) {
+    let html = '';
+    state.members.forEach(m => {
+      const mWallets = wallets.filter(w => w.memberId === m.id);
+      if (!mWallets.length) return;
+      const mTotal = mWallets.reduce((a, w) => a + (w.balance || 0), 0);
+      html += `<div style="margin-bottom:16px">
+        <div class="member-section-header">
+          <div class="member-section-title">
+            <div style="width:24px;height:24px;border-radius:50%;background:${m.color || '#00e5ff'}22;border:2px solid ${m.color || '#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${m.color || '#00e5ff'}">${m.name[0]}</div>
+            ${m.name}
+          </div>
+          <div class="member-section-line"></div>
+          <div class="member-section-count" style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(mTotal)}</div>
+        </div>
+        ${mWallets.map(w => walletCard(w)).join('')}
+      </div>`;
+    });
+    const unassigned = wallets.filter(w => !w.memberId || !state.members.find(m => m.id === w.memberId));
+    if (unassigned.length) {
+      html += `<div style="margin-bottom:16px"><div class="member-section-header"><div class="member-section-title">— Unassigned</div><div class="member-section-line"></div></div>
+        ${unassigned.map(w => walletCard(w)).join('')}</div>`;
+    }
+    list.innerHTML = html;
+  } else {
+    list.innerHTML = wallets.map(w => walletCard(w)).join('');
+  }
+}
+
+function walletCard(w) {
+  const typeIcons = { 'Cash Wallet': '👛', 'Home Safe': '🏠', 'Office Cash': '🏢', 'Travel Wallet': '✈️', 'Piggy Bank': '🐷', 'Locker': '🔐', 'Other': '💰' };
+  const icon = typeIcons[w.type] || '👛';
+  const member = getMember(w.memberId);
+  return `<div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface3);border-radius:12px;margin-bottom:8px">
+    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:22px">${icon}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:700;color:var(--text)">${w.name}</div>
+      <div style="font-size:12px;color:var(--text3)">${w.type}${w.notes ? ' · ' + w.notes : ''}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)">${fmt(w.balance)}</div>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-secondary btn-sm btn-icon" onclick="editWallet('${w.id}')" title="Edit">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" onclick="deleteWallet('${w.id}')" title="Delete">🗑</button>
+    </div>
+  </div>`;
+}
+
+function editWallet(id) {
+  const w = (state.wallets || []).find(x => x.id === id);
+  if (!w) return;
+  const newBal = prompt('Update balance for "' + w.name + '":', w.balance);
+  if (newBal === null) return;
+  w.balance = parseFloat(newBal) || 0;
+  const newName = prompt('Wallet name:', w.name);
+  if (newName && newName.trim()) w.name = newName.trim();
+  const newNotes = prompt('Notes:', w.notes || '');
+  if (newNotes !== null) w.notes = newNotes;
+  saveData();
+  renderWallets();
+  toast('Wallet updated!');
+}
+
+function deleteWallet(id) {
+  if (!confirm('Delete this wallet?')) return;
+  state.wallets = (state.wallets || []).filter(w => w.id !== id);
+  saveData();
+  renderWallets();
+  toast('Wallet removed');
 }
 
 // =================== STATEMENTS ===================
@@ -12379,12 +12546,13 @@ function renderFamilyDashboard() {
   const totalInvested = state.investments.reduce((a,i) => a + toBase(i.amount, i.currency), 0);
   const currentPortfolio = state.investments.reduce((a,i) => a+i.currentValue, 0);
   const totalBalance = state.bankAccounts.reduce((a,b) => a+toBase(b.balance, b.currency), 0);
+  const totalWalletBalance = (state.wallets||[]).reduce((a,w) => a+(w.balance||0), 0);
   const totalIncome = totalIncomeInBase();
   const periodIncome = periodTransactions.filter(t=>t.type==='credit').reduce((a,t)=>a+t.amount, 0);
   const totalCCLimit = (state.creditCards||[]).reduce((a,c)=>a+c.limit,0);
   const totalCCOutstanding = (state.creditCards||[]).reduce((a,c)=>a+c.outstanding,0);
   const totalLoanOutstanding = (state.loans||[]).reduce((a,l)=>a+(l.outstanding||0),0);
-  const netWorth = totalBalance + currentPortfolio - totalLoanOutstanding;
+  const netWorth = totalBalance + totalWalletBalance + currentPortfolio - totalLoanOutstanding;
   const colors = ['var(--accent)','var(--accent2)','var(--accent3)','var(--accent4)','var(--gold)','var(--danger)','var(--seafoam)'];
 
   document.getElementById('dashboard-stats').innerHTML = `
