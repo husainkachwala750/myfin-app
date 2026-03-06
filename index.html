@@ -2388,6 +2388,18 @@
       <!-- Member Summary Card -->
       <div id="stmt-member-summary" style="margin-bottom:20px"></div>
 
+      <!-- Statement Upload Tracker Board -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header">
+          <h3>Statement Upload Tracker</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:var(--seafoam);display:inline-block"></span>Uploaded</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3)"><span style="width:10px;height:10px;border-radius:3px;background:rgba(255,107,107,0.3);border:1px dashed var(--danger);display:inline-block"></span>Missing</span>
+          </div>
+        </div>
+        <div id="stmt-tracker-board"></div>
+      </div>
+
       <!-- Statement Type Tabs -->
       <div class="contract-tabs" style="margin-bottom:20px">
         <button class="contract-tab-btn active" id="stmt-tab-bank" onclick="switchStmtTab('bank')">🏦 Bank Statements</button>
@@ -6419,27 +6431,40 @@ function initCurrencySelectsForPage(id) {
 // ═══════════════════════════════════════════════════════════════
 
 function recalcBankBalances() {
-  // For each bank account, compute balance from transactions
   state.bankAccounts.forEach(bank => {
-    // Check if there are uploaded statements with closing balance for this bank
+    // Find latest uploaded statement with a closing balance
     const batches = (state.stmtBatches||[])
       .filter(b => b.type === 'bank' && b.bankId === bank.id && b.closingBalance > 0)
       .sort((a,b) => (b.month||b.uploadedAt||'').localeCompare(a.month||a.uploadedAt||''));
 
     if (batches.length) {
-      // Use closing balance from latest statement batch
-      bank.balance = batches[0].closingBalance;
+      const latestBatch = batches[0];
+      let balance = latestBatch.closingBalance;
+
+      // Add net of any transactions AFTER the latest statement month
+      // so balance stays current even if user doesn't upload every month
+      const lastStmtMonth = latestBatch.month;
+      if (lastStmtMonth) {
+        const afterTxns = state.transactions.filter(t =>
+          t.bankId === bank.id && t.date?.slice(0,7) > lastStmtMonth && !t.batchId
+        );
+        afterTxns.forEach(t => {
+          if (t.type === 'credit') balance += (t.amount || 0);
+          else balance -= (t.amount || 0);
+        });
+      }
+
+      bank.balance = balance;
+      bank._lastStmtMonth = lastStmtMonth; // track for display
     } else {
-      // Compute from transactions: start from manual balance + credits - debits
+      // No statements — compute from manual balance + transactions
       const txns = state.transactions.filter(t => t.bankId === bank.id);
       if (txns.length) {
         const credits = txns.filter(t => t.type === 'credit').reduce((a,t) => a + (t.amount||0), 0);
         const debits = txns.filter(t => t.type === 'debit').reduce((a,t) => a + (t.amount||0), 0);
-        // If there's a manual starting balance and no statement, keep it and adjust
-        // Otherwise compute net from transactions
         const manualBal = bank._manualBalance !== undefined ? bank._manualBalance : bank.balance;
         if (!bank._manualBalance && bank._manualBalance !== 0) {
-          bank._manualBalance = bank.balance; // preserve initial manual entry
+          bank._manualBalance = bank.balance;
         }
         bank.balance = manualBal + credits - debits;
       }
@@ -6482,7 +6507,7 @@ function _showPageCore(id) {
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length); renderBankAccounts(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
-  if(id==='statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
+  if(id==='statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
@@ -9686,6 +9711,7 @@ function importParsedTransactions() {
   saveData();
   renderStatementTable();
   renderStmtBatches();
+  renderStmtTracker();
   renderStmtMemberSummary();
   renderBankAccounts();
   const importedCount = parsedRows.length - skipCount;
@@ -10092,9 +10118,245 @@ function deleteBatch(batchId) {
   renderCCStatementTable();
   renderCCStmtSummary();
   renderStmtBatches();
+  renderStmtTracker();
   renderStmtMemberSummary();
   renderBankAccounts();
   toast('Statement batch deleted — balances updated');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATEMENT TRACKER BOARD + MONTH-WISE DELETE
+// ═══════════════════════════════════════════════════════════════
+
+function renderStmtTracker() {
+  const board = document.getElementById('stmt-tracker-board');
+  if (!board) return;
+
+  const banks = state.bankAccounts || [];
+  const cards = state.creditCards || [];
+  const batches = state.stmtBatches || [];
+
+  if (!banks.length && !cards.length) {
+    board.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px;text-align:center">Add bank accounts or credit cards to see the upload tracker.</div>';
+    return;
+  }
+
+  // Determine month range: from earliest batch/transaction to current month
+  const now = new Date();
+  const currentYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // Find earliest month from batches or transactions
+  let earliest = currentYM;
+  batches.forEach(b => { if (b.month && b.month < earliest) earliest = b.month; });
+  (state.transactions || []).forEach(t => {
+    const ym = t.date?.slice(0,7);
+    if (ym && ym < earliest) earliest = ym;
+  });
+
+  // Go back at least 6 months from current
+  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const sixAgoYM = `${sixAgo.getFullYear()}-${String(sixAgo.getMonth()+1).padStart(2,'0')}`;
+  if (sixAgoYM < earliest) earliest = sixAgoYM;
+
+  // Generate month list from earliest to current
+  const months = [];
+  let [y, m] = earliest.split('-').map(Number);
+  const [cy, cm] = currentYM.split('-').map(Number);
+  while (y < cy || (y === cy && m <= cm)) {
+    months.push(`${y}-${String(m).padStart(2,'0')}`);
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Build index: which account has which months uploaded
+  const bankUploads = {}; // bankId -> Set of months
+  const cardUploads = {}; // cardId -> Set of months
+  batches.forEach(b => {
+    if (!b.month) return;
+    if (b.type === 'bank' && b.bankId) {
+      if (!bankUploads[b.bankId]) bankUploads[b.bankId] = new Set();
+      bankUploads[b.bankId].add(b.month);
+    }
+    if (b.type === 'cc' && b.cardId) {
+      if (!cardUploads[b.cardId]) cardUploads[b.cardId] = new Set();
+      cardUploads[b.cardId].add(b.month);
+    }
+  });
+
+  // Count transactions per month per account (for delete feature)
+  const bankTxnCounts = {}; // "bankId|month" -> count
+  const cardTxnCounts = {};
+  (state.transactions || []).forEach(t => {
+    const ym = t.date?.slice(0,7);
+    if (!ym) return;
+    if (t.bankId) {
+      const key = t.bankId + '|' + ym;
+      bankTxnCounts[key] = (bankTxnCounts[key] || 0) + 1;
+    }
+    if (t.cardId) {
+      const key = t.cardId + '|' + ym;
+      cardTxnCounts[key] = (cardTxnCounts[key] || 0) + 1;
+    }
+  });
+
+  let html = '<div style="overflow-x:auto">';
+  html += '<table style="width:100%;font-size:12px;border-collapse:separate;border-spacing:0">';
+
+  // Header row with months
+  html += '<thead><tr><th style="text-align:left;padding:8px 10px;position:sticky;left:0;background:var(--surface);z-index:2;min-width:140px">Account</th>';
+  months.forEach(ym => {
+    const mi = parseInt(ym.slice(5)) - 1;
+    html += `<th style="text-align:center;padding:6px 4px;font-size:10px;font-weight:600;color:var(--text3);min-width:52px">${monthNames[mi]}<br>${ym.slice(0,4)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  // Bank account rows
+  banks.forEach(bank => {
+    const uploads = bankUploads[bank.id] || new Set();
+    html += `<tr><td style="padding:8px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="margin-right:6px">🏦</span>${bank.bankName || 'Bank'}</td>`;
+    months.forEach(ym => {
+      const hasUpload = uploads.has(ym);
+      const txnKey = bank.id + '|' + ym;
+      const txnCount = bankTxnCounts[txnKey] || 0;
+      const isFuture = ym > currentYM;
+
+      if (isFuture) {
+        html += '<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="color:var(--text3);font-size:10px">—</span></td>';
+      } else if (hasUpload) {
+        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(6,214,160,0.15);color:var(--seafoam);font-size:14px;cursor:default" title="Uploaded — ${txnCount} txns">✓</span>
+            ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${(bank.bankName||'this bank').replace(/'/g,"\\'")}?'))deleteMonthTransactions('bank','${bank.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button>` : ''}
+          </div>
+        </td>`;
+      } else {
+        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
+          <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(255,107,107,0.1);border:1px dashed rgba(255,107,107,0.4);color:var(--danger);font-size:10px;cursor:default" title="No statement uploaded${txnCount ? ' — but '+txnCount+' txns exist' : ''}">✗</span>
+          ${txnCount ? `<div><button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${(bank.bankName||'this bank').replace(/'/g,"\\'")}?'))deleteMonthTransactions('bank','${bank.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button></div>` : ''}
+        </td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  // Credit card rows
+  cards.forEach(card => {
+    const uploads = cardUploads[card.id] || new Set();
+    const cardName = (card.bankName || '') + ' •••' + (card.last4 || '');
+    html += `<tr><td style="padding:8px 10px;font-weight:600;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="margin-right:6px">💳</span>${cardName}</td>`;
+    months.forEach(ym => {
+      const hasUpload = uploads.has(ym);
+      const txnKey = card.id + '|' + ym;
+      const txnCount = cardTxnCounts[txnKey] || 0;
+      const isFuture = ym > currentYM;
+
+      if (isFuture) {
+        html += '<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)"><span style="color:var(--text3);font-size:10px">—</span></td>';
+      } else if (hasUpload) {
+        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(6,214,160,0.15);color:var(--seafoam);font-size:14px;cursor:default" title="Uploaded — ${txnCount} txns">✓</span>
+            ${txnCount ? `<button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${cardName.replace(/'/g,"\\'")}?'))deleteMonthTransactions('cc','${card.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button>` : ''}
+          </div>
+        </td>`;
+      } else {
+        html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(0,150,199,0.08)">
+          <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:6px;background:rgba(255,107,107,0.1);border:1px dashed rgba(255,107,107,0.4);color:var(--danger);font-size:10px;cursor:default" title="No statement uploaded${txnCount ? ' — but '+txnCount+' txns exist' : ''}">✗</span>
+          ${txnCount ? `<div><button onclick="if(confirm('Delete ${txnCount} transactions for ${monthNames[parseInt(ym.slice(5))-1]} ${ym.slice(0,4)} from ${cardName.replace(/'/g,"\\'")}?'))deleteMonthTransactions('cc','${card.id}','${ym}')" style="font-size:9px;color:var(--danger);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline" title="Delete ${txnCount} transactions">🗑 ${txnCount}</button></div>` : ''}
+        </td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  board.innerHTML = html;
+}
+
+function deleteMonthTransactions(type, accountId, month) {
+  const txnsToRemove = new Set();
+  const stmtsToRemove = new Set();
+  const batchesToCheck = new Set();
+
+  if (type === 'bank') {
+    // Find all transactions for this bank in this month
+    state.transactions.forEach(t => {
+      if (t.bankId === accountId && t.date?.slice(0,7) === month) {
+        txnsToRemove.add(t.id);
+        if (t.batchId) batchesToCheck.add(t.batchId);
+      }
+    });
+    // Remove associated statement rows
+    state.statements = state.statements.filter(s => {
+      if (s.bankId === accountId && s.date?.slice(0,7) === month) {
+        stmtsToRemove.add(s.id);
+        return false;
+      }
+      return true;
+    });
+  } else {
+    // CC: find all transactions for this card in this month
+    state.transactions.forEach(t => {
+      if (t.cardId === accountId && t.date?.slice(0,7) === month) {
+        txnsToRemove.add(t.id);
+        if (t.batchId) batchesToCheck.add(t.batchId);
+      }
+    });
+    // Remove associated CC statement rows
+    state.ccStatements = (state.ccStatements || []).filter(s => {
+      if (s.cardId === accountId && s.date?.slice(0,7) === month) {
+        stmtsToRemove.add(s.id);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Remove transactions
+  state.transactions = state.transactions.filter(t => !txnsToRemove.has(t.id));
+
+  // Remove auto-tagged expenses linked to deleted transactions
+  state.expenses = state.expenses.filter(e => !e.txnRef || !txnsToRemove.has(e.txnRef));
+
+  // Clean up batches: remove batch if all its transactions are gone, otherwise update counts
+  batchesToCheck.forEach(batchId => {
+    const remainingTxns = state.transactions.filter(t => t.batchId === batchId);
+    if (!remainingTxns.length) {
+      // All transactions from this batch are gone — remove the batch
+      state.stmtBatches = (state.stmtBatches || []).filter(b => b.id !== batchId);
+    } else {
+      // Update batch row count
+      const batch = (state.stmtBatches || []).find(b => b.id === batchId);
+      if (batch) {
+        batch.rowCount = remainingTxns.length;
+        if (batch.type === 'bank') {
+          batch.totalDebit = remainingTxns.filter(t => t.type === 'debit').reduce((a,t) => a + (t.amount||0), 0);
+          batch.totalCredit = remainingTxns.filter(t => t.type === 'credit').reduce((a,t) => a + (t.amount||0), 0);
+        } else {
+          batch.totalSpend = remainingTxns.filter(t => t.type === 'debit').reduce((a,t) => a + (t.amount||0), 0);
+          batch.totalPayment = remainingTxns.filter(t => t.type === 'credit').reduce((a,t) => a + (t.amount||0), 0);
+        }
+      }
+    }
+  });
+
+  recalcAllBalances();
+  saveData();
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mLabel = monthNames[parseInt(month.slice(5)) - 1] + ' ' + month.slice(0,4);
+  toast(`Deleted ${txnsToRemove.size} transactions for ${mLabel}. Balances updated.`);
+
+  // Re-render all affected views
+  renderStmtTracker();
+  renderStmtBatches();
+  renderStatementTable();
+  renderCCStatementTable();
+  renderCCStmtSummary();
+  renderStmtMemberSummary();
+  renderBankAccounts();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -10287,6 +10549,7 @@ function importCCParsedTransactions() {
   renderCCStatementTable();
   renderCCStmtSummary();
   renderStmtBatches();
+  renderStmtTracker();
   renderStmtMemberSummary();
   const updatedCard = (state.creditCards||[]).find(c => c.id === cardId);
   const ccImported = ccParsedRows.length - skipCount;
