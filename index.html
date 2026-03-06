@@ -9660,75 +9660,91 @@ function importParsedTransactions() {
   const bankId = document.getElementById('stmt-bank').value;
   if(!bankId) return toast('Please select a bank account before importing', 'error');
   const bank = state.bankAccounts.find(b => b.id === bankId);
-  // Use member filter, then bank's own memberId as fallback
   const memberId = memberFilters.statements || bank?.memberId || window._currentMemberId || '';
   const memberName = memberId ? (state.members.find(m => m.id === memberId)?.name || '') : '';
-  const stmtMonth = document.getElementById('stmt-month')?.value || '';
   const shouldTag = document.getElementById('stmt-auto-tag')?.checked && autoTagEnabled;
+  const bankLabel = bank ? bank.bankName + ' (...' + (bank.accountNumber||'').slice(-4) + ')' : 'Unknown Bank';
   let tagCount = 0;
   let skipCount = 0;
-  const batchId = uid();
-  const bankLabel = bank ? bank.bankName + ' (...' + (bank.accountNumber||'').slice(-4) + ')' : 'Unknown Bank';
 
   // Build dedup index of existing transactions for this bank
   const existingKeys = new Set();
   (state.transactions || []).forEach(t => {
     if (t.bankId === bankId) {
-      // Key on credit
-      if (t.type === 'credit') existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, bankId));
-      else existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, bankId));
+      existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, bankId));
     }
   });
 
+  // Group parsed rows by month (YYYY-MM) — auto-split multi-month statements
+  const byMonth = {};
   parsedRows.forEach(r => {
-    // Check for duplicates — skip if this exact txn already exists
-    const creditKey = r.credit > 0 ? stmtTxnDedupKey(r.date, r.description, r.credit, bankId) : null;
-    const debitKey = r.debit > 0 ? stmtTxnDedupKey(r.date, r.description, r.debit, bankId) : null;
-    const isDuplicate = (creditKey && existingKeys.has(creditKey)) || (debitKey && existingKeys.has(debitKey));
-    if (isDuplicate) { skipCount++; return; }
-
-    const stmtId = uid();
-    const txnIds = [];
-    if(r.credit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'credit', memberId, description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
-      state.transactions.push(txn);
-      txnIds.push(txn.id);
-      existingKeys.add(creditKey); // add to set so intra-batch dupes are caught too
-      if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
-    }
-    if(r.debit > 0) {
-      const txn = { id: uid(), date: r.date, type: 'debit', memberId, description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
-      state.transactions.push(txn);
-      txnIds.push(txn.id);
-      existingKeys.add(debitKey);
-      if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
-    }
-    state.statements.push({ id: stmtId, bankId, memberId, txnIds, batchId, ...r });
+    const ym = (r.date && /^\d{4}-\d{2}/.test(r.date)) ? r.date.slice(0, 7) : 'unknown';
+    if (!byMonth[ym]) byMonth[ym] = [];
+    byMonth[ym].push(r);
   });
 
-  // Determine closing balance from last row that has a balance value
-  const closingRow = [...parsedRows].reverse().find(r => r.balance > 0);
-  const closingBalance = closingRow ? closingRow.balance : 0;
+  const monthsSorted = Object.keys(byMonth).sort();
+  const monthBatchIds = {}; // ym -> batchId
 
-  // Save the uploaded batch with raw CSV
+  // Create one batch per month
   if (!state.stmtBatches) state.stmtBatches = [];
-  state.stmtBatches.push({
-    id: batchId,
-    type: 'bank',
-    bankId,
-    bankLabel,
-    memberId,
-    memberName,
-    month: stmtMonth,
-    rowCount: parsedRows.length,
-    totalDebit: parsedRows.reduce((a,r) => a + r.debit, 0),
-    totalCredit: parsedRows.reduce((a,r) => a + r.credit, 0),
-    closingBalance,
-    uploadedAt: new Date().toISOString(),
-    rawCSV: _lastParsedRawCSV || ''
+
+  monthsSorted.forEach(ym => {
+    const rows = byMonth[ym];
+    const batchId = uid();
+    monthBatchIds[ym] = batchId;
+
+    let monthSkip = 0;
+    rows.forEach(r => {
+      const creditKey = r.credit > 0 ? stmtTxnDedupKey(r.date, r.description, r.credit, bankId) : null;
+      const debitKey = r.debit > 0 ? stmtTxnDedupKey(r.date, r.description, r.debit, bankId) : null;
+      const isDuplicate = (creditKey && existingKeys.has(creditKey)) || (debitKey && existingKeys.has(debitKey));
+      if (isDuplicate) { skipCount++; monthSkip++; return; }
+
+      const stmtId = uid();
+      const txnIds = [];
+      if (r.credit > 0) {
+        const txn = { id: uid(), date: r.date, type: 'credit', memberId, description: r.description, amount: r.credit, bankId, ref: '', stmtId, batchId };
+        state.transactions.push(txn);
+        txnIds.push(txn.id);
+        existingKeys.add(creditKey);
+        if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
+      }
+      if (r.debit > 0) {
+        const txn = { id: uid(), date: r.date, type: 'debit', memberId, description: r.description, amount: r.debit, bankId, ref: '', stmtId, batchId };
+        state.transactions.push(txn);
+        txnIds.push(txn.id);
+        existingKeys.add(debitKey);
+        if (shouldTag) { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
+      }
+      state.statements.push({ id: stmtId, bankId, memberId, txnIds, batchId, ...r });
+    });
+
+    // Closing balance: last row with balance in this month's data
+    const closingRow = [...rows].reverse().find(r => r.balance > 0);
+    const closingBalance = closingRow ? closingRow.balance : 0;
+    const importedRows = rows.length - monthSkip;
+
+    // Only create batch if we actually imported rows
+    if (importedRows > 0) {
+      state.stmtBatches.push({
+        id: batchId,
+        type: 'bank',
+        bankId,
+        bankLabel,
+        memberId,
+        memberName,
+        month: ym !== 'unknown' ? ym : '',
+        rowCount: importedRows,
+        totalDebit: rows.reduce((a, r) => a + r.debit, 0),
+        totalCredit: rows.reduce((a, r) => a + r.credit, 0),
+        closingBalance,
+        uploadedAt: new Date().toISOString(),
+        rawCSV: monthsSorted.length === 1 ? (_lastParsedRawCSV || '') : ''
+      });
+    }
   });
 
-  // Recalculate all balances dynamically from statements/transactions
   recalcAllBalances();
   saveData();
   renderStatementTable();
@@ -9736,15 +9752,19 @@ function importParsedTransactions() {
   renderStmtTracker();
   renderStmtMemberSummary();
   renderBankAccounts();
+
   const importedCount = parsedRows.length - skipCount;
-  let msg = `Imported ${importedCount} transactions!`;
+  const monthCount = monthsSorted.filter(ym => ym !== 'unknown').length;
+  let msg = `Imported ${importedCount} transactions`;
+  if (monthCount > 1) msg += ` across ${monthCount} months`;
+  msg += '!';
   if (skipCount) msg += ` Skipped ${skipCount} duplicates.`;
   if (tagCount) msg += ` Auto-tagged ${tagCount} as expenses/income.`;
-  if (closingBalance > 0) msg += ` Bank balance updated to ${fmt(closingBalance)}.`;
   toast(msg, skipCount && !importedCount ? 'warning' : 'success');
+
   parsedRows = [];
   _lastParsedRawCSV = '';
-  document.getElementById('parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${importedCount} transactions imported${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
+  document.getElementById('parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${importedCount} transactions imported${monthCount > 1 ? ` across ${monthCount} months` : ''}${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
   document.getElementById('parsed-import-btn').style.display = 'none';
   document.getElementById('statement-paste').value = '';
 }
@@ -10592,19 +10612,17 @@ function importCCParsedTransactions() {
   const cardId = document.getElementById('stmt-cc').value;
   if(!cardId) return toast('Please select a credit card before importing', 'error');
   const card = (state.creditCards || []).find(c => c.id === cardId);
-  // Use member filter, then card's own memberId as fallback
   const ccMemberId = memberFilters.statements || card?.memberId || window._currentMemberId || '';
   const ccMemberName = ccMemberId ? (state.members.find(m => m.id === ccMemberId)?.name || '') : '';
-  const ccMonth = document.getElementById('cc-stmt-month')?.value || '';
   const shouldTag = document.getElementById('cc-stmt-auto-tag')?.checked && autoTagEnabled;
+  const cardLabel = card ? card.bankName + ' ' + card.network + ' .....' + card.last4 : 'Unknown Card';
   let tagCount = 0;
   let skipCount = 0;
-  const batchId = uid();
-  const cardLabel = card ? card.bankName + ' ' + card.network + ' .....' + card.last4 : 'Unknown Card';
 
   if (!state.ccStatements) state.ccStatements = [];
+  if (!state.stmtBatches) state.stmtBatches = [];
 
-  // Build dedup index of existing CC transactions for this card
+  // Build dedup index
   const existingKeys = new Set();
   (state.transactions || []).forEach(t => {
     if (t.cardId === cardId) {
@@ -10612,56 +10630,56 @@ function importCCParsedTransactions() {
     }
   });
 
+  // Group by month — auto-split multi-month statements
+  const byMonth = {};
   ccParsedRows.forEach(r => {
-    const descWithCard = r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : '');
-    // Check both raw description and description-with-card-suffix for dedup
-    const key1 = stmtTxnDedupKey(r.date, descWithCard, r.amount, cardId);
-    const key2 = stmtTxnDedupKey(r.date, r.description, r.amount, cardId);
-    if (existingKeys.has(key1) || existingKeys.has(key2)) { skipCount++; return; }
+    const ym = (r.date && /^\d{4}-\d{2}/.test(r.date)) ? r.date.slice(0, 7) : 'unknown';
+    if (!byMonth[ym]) byMonth[ym] = [];
+    byMonth[ym].push(r);
+  });
 
-    const stmtId = uid();
-    const txn = {
-      id: uid(),
-      date: r.date,
-      type: r.type === 'credit' ? 'credit' : 'debit',
-      memberId: ccMemberId || card?.memberId || '',
-      description: descWithCard,
-      amount: r.amount,
-      bankId: '',
-      ref: '',
-      cardId: cardId,
-      source: 'credit_card',
-      stmtId,
-      batchId,
-    };
-    state.transactions.push(txn);
-    existingKeys.add(key1);
-    if (shouldTag && r.type === 'debit') {
-      const res = autoCreateFromTransaction(txn);
-      if (res) tagCount++;
+  const monthsSorted = Object.keys(byMonth).sort();
+
+  monthsSorted.forEach(ym => {
+    const rows = byMonth[ym];
+    const batchId = uid();
+    let monthSkip = 0;
+
+    rows.forEach(r => {
+      const descWithCard = r.description + (card ? ` [${card.bankName} ${card.network} ....${card.last4}]` : '');
+      const key1 = stmtTxnDedupKey(r.date, descWithCard, r.amount, cardId);
+      const key2 = stmtTxnDedupKey(r.date, r.description, r.amount, cardId);
+      if (existingKeys.has(key1) || existingKeys.has(key2)) { skipCount++; monthSkip++; return; }
+
+      const stmtId = uid();
+      const txn = {
+        id: uid(), date: r.date,
+        type: r.type === 'credit' ? 'credit' : 'debit',
+        memberId: ccMemberId || card?.memberId || '',
+        description: descWithCard, amount: r.amount,
+        bankId: '', ref: '', cardId, source: 'credit_card', stmtId, batchId,
+      };
+      state.transactions.push(txn);
+      existingKeys.add(key1);
+      if (shouldTag && r.type === 'debit') { const res = autoCreateFromTransaction(txn); if (res) tagCount++; }
+      state.ccStatements.push({ id: stmtId, cardId, txnId: txn.id, batchId, ...r });
+    });
+
+    const importedRows = rows.length - monthSkip;
+    if (importedRows > 0) {
+      state.stmtBatches.push({
+        id: batchId, type: 'cc', cardId, cardLabel,
+        memberId: ccMemberId, memberName: ccMemberName,
+        month: ym !== 'unknown' ? ym : '',
+        rowCount: importedRows,
+        totalSpend: rows.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0),
+        totalPayment: rows.filter(r => r.type === 'credit').reduce((a, r) => a + r.amount, 0),
+        uploadedAt: new Date().toISOString(),
+        rawCSV: monthsSorted.length === 1 ? (_lastCCParsedRawCSV || '') : ''
+      });
     }
-    const stmtRow = { id: stmtId, cardId, txnId: txn.id, batchId, ...r };
-    state.ccStatements.push(stmtRow);
   });
 
-  // Save batch with raw CSV
-  if (!state.stmtBatches) state.stmtBatches = [];
-  state.stmtBatches.push({
-    id: batchId,
-    type: 'cc',
-    cardId,
-    cardLabel,
-    memberId: ccMemberId,
-    memberName: ccMemberName,
-    month: ccMonth,
-    rowCount: ccParsedRows.length,
-    totalSpend: ccParsedRows.filter(r => r.type === 'debit').reduce((a, r) => a + r.amount, 0),
-    totalPayment: ccParsedRows.filter(r => r.type === 'credit').reduce((a, r) => a + r.amount, 0),
-    uploadedAt: new Date().toISOString(),
-    rawCSV: _lastCCParsedRawCSV || ''
-  });
-
-  // Recalculate CC outstanding from imported statements
   recalcAllBalances();
   saveData();
   renderCCStatementTable();
@@ -10669,16 +10687,21 @@ function importCCParsedTransactions() {
   renderStmtBatches();
   renderStmtTracker();
   renderStmtMemberSummary();
+
   const updatedCard = (state.creditCards||[]).find(c => c.id === cardId);
   const ccImported = ccParsedRows.length - skipCount;
-  let ccMsg = `Imported ${ccImported} CC transactions!`;
+  const monthCount = monthsSorted.filter(ym => ym !== 'unknown').length;
+  let ccMsg = `Imported ${ccImported} CC transactions`;
+  if (monthCount > 1) ccMsg += ` across ${monthCount} months`;
+  ccMsg += '!';
   if (skipCount) ccMsg += ` Skipped ${skipCount} duplicates.`;
   if (tagCount) ccMsg += ` Auto-tagged ${tagCount} as expenses.`;
   if (updatedCard) ccMsg += ` Outstanding: ${fmt(updatedCard.outstanding)}.`;
   toast(ccMsg, skipCount && !ccImported ? 'warning' : 'success');
+
   ccParsedRows = [];
   _lastCCParsedRawCSV = '';
-  document.getElementById('cc-parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${ccImported} CC transactions imported${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
+  document.getElementById('cc-parsed-preview').innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${ccImported} CC transactions imported${monthCount > 1 ? ` across ${monthCount} months` : ''}${skipCount ? `, ${skipCount} duplicates skipped` : ''}!</p></div>`;
   document.getElementById('cc-parsed-import-btn').style.display = 'none';
   document.getElementById('cc-statement-paste').value = '';
 }
