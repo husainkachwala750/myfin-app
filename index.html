@@ -9842,20 +9842,24 @@ function normalizeDate(dateStr) {
   // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // DD-MM-YYYY or DD/MM/YYYY
-  let m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  // DD-MM-YYYY or DD/MM/YYYY (with optional time/extra text after)
+  let m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
   if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
 
-  // MM/DD/YYYY (US format) — only if month <= 12
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m && parseInt(m[1]) <= 12) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // DD-MM-YY or DD/MM/YY (2-digit year)
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2})(?:\s|$)/);
+  if (m) { const yr = parseInt(m[3]) > 50 ? '19'+m[3] : '20'+m[3]; return `${yr}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
 
-  // DD Mon YYYY or DD-Mon-YYYY (e.g. "14 Mar 2026", "14-Mar-2026")
-  m = s.match(/^(\d{1,2})[\s-](\w{3})[\s-](\d{4})$/i);
+  // YYYY/MM/DD
+  m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+
+  // DD Mon YYYY or DD-Mon-YYYY or DD-Mon-YY (e.g. "14 Mar 2026", "14-Mar-26")
+  m = s.match(/^(\d{1,2})[\s-](\w{3})[\s-](\d{2,4})/i);
   if (m) {
     const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
     const mon = months[m[2].toLowerCase().slice(0,3)];
-    if (mon) return `${m[3]}-${mon}-${m[1].padStart(2,'0')}`;
+    if (mon) { const yr = m[3].length === 2 ? (parseInt(m[3]) > 50 ? '19'+m[3] : '20'+m[3]) : m[3]; return `${yr}-${mon}-${m[1].padStart(2,'0')}`; }
   }
 
   // Fallback: try Date.parse
@@ -10251,6 +10255,17 @@ function renderStmtBatches() {
   const mid = memberFilters.statements || '';
   let batches = (state.stmtBatches || []).slice();
   if (mid) batches = batches.filter(b => b.memberId === mid);
+  // Auto-fix batches with missing month — derive from their transactions
+  batches.forEach(b => {
+    if (b.month) return;
+    const bTxns = state.transactions.filter(t => t.batchId === b.id && t.date && /^\d{4}-\d{2}/.test(t.date));
+    if (bTxns.length) {
+      const mc = {};
+      bTxns.forEach(t => { const ym = t.date.slice(0,7); mc[ym] = (mc[ym]||0)+1; });
+      b.month = Object.entries(mc).sort((a,b2) => b2[1]-a[1])[0][0];
+    }
+  });
+
   batches.sort((a,b) => (b.month||b.uploadedAt||'').localeCompare(a.month||a.uploadedAt||''));
   const card = document.getElementById('stmt-batches-card');
   const list = document.getElementById('stmt-batches-list');
