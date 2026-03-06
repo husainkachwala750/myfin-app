@@ -5121,49 +5121,21 @@ async function storagePushSupabase(familyId, pkg) {
   _syncVersion = version;
   const payload = { data: encrypted, synced_at: new Date().toISOString(), version };
 
-  // Strategy: PATCH existing row. If 0 rows matched, INSERT new row.
-  // PATCH never 409s — it just updates 0 rows if not found.
-  const patchRes = await fetch(SUPABASE_URL + `/rest/v1/family_data?family_id=eq.${familyId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${getSession()?.access_token || SUPABASE_KEY}`,
-      'Prefer': 'return=headers-only'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  // Check content-range header to see if any rows were updated
-  const range = patchRes.headers.get('content-range');
-  const updated = range && !range.startsWith('*/0') && !range.endsWith('/0');
-
-  if (!patchRes.ok && patchRes.status !== 404) {
-    // PATCH failed for a real reason — try with refreshed token
-    const refreshed = await sbRefreshToken();
-    if (refreshed) {
-      const retry = await fetch(SUPABASE_URL + `/rest/v1/family_data?family_id=eq.${familyId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${getSession()?.access_token}`,
-          'Prefer': 'return=headers-only'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (retry.ok) {
-        localStorage.setItem('myfin_sync_version_' + familyId, String(version));
-        localStorage.setItem('myfin_last_sync', new Date().toISOString());
-        return;
-      }
-    }
-    const err = await patchRes.text();
-    throw new Error(`Sync push failed: ${patchRes.status} ${err}`);
+  // Try PATCH first (update existing row) — use return=representation to verify it worked
+  let patched = false;
+  try {
+    const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
+      method: 'PATCH',
+      headers: { 'Prefer': 'return=representation' },
+      body: JSON.stringify(payload)
+    });
+    patched = Array.isArray(res) ? res.length > 0 : !!res;
+  } catch(e) {
+    console.warn('PATCH failed:', e.message);
   }
 
-  if (!updated && patchRes.ok) {
-    // No existing row — INSERT
+  // If PATCH didn't update any rows, INSERT new row
+  if (!patched) {
     try {
       await sbFetch('/rest/v1/family_data', {
         method: 'POST',
@@ -5171,15 +5143,11 @@ async function storagePushSupabase(familyId, pkg) {
         body: JSON.stringify({ family_id: familyId, ...payload })
       });
     } catch(e) {
-      // 409 on INSERT means row was created between PATCH and INSERT (race) — retry PATCH
+      // 409 = row exists but we can't update it — likely RLS policy issue
       if (e.message?.includes('409') || e.message?.includes('23505')) {
-        await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload)
-        });
-      } else {
-        throw e;
+        throw new Error('Sync blocked: your Supabase RLS policy may need to allow UPDATE on family_data for authenticated users');
       }
+      throw e;
     }
   }
 
