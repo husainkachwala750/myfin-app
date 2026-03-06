@@ -16483,16 +16483,18 @@ async function bootFamilyApp(familyId) {
   setInterval(sbRefreshToken, 45*60*1000); // refresh auth token every 45 min
   try {
     await initFamilyDatabase(familyId);
-    console.log('[MyFin Boot] After IDB load:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
+    const idbCount = state.members.length + state.expenses.length + state.statements.length;
+    console.log('[MyFin Boot] IDB loaded:', idbCount, 'records');
+    if (idbCount > 0) toast('Local data loaded (' + state.members.length + ' members, ' + state.statements.length + ' statements)');
   } catch(e) {
     console.warn('IDB load error:', e);
   }
   // Load data from cloud — don't let it block the app
   try {
     await storageBootLoad(familyId);
-    console.log('[MyFin Boot] After cloud sync:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
   } catch(e) {
     console.warn('Cloud sync error:', e);
+    toast('Cloud sync error: ' + e.message, 'error');
   }
   try {
     // If state is still empty, try migrating from old generic DB / localStorage
