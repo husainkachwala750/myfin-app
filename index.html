@@ -5140,10 +5140,21 @@ async function storagePushSupabase(familyId, pkg) {
 
 async function storagePullSupabase(familyId) {
   const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
-  if (!res || !res.length) return null;
+  if (!res || !res.length) {
+    toast('Cloud: no data found for your account', 'error');
+    return null;
+  }
   const row = res[0];
-  if (!row?.data) return null;
-  return await decryptStateFromCloud(row.data);
+  if (!row?.data) {
+    toast('Cloud: data row exists but is empty', 'error');
+    return null;
+  }
+  const decrypted = await decryptStateFromCloud(row.data);
+  const m = decrypted?.members?.length || 0;
+  const e = decrypted?.expenses?.length || 0;
+  const s = decrypted?.statements?.length || 0;
+  toast('Cloud data: ' + m + ' members, ' + e + ' expenses, ' + s + ' stmts');
+  return decrypted;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -6373,7 +6384,7 @@ function toast(msg, type='success') {
   el.className = 'toast' + (type === 'error' ? ' toast-error' : '');
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), type === 'error' ? 8000 : 3000);
+  setTimeout(() => el.remove(), type === 'error' ? 10000 : 5000);
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -16485,7 +16496,7 @@ async function bootFamilyApp(familyId) {
     await initFamilyDatabase(familyId);
     const idbCount = state.members.length + state.expenses.length + state.statements.length;
     console.log('[MyFin Boot] IDB loaded:', idbCount, 'records');
-    if (idbCount > 0) toast('Local data loaded (' + state.members.length + ' members, ' + state.statements.length + ' statements)');
+    if (idbCount > 0) toast('Local data: ' + state.members.length + ' members, ' + state.expenses.length + ' expenses, ' + state.statements.length + ' stmts, ' + state.transactions.length + ' txns');
   } catch(e) {
     console.warn('IDB load error:', e);
   }
