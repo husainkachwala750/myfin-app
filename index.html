@@ -9172,7 +9172,24 @@ function renderTransactions() {
   }).join('');
 }
 
-function deleteTxn(id) { state.transactions = state.transactions.filter(t => t.id !== id); recalcAllBalances(); saveData(); renderTransactions(); toast('Transaction deleted'); }
+function deleteTxn(id) {
+  const txn = state.transactions.find(t => t.id === id);
+  state.transactions = state.transactions.filter(t => t.id !== id);
+  state.expenses = state.expenses.filter(e => !e.txnRef || e.txnRef !== id);
+  // Clean up batch if this was the last transaction in it
+  if (txn?.batchId) {
+    const remaining = state.transactions.filter(t => t.batchId === txn.batchId);
+    if (!remaining.length) {
+      state.stmtBatches = (state.stmtBatches||[]).filter(b => b.id !== txn.batchId);
+      // Also remove associated statement/CC statement rows
+      if (txn.bankId) state.statements = state.statements.filter(s => s.batchId !== txn.batchId);
+      if (txn.cardId) state.ccStatements = (state.ccStatements||[]).filter(s => s.batchId !== txn.batchId);
+    }
+  }
+  recalcAllBalances(); saveData(); renderTransactions();
+  if (typeof renderStmtTracker === 'function') renderStmtTracker();
+  toast('Transaction deleted');
+}
 
 function bulkClearTransactions() {
   const mid = memberFilters.transactions || '';
@@ -9185,14 +9202,29 @@ function bulkClearTransactions() {
     const idsToRemove = new Set(state.transactions.filter(t => t.memberId === mid).map(t => t.id));
     state.transactions = state.transactions.filter(t => t.memberId !== mid);
     state.expenses = state.expenses.filter(e => !e.txnRef || !idsToRemove.has(e.txnRef));
+    // Clean up statement rows, CC statement rows, and batches for this member
+    const memberBankIds = new Set(state.bankAccounts.filter(b => b.memberId === mid).map(b => b.id));
+    const memberCardIds = new Set((state.creditCards||[]).filter(c => c.memberId === mid).map(c => c.id));
+    state.statements = state.statements.filter(s => !memberBankIds.has(s.bankId));
+    state.ccStatements = (state.ccStatements||[]).filter(s => !memberCardIds.has(s.cardId));
+    state.stmtBatches = (state.stmtBatches||[]).filter(b => {
+      if (b.type === 'bank' && memberBankIds.has(b.bankId)) return false;
+      if (b.type === 'cc' && memberCardIds.has(b.cardId)) return false;
+      return true;
+    });
   } else {
     const allTxnIds = new Set(state.transactions.map(t => t.id));
     state.transactions = [];
     state.expenses = state.expenses.filter(e => !e.txnRef || !allTxnIds.has(e.txnRef));
+    // Clear all statement rows and batches
+    state.statements = [];
+    state.ccStatements = [];
+    state.stmtBatches = [];
   }
   recalcAllBalances();
   saveData();
   buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions();
+  if (typeof renderStmtTracker === 'function') renderStmtTracker();
   toast(`Cleared ${count} transactions — balances updated`);
 }
 
