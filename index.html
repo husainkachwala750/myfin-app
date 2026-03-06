@@ -342,7 +342,9 @@
 
   /* Forms */
   .form-group { margin-bottom: 18px; }
-  label { display: block; font-size: 12px; font-weight: 600; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  label, .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-input { width: 100%; background: #ffffff; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
   input, select, textarea { width: 100%; background: #ffffff; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
   input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
   select option { background: #ffffff; color: var(--text); }
@@ -6760,6 +6762,7 @@ function _showPageCore(id) {
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
+  if(id==='documents') { buildDocMemberTabs(); renderDocuments(); }
   if(id==='family-access') { renderFamilyAccessPage(); }
   if(id==='features') { renderFeaturesGrid(); initCurrencySettings(); }
   initCurrencySelectsForPage(id);
@@ -7933,7 +7936,7 @@ function deleteIncomeSource(memberId, sourceId) {
 }
 
 function populateMemberSelects() {
-  const selects = ['exp-member','txn-member','inv-member','bank-member'];
+  const selects = ['exp-member','txn-member','inv-member','bank-member','doc-member'];
   selects.forEach(sid => {
     const el = document.getElementById(sid);
     if(!el) return;
@@ -7947,7 +7950,7 @@ function populateMemberSelects() {
 }
 
 // =================== MEMBER TAB FILTERS ===================
-const memberFilters = { expenses: '', investments: '', bank: '', creditcards: '', portfolio: '', insurance: '' };
+const memberFilters = { expenses: '', investments: '', bank: '', creditcards: '', portfolio: '', insurance: '', transactions: '', documents: '' };
 
 function buildMemberTabs(containerId, filterKey, onSelect, countFn) {
   const el = document.getElementById(containerId);
@@ -7987,6 +7990,7 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); updateTxnMemberField(); }
   if(filterKey === 'portfolio') { buildPortfolioMemberTabs(); renderPortfolioMemberSummary(); switchPortfolioTab(document.querySelector('.inv-tab.active')?.id?.replace('ptab-','') || 'overview'); }
   if(filterKey === 'insurance') { buildInsMemberTabs(); renderInsMemberSummary(); switchInsTab(document.querySelector('.ins-tab.active')?.id?.replace('instab-','') || 'overview'); }
+  if(filterKey === 'documents') { buildDocMemberTabs(); renderDocuments(); }
 }
 
 // =================== EXPENSES ===================
@@ -9588,6 +9592,14 @@ function renderTransactions() {
 
 function deleteTxn(id) {
   const txn = state.transactions.find(t => t.id === id);
+  // Reverse wallet balance if this was a wallet transaction
+  if (txn?.walletId) {
+    const wallet = (state.wallets || []).find(w => w.id === txn.walletId);
+    if (wallet) {
+      if (txn.type === 'debit') wallet.balance = (wallet.balance || 0) + (txn.amount || 0);
+      else wallet.balance = (wallet.balance || 0) - (txn.amount || 0);
+    }
+  }
   state.transactions = state.transactions.filter(t => t.id !== id);
   state.expenses = state.expenses.filter(e => !e.txnRef || e.txnRef !== id);
   // Clean up batch if this was the last transaction in it
@@ -19431,15 +19443,12 @@ const DOC_CATEGORIES = {
 };
 
 let _docActiveTab = 'all';
-let _docActiveMember = '';
 
 function buildDocMemberTabs() {
-  buildMemberTabs('doc-member-tabs', _docActiveMember, (mid) => { _docActiveMember = mid; renderDocuments(); });
-  // Populate member select in form
-  const sel = document.getElementById('doc-member');
-  if (sel) {
-    sel.innerHTML = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
-  }
+  buildMemberTabs('doc-member-tabs', 'documents', ()=>0, mid => {
+    if (!mid) return (state.documents||[]).length;
+    return (state.documents||[]).filter(d => d.memberId === mid).length;
+  });
   updateDocTypeOptions();
 }
 
@@ -19580,14 +19589,15 @@ function viewDocNote(id) {
 
 function renderDocuments() {
   let docs = state.documents || [];
+  const mid = memberFilters.documents || '';
 
   // Filter by member
-  if (_docActiveMember) docs = docs.filter(d => d.memberId === _docActiveMember);
+  if (mid) docs = docs.filter(d => d.memberId === mid);
   // Filter by category tab
   if (_docActiveTab !== 'all') docs = docs.filter(d => d.category === _docActiveTab);
 
   // KPI strip
-  const allDocs = _docActiveMember ? state.documents.filter(d => d.memberId === _docActiveMember) : state.documents;
+  const allDocs = mid ? state.documents.filter(d => d.memberId === mid) : state.documents;
   const kpi = document.getElementById('doc-kpi-strip');
   if (kpi) {
     const total = allDocs.length;
