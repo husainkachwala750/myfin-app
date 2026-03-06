@@ -7062,7 +7062,7 @@ function saveEditTxn() {
   t.description = document.getElementById('et-desc').value.trim() || 'Transaction';
   t.amount      = amount;
   t.ref         = document.getElementById('et-ref').value.trim();
-  saveData(); renderTransactions(); closeModal('edit-txn-modal'); toast('✅ Transaction updated');
+  saveData(); renderTransactions(); refreshExpenseAnalysisIfVisible(); closeModal('edit-txn-modal'); toast('✅ Transaction updated');
 }
 
 // ── INVESTMENT EDIT ────────────────────────────────────────────────
@@ -8023,6 +8023,11 @@ function renderExpenseAnalysis() {
 
 function renderExpenses() {
   renderExpenseAnalysis();
+}
+
+// Auto-refresh expense analysis whenever transactions change
+function refreshExpenseAnalysisIfVisible() {
+  if (document.getElementById('page-expenses')?.classList.contains('active')) renderExpenseAnalysis();
 }
 
 function expenseRow(e) {
@@ -9270,7 +9275,7 @@ function addTransaction() {
   };
   state.transactions.push(txn);
   recalcAllBalances();
-  saveData(); renderTransactions(); toast('Transaction added!');
+  saveData(); renderTransactions(); refreshExpenseAnalysisIfVisible(); toast('Transaction added!');
   document.getElementById('txn-amount').value='';
   document.getElementById('txn-desc').value='';
   document.getElementById('txn-ref').value='';
@@ -9350,7 +9355,7 @@ function deleteTxn(id) {
       if (txn.cardId) state.ccStatements = (state.ccStatements||[]).filter(s => s.batchId !== txn.batchId);
     }
   }
-  recalcAllBalances(); saveData(); renderTransactions();
+  recalcAllBalances(); saveData(); renderTransactions(); refreshExpenseAnalysisIfVisible();
   if (typeof renderStmtTracker === 'function') renderStmtTracker();
   toast('Transaction deleted');
 }
@@ -9387,7 +9392,7 @@ function bulkClearTransactions() {
   }
   recalcAllBalances();
   saveData();
-  buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions();
+  buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); refreshExpenseAnalysisIfVisible();
   if (typeof renderStmtTracker === 'function') renderStmtTracker();
   toast(`Cleared ${count} transactions — balances updated`);
 }
@@ -10377,6 +10382,7 @@ async function executeAutoImport() {
     renderStatementTable();
     renderCCStatementTable();
     renderBankAccounts();
+    refreshExpenseAnalysisIfVisible();
   }
 
   // Show results
@@ -10837,6 +10843,7 @@ function importParsedTransactions() {
   renderStmtTracker();
   renderStmtMemberSummary();
   renderBankAccounts();
+  refreshExpenseAnalysisIfVisible();
 
   const importedCount = parsedRows.length - skipCount;
   const monthCount = monthsSorted.filter(ym => ym !== 'unknown').length;
@@ -11805,6 +11812,7 @@ function importCCParsedTransactions() {
   renderStmtBatches();
   renderStmtTracker();
   renderStmtMemberSummary();
+  refreshExpenseAnalysisIfVisible();
 
   const updatedCard = (state.creditCards||[]).find(c => c.id === cardId);
   const ccImported = ccParsedRows.length - skipCount;
