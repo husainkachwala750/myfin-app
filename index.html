@@ -2442,6 +2442,51 @@
       <!-- Member Summary Card -->
       <div id="stmt-member-summary" style="margin-bottom:20px"></div>
 
+      <!-- Smart Auto-Import from Folder -->
+      <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(6,214,160,0.25);background:linear-gradient(135deg,rgba(6,214,160,0.03),rgba(0,180,216,0.03))">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:24px">🤖</span>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--text)">Smart Auto-Import</div>
+              <div style="font-size:12px;color:var(--text3)">Drop statement files in a folder — app auto-detects bank, period &amp; imports</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="auto-import-folder-label" style="font-size:12px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button class="btn btn-primary btn-sm" onclick="pickAutoImportFolder()" style="white-space:nowrap">📁 Select Folder</button>
+            <button class="btn btn-secondary btn-sm" id="auto-import-scan-btn" onclick="scanAutoImportFolder()" style="display:none;white-space:nowrap">🔄 Scan Now</button>
+          </div>
+        </div>
+
+        <!-- How it works -->
+        <div id="auto-import-guide" style="background:var(--surface3);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">📋 How it works</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8">
+            <div><strong>1.</strong> Select a folder on your computer (e.g. <code>Documents/BankStatements</code>)</div>
+            <div><strong>2.</strong> Create sub-folders matching your bank names: <code>HDFC</code>, <code>SBI</code>, <code>Axis</code>, <code>ICICI</code>, etc.</div>
+            <div><strong>3.</strong> Drop CSV statement files into the matching bank folder</div>
+            <div><strong>4.</strong> Click <strong>Scan Now</strong> — the app reads each file, detects the bank account, auto-detects the month from transaction dates, and imports!</div>
+            <div style="margin-top:6px;padding:8px 10px;background:rgba(0,180,216,0.08);border-radius:8px;font-size:11px;color:var(--accent)">
+              💡 <strong>Tip:</strong> Name folders to match bank names in your account list. Files already imported are skipped (dedup by content).
+            </div>
+          </div>
+        </div>
+
+        <!-- Scan Results -->
+        <div id="auto-import-results" style="display:none"></div>
+
+        <!-- File Mapping Config -->
+        <div id="auto-import-mapping" style="display:none;margin-top:14px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">📎 Detected Files</div>
+          <div id="auto-import-file-list"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-primary" onclick="executeAutoImport()" style="flex:1">✅ Import All Matched Files</button>
+            <button class="btn btn-secondary" onclick="cancelAutoImport()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Statement Upload Tracker Board -->
       <div class="card" style="margin-bottom:20px">
         <div class="section-header">
@@ -9792,6 +9837,455 @@ function populateBankSelects2() {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  SMART AUTO-IMPORT FROM FOLDER
+// ═══════════════════════════════════════════════════════════════
+
+let _autoImportDirHandle = null;
+let _autoImportFiles = []; // { file, fileName, folderName, matchedBankId, matchedType, content, status }
+
+// Try to restore saved directory handle from IndexedDB
+async function restoreAutoImportHandle() {
+  try {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('MyFinAutoImport', 1); r.onupgradeneeded = () => r.result.createObjectStore('handles'); r.onsuccess = () => res(r.result); r.onerror = rej; });
+    const tx = db.transaction('handles', 'readonly');
+    const store = tx.objectStore('handles');
+    const handle = await new Promise((res, rej) => { const r = store.get('dirHandle'); r.onsuccess = () => res(r.result); r.onerror = rej; });
+    db.close();
+    if (handle) {
+      _autoImportDirHandle = handle;
+      const label = document.getElementById('auto-import-folder-label');
+      if (label) label.textContent = '📁 ' + handle.name;
+      const scanBtn = document.getElementById('auto-import-scan-btn');
+      if (scanBtn) scanBtn.style.display = '';
+    }
+  } catch(e) { /* ignore */ }
+}
+
+async function saveAutoImportHandle(handle) {
+  try {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('MyFinAutoImport', 1); r.onupgradeneeded = () => r.result.createObjectStore('handles'); r.onsuccess = () => res(r.result); r.onerror = rej; });
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'dirHandle');
+    await new Promise(res => { tx.oncomplete = res; });
+    db.close();
+  } catch(e) { /* ignore */ }
+}
+
+async function pickAutoImportFolder() {
+  if (!window.showDirectoryPicker) {
+    toast('Your browser does not support folder access. Use Chrome or Edge.', 'error');
+    return;
+  }
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    _autoImportDirHandle = dirHandle;
+    await saveAutoImportHandle(dirHandle);
+    document.getElementById('auto-import-folder-label').textContent = '📁 ' + dirHandle.name;
+    document.getElementById('auto-import-scan-btn').style.display = '';
+    toast('Folder selected: ' + dirHandle.name + '. Click Scan Now to find statements.');
+  } catch(e) {
+    if (e.name !== 'AbortError') toast('Failed to select folder: ' + e.message, 'error');
+  }
+}
+
+// Match folder name to a bank account or credit card
+function matchFolderToAccount(folderName) {
+  const fn = folderName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Try bank accounts first
+  for (const bank of state.bankAccounts) {
+    const bn = (bank.bankName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const acct = (bank.accountNumber || '').slice(-4);
+    if (bn && fn.includes(bn)) return { type: 'bank', id: bank.id, label: bank.bankName + ' (...' + acct + ')', memberId: bank.memberId };
+    if (acct && fn.includes(acct)) return { type: 'bank', id: bank.id, label: bank.bankName + ' (...' + acct + ')', memberId: bank.memberId };
+  }
+  // Try credit cards
+  for (const cc of (state.creditCards || [])) {
+    const cn = (cc.bankName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const last4 = cc.last4 || '';
+    if (cn && fn.includes(cn)) return { type: 'cc', id: cc.id, label: cc.bankName + ' ••••' + last4, memberId: cc.memberId };
+    if (last4 && fn.includes(last4)) return { type: 'cc', id: cc.id, label: cc.bankName + ' ••••' + last4, memberId: cc.memberId };
+  }
+  return null;
+}
+
+// Get hash of file content for dedup
+function fileContentHash(content) {
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const ch = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash |= 0;
+  }
+  return 'h_' + hash + '_' + content.length;
+}
+
+// Track imported files
+function getImportedFileKeys() {
+  try { return JSON.parse(localStorage.getItem('myfin_imported_files') || '[]'); } catch(e) { return []; }
+}
+function addImportedFileKey(key) {
+  const keys = getImportedFileKeys();
+  if (!keys.includes(key)) { keys.push(key); localStorage.setItem('myfin_imported_files', JSON.stringify(keys)); }
+}
+
+async function scanAutoImportFolder() {
+  if (!_autoImportDirHandle) { toast('No folder selected', 'error'); return; }
+
+  // Request permission again (needed after page reload)
+  try {
+    const perm = await _autoImportDirHandle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') {
+      const req = await _autoImportDirHandle.requestPermission({ mode: 'read' });
+      if (req !== 'granted') { toast('Folder access denied. Please re-select the folder.', 'error'); return; }
+    }
+  } catch(e) {
+    toast('Folder access expired. Please re-select the folder.', 'error');
+    _autoImportDirHandle = null;
+    document.getElementById('auto-import-scan-btn').style.display = 'none';
+    document.getElementById('auto-import-folder-label').textContent = '';
+    return;
+  }
+
+  _autoImportFiles = [];
+  const importedKeys = getImportedFileKeys();
+  const resultsEl = document.getElementById('auto-import-results');
+  const mappingEl = document.getElementById('auto-import-mapping');
+  const fileListEl = document.getElementById('auto-import-file-list');
+
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)"><div style="font-size:24px;margin-bottom:6px">🔍</div>Scanning folder...</div>';
+  mappingEl.style.display = 'none';
+
+  // Scan top-level for sub-folders (bank folders) and root CSV files
+  let fileCount = 0;
+  let matchCount = 0;
+  let skipCount = 0;
+
+  async function scanDir(dirHandle, parentFolderName) {
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'directory') {
+        // Recurse into sub-folder — folder name = bank name
+        await scanDir(entry, entry.name);
+      } else if (entry.kind === 'file') {
+        const name = entry.name.toLowerCase();
+        if (!name.endsWith('.csv') && !name.endsWith('.txt') && !name.endsWith('.tsv')) continue;
+        fileCount++;
+
+        try {
+          const file = await entry.getFile();
+          const content = await file.text();
+          const contentKey = fileContentHash(content);
+
+          // Skip already imported files
+          if (importedKeys.includes(contentKey)) { skipCount++; continue; }
+
+          // Try to match folder name to an account
+          const match = parentFolderName ? matchFolderToAccount(parentFolderName) : null;
+
+          // If no folder match, try filename matching
+          const fileMatch = !match ? matchFolderToAccount(entry.name.replace(/\.\w+$/, '')) : null;
+          const finalMatch = match || fileMatch;
+
+          // Auto-detect month from content
+          const lines = content.split('\n').filter(l => l.trim());
+          const { dataStart, dateCol } = detectColumns(lines);
+          const monthCounts = {};
+          for (let i = dataStart; i < lines.length; i++) {
+            const cols = smartCSVSplit(lines[i]);
+            if (cols.length < 3) continue;
+            const rawDate = cols[dateCol] || '';
+            if (!looksLikeDate(rawDate)) continue;
+            const nd = normalizeDate(rawDate);
+            if (nd && /^\d{4}-\d{2}/.test(nd)) {
+              const ym = nd.slice(0, 7);
+              monthCounts[ym] = (monthCounts[ym] || 0) + 1;
+            }
+          }
+          const detectedMonths = Object.entries(monthCounts).sort((a, b) => b[1] - a[1]);
+          const primaryMonth = detectedMonths.length ? detectedMonths[0][0] : '';
+          const txnCount = Object.values(monthCounts).reduce((a, b) => a + b, 0);
+
+          _autoImportFiles.push({
+            fileName: entry.name,
+            folderName: parentFolderName || '(root)',
+            content,
+            contentKey,
+            matchedAccount: finalMatch,
+            detectedMonth: primaryMonth,
+            detectedMonths,
+            txnCount,
+            status: finalMatch ? 'matched' : 'unmatched'
+          });
+
+          if (finalMatch) matchCount++;
+        } catch(e) { /* skip unreadable files */ }
+      }
+    }
+  }
+
+  try {
+    await scanDir(_autoImportDirHandle, '');
+  } catch(e) {
+    resultsEl.innerHTML = `<div style="color:var(--danger);padding:12px">Error scanning folder: ${e.message}</div>`;
+    return;
+  }
+
+  if (!_autoImportFiles.length) {
+    resultsEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3)">
+      <div style="font-size:24px;margin-bottom:6px">📭</div>
+      No new statement files found.${skipCount ? ` (${skipCount} already imported)` : ''}<br>
+      <span style="font-size:12px">Place CSV files in sub-folders named after your banks.</span>
+    </div>`;
+    return;
+  }
+
+  // Show results summary
+  const unmatchCount = _autoImportFiles.filter(f => f.status === 'unmatched').length;
+  resultsEl.innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+    <div style="flex:1;min-width:100px;padding:10px;background:rgba(6,214,160,0.08);border-radius:8px;text-align:center">
+      <div style="font-size:20px;font-weight:700;color:var(--seafoam)">${matchCount}</div>
+      <div style="font-size:11px;color:var(--text3)">Matched</div>
+    </div>
+    <div style="flex:1;min-width:100px;padding:10px;background:rgba(255,107,107,0.08);border-radius:8px;text-align:center">
+      <div style="font-size:20px;font-weight:700;color:var(--danger)">${unmatchCount}</div>
+      <div style="font-size:11px;color:var(--text3)">Unmatched</div>
+    </div>
+    <div style="flex:1;min-width:100px;padding:10px;background:rgba(0,180,216,0.08);border-radius:8px;text-align:center">
+      <div style="font-size:20px;font-weight:700;color:var(--accent)">${skipCount}</div>
+      <div style="font-size:11px;color:var(--text3)">Already Imported</div>
+    </div>
+  </div>`;
+
+  // Show file list with matching details
+  mappingEl.style.display = 'block';
+
+  // Build bank/CC options for dropdown
+  const bankOpts = state.bankAccounts.map(b => `<option value="bank:${b.id}">🏦 ${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+  const ccOpts = (state.creditCards||[]).map(c => `<option value="cc:${c.id}">💳 ${c.bankName} ••••${c.last4}</option>`).join('');
+  const allOpts = `<option value="">— Skip —</option>${bankOpts}${ccOpts}`;
+
+  fileListEl.innerHTML = _autoImportFiles.map((f, i) => {
+    const monthLabel = f.detectedMonth ? new Date(f.detectedMonth + '-01').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '?';
+    const multiMonth = f.detectedMonths.length > 1 ? ` (+${f.detectedMonths.length - 1} more)` : '';
+    const statusColor = f.status === 'matched' ? 'var(--seafoam)' : 'var(--danger)';
+    const statusIcon = f.status === 'matched' ? '✅' : '⚠️';
+    const matchVal = f.matchedAccount ? `${f.matchedAccount.type}:${f.matchedAccount.id}` : '';
+
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.05);flex-wrap:wrap" id="auto-import-row-${i}">
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:13px;font-weight:600">${statusIcon} ${f.fileName}</div>
+        <div style="font-size:11px;color:var(--text3)">📁 ${f.folderName} · ${f.txnCount} transactions · ${monthLabel}${multiMonth}</div>
+      </div>
+      <div style="min-width:180px">
+        <select id="auto-import-account-${i}" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid ${statusColor};width:100%" onchange="updateAutoImportMatch(${i}, this.value)">
+          ${allOpts.replace(`value="${matchVal}"`, `value="${matchVal}" selected`)}
+        </select>
+      </div>
+      <div style="min-width:60px;text-align:right">
+        <input type="checkbox" id="auto-import-check-${i}" ${f.status === 'matched' ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--seafoam)">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateAutoImportMatch(idx, val) {
+  const f = _autoImportFiles[idx];
+  if (!val) { f.matchedAccount = null; f.status = 'unmatched'; return; }
+  const [type, id] = val.split(':');
+  if (type === 'bank') {
+    const bank = state.bankAccounts.find(b => b.id === id);
+    if (bank) f.matchedAccount = { type: 'bank', id, label: bank.bankName, memberId: bank.memberId };
+  } else {
+    const cc = (state.creditCards||[]).find(c => c.id === id);
+    if (cc) f.matchedAccount = { type: 'cc', id, label: cc.bankName, memberId: cc.memberId };
+  }
+  f.status = 'matched';
+}
+
+async function executeAutoImport() {
+  const toImport = _autoImportFiles.filter((f, i) => {
+    const cb = document.getElementById('auto-import-check-' + i);
+    return cb && cb.checked && f.matchedAccount;
+  });
+
+  if (!toImport.length) { toast('No files selected for import', 'error'); return; }
+
+  let totalImported = 0;
+  let totalSkipped = 0;
+  let filesProcessed = 0;
+
+  for (const f of toImport) {
+    const { content, matchedAccount, contentKey } = f;
+    const isBank = matchedAccount.type === 'bank';
+    const accountId = matchedAccount.id;
+    const memberId = matchedAccount.memberId || '';
+    const memberName = memberId ? (state.members.find(m => m.id === memberId)?.name || '') : '';
+
+    // Parse using the smart parser
+    const lines = content.split('\n').filter(l => l.trim());
+    const { dateCol, descCol, dataStart } = detectColumns(lines);
+    const rows = [];
+
+    for (let idx = dataStart; idx < lines.length; idx++) {
+      const cols = smartCSVSplit(lines[idx]);
+      if (cols.length < 3) continue;
+      const rawDate = cols[dateCol] || '';
+      const desc = cols[descCol] || '';
+      if (!looksLikeDate(rawDate)) continue;
+      const normDate = normalizeDate(rawDate);
+      if (!normDate || !/^\d{4}-\d{2}-\d{2}$/.test(normDate)) continue;
+      if (!desc || desc.length < 2 || isHeaderWord(desc)) continue;
+
+      const numCols = [];
+      for (let c = 0; c < cols.length; c++) {
+        if (c === dateCol || c === descCol) continue;
+        numCols.push(parseFloat(cols[c].replace(/,/g, '')) || 0);
+      }
+
+      let debit = 0, credit = 0, balance = 0;
+      if (isBank) {
+        if (numCols.length >= 3) { debit = numCols[0]; credit = numCols[1]; balance = numCols[2]; }
+        else if (numCols.length === 2) { debit = numCols[0]; credit = numCols[1]; }
+        else if (numCols.length === 1) { if (numCols[0] < 0) debit = Math.abs(numCols[0]); else credit = numCols[0]; }
+        if (debit === 0 && credit === 0 && balance === 0) continue;
+        rows.push({ date: normDate, description: desc, debit, credit, balance });
+      } else {
+        let amount = 0, type = 'debit';
+        if (numCols.length >= 1) { amount = Math.abs(numCols[0]); if (numCols[0] < 0) type = 'credit'; }
+        if (amount === 0) continue;
+        rows.push({ date: normDate, description: desc, amount, type });
+      }
+    }
+
+    if (!rows.length) continue;
+
+    // Group by month and import
+    const byMonth = {};
+    rows.forEach(r => {
+      const ym = r.date.slice(0, 7);
+      if (!byMonth[ym]) byMonth[ym] = [];
+      byMonth[ym].push(r);
+    });
+
+    // Build dedup index
+    const existingKeys = new Set();
+    state.transactions.forEach(t => {
+      const key = isBank ? (t.bankId === accountId) : (t.cardId === accountId);
+      if (key) existingKeys.add(stmtTxnDedupKey(t.date, t.description, t.amount, accountId));
+    });
+
+    const accountLabel = isBank
+      ? (state.bankAccounts.find(b => b.id === accountId)?.bankName || 'Bank') + ' (...' + (state.bankAccounts.find(b => b.id === accountId)?.accountNumber || '').slice(-4) + ')'
+      : (state.creditCards||[]).find(c => c.id === accountId)?.bankName || 'Card';
+
+    if (!state.stmtBatches) state.stmtBatches = [];
+
+    let fileImported = 0;
+    let fileSkipped = 0;
+
+    Object.keys(byMonth).sort().forEach(ym => {
+      const monthRows = byMonth[ym];
+      const batchId = uid();
+      let monthSkip = 0;
+
+      monthRows.forEach(r => {
+        if (isBank) {
+          const creditKey = r.credit > 0 ? stmtTxnDedupKey(r.date, r.description, r.credit, accountId) : null;
+          const debitKey = r.debit > 0 ? stmtTxnDedupKey(r.date, r.description, r.debit, accountId) : null;
+          if ((creditKey && existingKeys.has(creditKey)) || (debitKey && existingKeys.has(debitKey))) { monthSkip++; return; }
+
+          const stmtId = uid();
+          const txnIds = [];
+          if (r.credit > 0) {
+            const txn = { id: uid(), date: r.date, type: 'credit', memberId, description: r.description, amount: r.credit, bankId: accountId, ref: '', stmtId, batchId };
+            state.transactions.push(txn); txnIds.push(txn.id);
+            existingKeys.add(creditKey);
+          }
+          if (r.debit > 0) {
+            const txn = { id: uid(), date: r.date, type: 'debit', memberId, description: r.description, amount: r.debit, bankId: accountId, ref: '', stmtId, batchId };
+            state.transactions.push(txn); txnIds.push(txn.id);
+            existingKeys.add(debitKey);
+          }
+          state.statements.push({ id: stmtId, bankId: accountId, memberId, txnIds, batchId, ...r });
+        } else {
+          const dupKey = stmtTxnDedupKey(r.date, r.description, r.amount, accountId);
+          if (existingKeys.has(dupKey)) { monthSkip++; return; }
+          const stmtId = uid();
+          const txn = { id: uid(), date: r.date, type: r.type, memberId, description: r.description, amount: r.amount, cardId: accountId, ref: '', stmtId, batchId };
+          state.transactions.push(txn);
+          existingKeys.add(dupKey);
+          (state.ccStatements = state.ccStatements || []).push({ id: stmtId, cardId: accountId, memberId, txnId: txn.id, batchId, ...r });
+        }
+      });
+
+      const imported = monthRows.length - monthSkip;
+      fileImported += imported;
+      fileSkipped += monthSkip;
+
+      if (imported > 0) {
+        const closingRow = isBank ? [...monthRows].reverse().find(r => r.balance > 0) : null;
+        state.stmtBatches.push({
+          id: batchId,
+          type: isBank ? 'bank' : 'cc',
+          [isBank ? 'bankId' : 'cardId']: accountId,
+          [isBank ? 'bankLabel' : 'cardLabel']: accountLabel,
+          memberId, memberName,
+          month: ym,
+          rowCount: imported,
+          totalDebit: isBank ? monthRows.reduce((a, r) => a + (r.debit||0), 0) : monthRows.filter(r => r.type==='debit').reduce((a,r) => a+(r.amount||0),0),
+          totalCredit: isBank ? monthRows.reduce((a, r) => a + (r.credit||0), 0) : monthRows.filter(r => r.type==='credit').reduce((a,r) => a+(r.amount||0),0),
+          closingBalance: closingRow ? closingRow.balance : 0,
+          uploadedAt: new Date().toISOString(),
+          source: 'auto-import'
+        });
+      }
+    });
+
+    totalImported += fileImported;
+    totalSkipped += fileSkipped;
+    filesProcessed++;
+
+    // Mark as imported
+    addImportedFileKey(contentKey);
+  }
+
+  if (totalImported > 0) {
+    recalcAllBalances();
+    saveData();
+    renderStmtTracker();
+    renderStmtBatches();
+    renderStatementTable();
+    renderCCStatementTable();
+    renderBankAccounts();
+  }
+
+  // Show results
+  document.getElementById('auto-import-mapping').style.display = 'none';
+  document.getElementById('auto-import-results').innerHTML = `
+    <div style="text-align:center;padding:20px;background:rgba(6,214,160,0.06);border-radius:10px">
+      <div style="font-size:28px;margin-bottom:6px">✅</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">Auto-Import Complete!</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px">
+        ${filesProcessed} file${filesProcessed!==1?'s':''} processed ·
+        <span style="color:var(--seafoam);font-weight:600">${totalImported} transactions imported</span>
+        ${totalSkipped ? ` · <span style="color:var(--text3)">${totalSkipped} duplicates skipped</span>` : ''}
+      </div>
+    </div>`;
+
+  toast(`Auto-imported ${totalImported} transactions from ${filesProcessed} files!`);
+  _autoImportFiles = [];
+}
+
+function cancelAutoImport() {
+  document.getElementById('auto-import-mapping').style.display = 'none';
+  document.getElementById('auto-import-results').style.display = 'none';
+  _autoImportFiles = [];
+}
+
+// Restore folder handle on page load
+setTimeout(restoreAutoImportHandle, 1000);
 
 function handleStatementUpload(e) {
   const file = e.target.files[0];
