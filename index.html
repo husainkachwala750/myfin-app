@@ -1706,57 +1706,58 @@
 
     <!-- EXPENSES -->
     <div id="page-expenses" class="page">
-      <div class="page-header"><h2>Expenses</h2><p>Track daily expenses and manage recurring contracts</p></div>
+      <div class="page-header"><h2>Expenses & Income</h2><p>Analyze spending patterns, income trends, and manage recurring contracts</p></div>
       <div class="member-tabs" id="exp-member-tabs"></div>
 
       <!-- Expense Type Tabs -->
       <div class="contract-tabs">
-        <button class="contract-tab-btn active" id="exp-tab-regular" onclick="switchExpenseTab('regular')">💸 Regular Expenses</button>
+        <button class="contract-tab-btn active" id="exp-tab-regular" onclick="switchExpenseTab('regular')">📊 Analysis</button>
         <button class="contract-tab-btn" id="exp-tab-contracts" onclick="switchExpenseTab('contracts')">📋 Contract / Recurring</button>
         <button class="contract-tab-btn" id="exp-tab-autotag" onclick="switchExpenseTab('autotag')">🏷️ Auto-Tag Rules</button>
       </div>
 
-      <!-- REGULAR EXPENSES PANEL -->
+      <!-- ANALYSIS PANEL -->
       <div id="exp-regular-panel">
-        <div class="section-header"><h3>Log Expense</h3></div>
-        <div class="card" style="margin-bottom:24px">
-          <div class="form-row-3">
-            <div class="form-group"><label>Date</label><input type="date" id="exp-date" value=""></div>
-            <div class="form-group"><label>Member</label><select id="exp-member"><option value="">Select member</option></select></div>
-            <div class="form-group"><label>Category</label>
-              <select id="exp-cat">
-                <option>🛒 Groceries</option><option>🍕 Food & Dining</option><option>🚗 Transport</option>
-                <option>🏥 Healthcare</option><option>📚 Education</option><option>🎭 Entertainment</option>
-                <option>🏠 Housing & Rent</option><option>💡 Utilities</option><option>👗 Clothing</option>
-                <option>💊 Medicine</option><option>✈️ Travel</option><option>🎁 Gifts</option><option>📦 Other</option>
+        <!-- Summary Stats -->
+        <div class="grid-4" id="exp-analysis-stats" style="margin-bottom:20px"></div>
+
+        <!-- Category Breakdown -->
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px">
+          <div class="card" style="flex:1;min-width:300px">
+            <div class="section-header"><h3>Expense by Category</h3>
+              <select id="exp-analysis-period" style="width:auto;padding:5px 10px;font-size:12px" onchange="renderExpenseAnalysis()">
+                <option value="this-month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="3-months">Last 3 Months</option>
+                <option value="6-months">Last 6 Months</option>
+                <option value="this-year">This Year</option>
+                <option value="all">All Time</option>
               </select>
             </div>
+            <div id="exp-category-breakdown"></div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label>Description</label><input type="text" id="exp-desc" placeholder="e.g. Weekly grocery shopping"></div>
-            <div class="form-group"><label>Amount (₹)</label><input type="number" id="exp-amount" placeholder="0.00" step="0.01"></div>
+          <div class="card" style="flex:1;min-width:300px">
+            <div class="section-header"><h3>Income by Category</h3></div>
+            <div id="inc-category-breakdown"></div>
           </div>
-          <div class="form-group"><label>Currency</label>
-          <div id="exp-currency-wrap"></div>
-          
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Payment Mode</label>
-              <select id="exp-mode"><option>Cash</option><option>Debit Card</option><option>Credit Card</option><option>UPI</option><option>Net Banking</option><option>Cheque</option></select>
-            </div>
-            <div class="form-group"><label>Notes</label><input type="text" id="exp-notes" placeholder="Optional notes"></div>
-          </div>
-          <button class="btn btn-primary" onclick="addExpense()">➕ Add Expense</button>
         </div>
+
+        <!-- Monthly Trend -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="section-header"><h3>Monthly Trend</h3></div>
+          <div id="exp-monthly-trend"></div>
+        </div>
+
+        <!-- Payment Mode Breakdown -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="section-header"><h3>By Payment Mode</h3></div>
+          <div id="exp-mode-breakdown"></div>
+        </div>
+
+        <!-- Top Transactions -->
         <div class="card">
-          <div class="section-header"><h3>Expense History</h3>
-            <div style="display:flex;gap:8px;align-items:center">
-              <select id="exp-filter-cat" style="width:auto;padding:6px 10px;font-size:13px" onchange="renderExpenses()"><option value="">All Categories</option></select>
-              <button class="btn btn-danger btn-sm" onclick="bulkClearExpenses()" style="font-size:12px">🗑 Clear All</button>
-            </div>
-          </div>
-          <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th><th></th></tr></thead>
-          <tbody id="expense-table"></tbody></table>
+          <div class="section-header"><h3>Top Expenses</h3></div>
+          <div id="exp-top-list"></div>
         </div>
       </div>
 
@@ -2025,7 +2026,7 @@
 
     <!-- TRANSACTIONS -->
     <div id="page-transactions" class="page">
-      <div class="page-header"><h2>Transactions</h2><p>All income & expense transactions</p></div>
+      <div class="page-header"><h2>Transactions</h2><p>All income & expense transactions — cash or bank</p></div>
 
       <!-- Member Tabs -->
       <div class="member-tabs" id="txn-member-tabs"></div>
@@ -2040,22 +2041,41 @@
           <div class="form-group"><label>Type</label><select id="txn-type"><option value="credit">Credit (Income)</option><option value="debit">Debit (Expense)</option></select></div>
           <div class="form-group"><label>Member</label><select id="txn-member"><option value="">Select member</option></select></div>
         </div>
-        <div class="form-row">
+        <div class="form-row-3">
           <div class="form-group"><label>Description</label><input type="text" id="txn-desc" placeholder="Transaction description"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="txn-amount" placeholder="0.00" step="0.01"></div>
-        <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
+          <div class="form-group"><label>Category</label>
+            <select id="txn-category">
+              <option value="">— Select —</option>
+              <option>🛒 Groceries</option><option>🍕 Food & Dining</option><option>🚗 Transport</option>
+              <option>🏥 Healthcare</option><option>📚 Education</option><option>🎭 Entertainment</option>
+              <option>🏠 Housing & Rent</option><option>💡 Utilities</option><option>👗 Clothing</option>
+              <option>💊 Medicine</option><option>✈️ Travel</option><option>🎁 Gifts</option>
+              <option>💰 Salary</option><option>📈 Investment Income</option><option>🏦 Interest</option>
+              <option>🤝 Business Income</option><option>🔄 Transfer</option><option>📦 Other</option>
+            </select>
+          </div>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Select Bank</option></select></div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Payment Mode</label>
+            <select id="txn-mode">
+              <option value="Cash">💵 Cash</option>
+              <option value="UPI">📱 UPI</option>
+              <option value="Debit Card">💳 Debit Card</option>
+              <option value="Credit Card">💳 Credit Card</option>
+              <option value="Net Banking">🌐 Net Banking</option>
+              <option value="Cheque">📝 Cheque</option>
+              <option value="Auto-debit">🔄 Auto-debit</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Account/Bank</label><select id="txn-bank"><option value="">Cash (No Bank)</option></select></div>
           <div class="form-group"><label>Reference No.</label><input type="text" id="txn-ref" placeholder="Optional"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn btn-primary" onclick="addTransaction()">➕ Add Transaction</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer">
-            <input type="checkbox" id="txn-auto-tag" checked style="width:16px;height:16px;accent-color:var(--accent)">
-            🏷️ Auto-tag as expense/income
-          </label>
+        <div class="form-row">
+          <div class="form-group"><label>Currency</label><div id="txn-currency-wrap"></div></div>
+          <div class="form-group"><label>Notes</label><input type="text" id="txn-notes" placeholder="Optional notes"></div>
         </div>
+        <button class="btn btn-primary" onclick="addTransaction()" style="margin-top:8px">➕ Add Transaction</button>
       </div>
       <div class="card">
         <div class="section-header"><h3>All Transactions</h3>
@@ -6572,7 +6592,7 @@ function _showPageCore(id) {
   if(fab) fab.classList.toggle('visible', id !== 'dashboard');
   if(id==='dashboard') renderDashboard();
   if(id==='members') renderMembers();
-  if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); buildMemberTabs('exp-member-tabs','expenses',()=>0, mid=>state.expenses.filter(e=>!mid||e.memberId===mid).length); renderExpenses(); }
+  if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); renderExpenseAnalysis(); }
   if(id==='transactions') { populateMemberSelects(); populateBankSelects(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
   if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderLoanAccounts(); populateLoanMemberSelect(); }
@@ -7797,7 +7817,7 @@ function buildMemberTabs(containerId, filterKey, onSelect, countFn) {
 
 function selectMemberTab(filterKey, memberId, el, containerId) {
   memberFilters[filterKey] = memberId;
-  if(filterKey === 'expenses') { buildMemberTabs('exp-member-tabs','expenses',()=>0, id=>state.expenses.filter(e=>!id||e.memberId===id).length); renderExpenses(); }
+  if(filterKey === 'expenses') { renderExpenseAnalysis(); }
   if(filterKey === 'investments') { buildMemberTabs('inv-member-tabs','investments',()=>0, id=>state.investments.filter(i=>!id||i.memberId===id).length); renderInvestments(); }
   if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length + (state.loans||[]).filter(l=>!id||l.memberId===id).length); renderBankAccounts(); renderLoanAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
@@ -7808,78 +7828,188 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
 }
 
 // =================== EXPENSES ===================
-function addExpense() {
-  const amount = parseFloat(document.getElementById('exp-amount').value);
-  if(!amount || amount <= 0) return toast('Enter valid amount', 'error');
-  state.expenses.push({
-    id: uid(),
-    date: document.getElementById('exp-date').value || today(),
-    memberId: document.getElementById('exp-member').value,
-    category: document.getElementById('exp-cat').value,
-    description: document.getElementById('exp-desc').value || 'Expense',
-    amount,
-    mode: document.getElementById('exp-mode').value,
-    notes: document.getElementById('exp-notes').value
-  });
-  saveData(); fsSaveExpensesSummary(); renderExpenses(); toast('Expense added!');
-  document.getElementById('exp-amount').value = '';
-  document.getElementById('exp-desc').value = '';
-  document.getElementById('exp-notes').value = '';
-}
+function renderExpenseAnalysis() {
+  const mid = memberFilters.expenses || '';
+  const period = document.getElementById('exp-analysis-period')?.value || 'this-month';
 
-function renderExpenses() {
-  const filterMember = memberFilters.expenses || '';
-  const filterCat = document.getElementById('exp-filter-cat')?.value || '';
-  let rows = filterByPeriod([...state.expenses]).sort((a,b) => b.date.localeCompare(a.date));
-  if(filterMember) rows = rows.filter(e => e.memberId === filterMember);
-  if(filterCat) rows = rows.filter(e => e.category === filterCat);
+  // Filter transactions by member
+  let txns = [...state.transactions];
+  if (mid) txns = txns.filter(t => t.memberId === mid);
 
-  const tbody = document.getElementById('expense-table');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">No expenses found</td></tr>'; }
-  else {
-    // Group by member when showing all
-    if(!filterMember && state.members.length > 1) {
-      const grouped = {};
-      const unassigned = [];
-      rows.forEach(e => {
-        if(e.memberId && getMember(e.memberId).id) { if(!grouped[e.memberId]) grouped[e.memberId]=[]; grouped[e.memberId].push(e); }
-        else unassigned.push(e);
-      });
-      let html = '';
-      state.members.forEach(m => {
-        if(!grouped[m.id]) return;
-        const mTotal = grouped[m.id].reduce((a,e)=>a+e.amount,0);
-        html += `<tr><td colspan="7" style="padding:0"><div class="member-section-header">
-          <div class="member-section-title">
-            <div style="width:24px;height:24px;border-radius:50%;background:${m.color||'#00e5ff'}22;border:2px solid ${m.color||'#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:${m.color||'#00e5ff'}">${m.name[0]}</div>
-            ${m.name}
-          </div>
-          <div class="member-section-line"></div>
-          <div class="member-section-count">${grouped[m.id].length} entries · <span style="color:var(--danger);font-family:'DM Mono',monospace">${fmt(mTotal)}</span></div>
-        </div></td></tr>`;
-        html += grouped[m.id].map(e => expenseRow(e)).join('');
-      });
-      if(unassigned.length) {
-        html += `<tr><td colspan="7"><div class="member-section-header"><div class="member-section-title">—  Unassigned</div><div class="member-section-line"></div></div></td></tr>`;
-        html += unassigned.map(e => expenseRow(e)).join('');
-      }
-      tbody.innerHTML = html;
+  // Apply period filter
+  const now = new Date();
+  const curYM = now.toISOString().slice(0, 7);
+  const lastM = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
+  let startDate = '';
+  if (period === 'this-month') startDate = curYM + '-01';
+  else if (period === 'last-month') { startDate = lastM + '-01'; txns = txns.filter(t => (t.date||'').slice(0,7) === lastM || (t.date||'').slice(0,7) >= curYM); }
+  else if (period === '3-months') startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10);
+  else if (period === '6-months') startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().slice(0, 10);
+  else if (period === 'this-year') startDate = now.getFullYear() + '-01-01';
+
+  if (startDate && period !== 'last-month') txns = txns.filter(t => (t.date||'') >= startDate);
+  if (period === 'last-month') txns = txns.filter(t => (t.date||'').slice(0,7) === lastM);
+
+  const debits = txns.filter(t => t.type === 'debit');
+  const credits = txns.filter(t => t.type === 'credit');
+  const totalExp = debits.reduce((a, t) => a + (t.amount || 0), 0);
+  const totalInc = credits.reduce((a, t) => a + (t.amount || 0), 0);
+  const netFlow = totalInc - totalExp;
+  const txnCount = txns.length;
+
+  // Summary stats
+  const statsEl = document.getElementById('exp-analysis-stats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-value">${fmt(totalExp)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Total Income</div><div class="stat-value">${fmt(totalInc)}</div></div>
+      <div class="stat-card ${netFlow>=0?'green':'red'}"><div class="stat-label">Net Flow</div><div class="stat-value">${netFlow>=0?'+':''}${fmt(netFlow)}</div></div>
+      <div class="stat-card blue"><div class="stat-label">Transactions</div><div class="stat-value">${txnCount}</div></div>`;
+  }
+
+  // Expense by category
+  const expByCat = {};
+  debits.forEach(t => { const c = t.category || t.autoTagCategory || '📦 Other'; expByCat[c] = (expByCat[c] || 0) + (t.amount || 0); });
+  const expCatSorted = Object.entries(expByCat).sort((a, b) => b[1] - a[1]);
+  const catEl = document.getElementById('exp-category-breakdown');
+  if (catEl) {
+    if (!expCatSorted.length) {
+      catEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">No expenses in this period</div>';
     } else {
-      tbody.innerHTML = rows.map(e => expenseRow(e)).join('');
+      const maxCat = expCatSorted[0][1];
+      catEl.innerHTML = expCatSorted.map(([cat, amt]) => {
+        const pct = totalExp > 0 ? ((amt / totalExp) * 100).toFixed(1) : 0;
+        const barW = maxCat > 0 ? ((amt / maxCat) * 100) : 0;
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+            <span>${cat}</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--danger)">${fmt(amt)} <span style="font-size:11px;color:var(--text3)">(${pct}%)</span></span>
+          </div>
+          <div style="height:8px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="height:100%;width:${barW}%;background:var(--danger);border-radius:4px;transition:width 0.3s"></div></div>
+        </div>`;
+      }).join('');
     }
   }
 
-  // rebuild tabs with fresh counts
-  buildMemberTabs('exp-member-tabs', 'expenses', ()=>0, id => state.expenses.filter(e=>!id||e.memberId===id).length);
-
-  // Update filter cats
-  const fc = document.getElementById('exp-filter-cat');
-  if(fc) {
-    const cats = [...new Set(state.expenses.map(e => e.category))];
-    const val = fc.value;
-    fc.innerHTML = '<option value="">All Categories</option>' + cats.map(c => `<option>${c}</option>`).join('');
-    fc.value = val;
+  // Income by category
+  const incByCat = {};
+  credits.forEach(t => { const c = t.category || t.autoTagCategory || '📦 Other'; incByCat[c] = (incByCat[c] || 0) + (t.amount || 0); });
+  const incCatSorted = Object.entries(incByCat).sort((a, b) => b[1] - a[1]);
+  const incEl = document.getElementById('inc-category-breakdown');
+  if (incEl) {
+    if (!incCatSorted.length) {
+      incEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">No income in this period</div>';
+    } else {
+      const maxInc = incCatSorted[0][1];
+      incEl.innerHTML = incCatSorted.map(([cat, amt]) => {
+        const pct = totalInc > 0 ? ((amt / totalInc) * 100).toFixed(1) : 0;
+        const barW = maxInc > 0 ? ((amt / maxInc) * 100) : 0;
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px">
+            <span>${cat}</span>
+            <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--seafoam)">${fmt(amt)} <span style="font-size:11px;color:var(--text3)">(${pct}%)</span></span>
+          </div>
+          <div style="height:8px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="height:100%;width:${barW}%;background:var(--seafoam);border-radius:4px;transition:width 0.3s"></div></div>
+        </div>`;
+      }).join('');
+    }
   }
+
+  // Monthly trend (last 6 months)
+  const trendEl = document.getElementById('exp-monthly-trend');
+  if (trendEl) {
+    const allTxns = mid ? state.transactions.filter(t => t.memberId === mid) : [...state.transactions];
+    const monthData = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = d.toISOString().slice(0, 7);
+      monthData[ym] = { income: 0, expense: 0 };
+    }
+    allTxns.forEach(t => {
+      const ym = (t.date || '').slice(0, 7);
+      if (monthData[ym]) {
+        if (t.type === 'credit') monthData[ym].income += (t.amount || 0);
+        else monthData[ym].expense += (t.amount || 0);
+      }
+    });
+    const monthKeys = Object.keys(monthData).sort();
+    const maxVal = Math.max(...monthKeys.map(k => Math.max(monthData[k].income, monthData[k].expense)), 1);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    trendEl.innerHTML = `<div style="display:flex;align-items:flex-end;gap:8px;height:180px;padding:10px 0">
+      ${monthKeys.map(ym => {
+        const d = monthData[ym];
+        const expH = (d.expense / maxVal) * 140;
+        const incH = (d.income / maxVal) * 140;
+        const mIdx = parseInt(ym.slice(5)) - 1;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="display:flex;gap:3px;align-items:flex-end;height:140px">
+            <div style="width:16px;background:var(--seafoam);border-radius:3px 3px 0 0;height:${incH}px;min-height:2px" title="Income: ${fmt(d.income)}"></div>
+            <div style="width:16px;background:var(--danger);border-radius:3px 3px 0 0;height:${expH}px;min-height:2px" title="Expense: ${fmt(d.expense)}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600">${monthNames[mIdx]}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--text3);margin-top:8px">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--seafoam);border-radius:2px;margin-right:4px"></span>Income</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:2px;margin-right:4px"></span>Expense</span>
+    </div>`;
+  }
+
+  // Payment mode breakdown
+  const modeEl = document.getElementById('exp-mode-breakdown');
+  if (modeEl) {
+    const byMode = {};
+    debits.forEach(t => { const m = t.mode || (t.bankId ? 'Bank' : 'Cash'); byMode[m] = (byMode[m] || 0) + (t.amount || 0); });
+    const modeSorted = Object.entries(byMode).sort((a, b) => b[1] - a[1]);
+    if (!modeSorted.length) {
+      modeEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">No data</div>';
+    } else {
+      const modeIcons = {'Cash':'💵','UPI':'📱','Debit Card':'💳','Credit Card':'💳','Net Banking':'🌐','Cheque':'📝','Auto-debit':'🔄','Bank':'🏦'};
+      modeEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:12px">${modeSorted.map(([mode, amt]) => {
+        const pct = totalExp > 0 ? ((amt / totalExp) * 100).toFixed(1) : 0;
+        return `<div style="flex:1;min-width:120px;padding:12px;background:var(--surface3);border-radius:10px;text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">${modeIcons[mode]||'💰'}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${mode}</div>
+          <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--danger);margin-top:4px">${fmt(amt)}</div>
+          <div style="font-size:11px;color:var(--text3)">${pct}%</div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+  }
+
+  // Top expenses
+  const topEl = document.getElementById('exp-top-list');
+  if (topEl) {
+    const topDebits = debits.sort((a, b) => (b.amount || 0) - (a.amount || 0)).slice(0, 10);
+    if (!topDebits.length) {
+      topEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">No expenses</div>';
+    } else {
+      topEl.innerHTML = topDebits.map((t, i) => {
+        const m = getMember(t.memberId);
+        const cat = t.category || t.autoTagCategory || '';
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+          <div style="width:24px;height:24px;border-radius:50%;background:var(--danger)18;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--danger)">${i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${t.description}</div>
+            <div style="font-size:11px;color:var(--text3)">${t.date} · ${m.name||'—'}${cat ? ' · '+cat : ''}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--danger)">${fmt(t.amount)}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Rebuild member tabs
+  buildMemberTabs('exp-member-tabs', 'expenses', () => 0, id => {
+    const t = id ? state.transactions.filter(t => t.memberId === id) : state.transactions;
+    return t.length;
+  });
+}
+
+function renderExpenses() {
+  renderExpenseAnalysis();
 }
 
 function expenseRow(e) {
@@ -9095,25 +9225,20 @@ function addTransaction() {
     memberId: document.getElementById('txn-member').value,
     description: document.getElementById('txn-desc').value || 'Transaction',
     amount,
+    category: document.getElementById('txn-category').value || '',
+    mode: document.getElementById('txn-mode').value || 'Cash',
     bankId: document.getElementById('txn-bank').value,
-    ref: document.getElementById('txn-ref').value
+    ref: document.getElementById('txn-ref').value,
+    notes: document.getElementById('txn-notes')?.value || ''
   };
   state.transactions.push(txn);
-
-  // Auto-tag if enabled
-  const shouldTag = document.getElementById('txn-auto-tag')?.checked && autoTagEnabled;
-  let tagMsg = '';
-  if (shouldTag) {
-    const result = autoCreateFromTransaction(txn);
-    if (result) {
-      tagMsg = ` (auto-tagged as ${result.action}: ${result.item.autoTagCategory || result.item.category})`;
-    }
-  }
-
-  saveData(); renderTransactions(); toast('Transaction added!' + tagMsg);
+  recalcAllBalances();
+  saveData(); renderTransactions(); toast('Transaction added!');
   document.getElementById('txn-amount').value='';
   document.getElementById('txn-desc').value='';
   document.getElementById('txn-ref').value='';
+  document.getElementById('txn-notes').value='';
+  document.getElementById('txn-category').value='';
 }
 
 function renderTransactions() {
@@ -9136,12 +9261,14 @@ function renderTransactions() {
   function txnRowHtml(t) {
     const m = getMember(t.memberId);
     const bank = state.bankAccounts.find(b => b.id === t.bankId) || {};
+    const cat = t.category || t.autoTagCategory || '';
+    const mode = t.mode || (t.bankId ? 'Bank' : 'Cash');
     return `<tr>
       <td>${t.date}</td>
       <td>${m.name||'—'}</td>
-      <td>${t.description}</td>
-      <td>${bank.bankName||'—'}</td>
-      <td style="font-size:12px;color:var(--text3)">${t.ref||'—'}</td>
+      <td>${t.description}${cat ? `<div style="font-size:11px;color:var(--text3)">${cat}</div>` : ''}</td>
+      <td style="font-size:12px">${mode}</td>
+      <td style="font-size:12px;color:var(--text3)">${bank.bankName||'—'}</td>
       <td><span class="badge ${t.type==='credit'?'badge-green':'badge-red'}">${t.type==='credit'?'Credit':'Debit'}</span></td>
       <td class="${t.type==='credit'?'amount-credit':'amount-debit'}">${t.type==='credit'?'+':'-'}${fmt(t.amount)}</td>
       <td style="display:flex;gap:4px"><button class="btn btn-secondary btn-sm btn-icon" onclick="editTxn('${t.id}')" title="Edit">✏️</button><button class="btn btn-danger btn-sm btn-icon" onclick="deleteTxn('${t.id}')" title="Delete">🗑</button></td>
@@ -9165,7 +9292,7 @@ function renderTransactions() {
         <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--seafoam)">+${fmt(totalCredit)}</span>
       </div>
       <div style="display:${isFirst?'':'none'};overflow-x:auto">
-        <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Bank</th><th>Ref</th><th>Type</th><th>Amount</th><th></th></tr></thead>
+        <table><thead><tr><th>Date</th><th>Member</th><th>Description</th><th>Mode</th><th>Bank</th><th>Type</th><th>Amount</th><th></th></tr></thead>
         <tbody>${monthRows.map(t => txnRowHtml(t)).join('')}</tbody></table>
       </div>
     </div>`;
