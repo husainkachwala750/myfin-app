@@ -15991,7 +15991,9 @@ async function sbRefreshToken() {
     if (!res.ok) return null;
     const data = await res.json();
     if (data.access_token) {
-      setSession(data);
+      // Merge new tokens into existing session (keep family_id, member_id, etc.)
+      const existing = getSession() || {};
+      setSession({ ...existing, access_token: data.access_token, refresh_token: data.refresh_token || existing.refresh_token });
       console.log('[MyFin Auth] Token refreshed successfully');
       return data;
     }
@@ -16205,9 +16207,10 @@ async function doFamilyLogin() {
     const authData = await sbSignIn(email, password);
     const userId = authData.user?.id;
     const accessToken = authData.access_token;
+    const refreshToken = authData.refresh_token;
 
     // 2. Get family record + account_type from user_metadata
-    setSession({ access_token: accessToken, user_id: userId });
+    setSession({ access_token: accessToken, refresh_token: refreshToken, user_id: userId });
     const family = await sbGetFamily(userId);
     if (!family) throw new Error('No account found. Please register first.');
 
@@ -16229,6 +16232,7 @@ async function doFamilyLogin() {
 
     const fullSession = {
       access_token: accessToken,
+      refresh_token: refreshToken,
       user_id: userId,
       family_id: family.id,
       family_name: family.family_name,
@@ -16297,10 +16301,11 @@ async function doFamilyRegister() {
     if (!userId) throw new Error('Signup succeeded but no user ID returned. Check your email for confirmation.');
 
     // 2. Sign in to get access token
-    let accessToken;
+    let accessToken, refreshToken;
     try {
       const loginData = await sbSignIn(email, password);
       accessToken = loginData.access_token;
+      refreshToken = loginData.refresh_token;
     } catch(e) {
       errEl.textContent = 'Account created! Please check your email to confirm, then login.';
       errEl.style.color = '#06d6a0';
@@ -16309,7 +16314,7 @@ async function doFamilyRegister() {
       return;
     }
 
-    setSession({ access_token: accessToken, user_id: userId });
+    setSession({ access_token: accessToken, refresh_token: refreshToken, user_id: userId });
 
     // 3. Create family record (used for both personal & family accounts)
     const family = await sbCreateFamily(userId, displayName);
@@ -16339,6 +16344,7 @@ async function doFamilyRegister() {
     // 6. Start session
     const session = {
       access_token: accessToken,
+      refresh_token: refreshToken,
       user_id: userId,
       family_id: family.id,
       family_name: displayName,
