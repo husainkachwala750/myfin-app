@@ -5069,7 +5069,8 @@ async function storagePullData(familyId) {
     return true;
   } catch(e) {
     console.warn('Storage pull failed:', e);
-    throw e;
+    toast('Data sync failed: ' + (e.message||'Unknown error'), 'error');
+    return false;
   }
 }
 
@@ -5090,18 +5091,13 @@ async function storageBootLoad(familyId) {
   try {
     const loaded = await Promise.race([
       storagePullData(familyId),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout — check your connection')), 15000))
+      new Promise(resolve => setTimeout(() => resolve(false), 15000))
     ]);
-    if (loaded) {
-      setSyncStatus('synced');
-    } else {
-      setSyncStatus('synced');
-      console.log('[MyFin Boot] No cloud data — using local');
-    }
+    setSyncStatus(loaded ? 'synced' : (navigator.onLine ? 'error' : 'offline'));
+    if (!loaded && navigator.onLine) console.warn('[MyFin Boot] Cloud pull returned no data');
   } catch(e) {
     console.warn('[MyFin Boot] Sync failed:', e.message);
     setSyncStatus('error');
-    toast('Cloud sync failed: ' + e.message, 'error');
   }
 }
 
@@ -5110,37 +5106,83 @@ async function storageBootLoad(familyId) {
 // ════════════════════════════════════════════════════════════════
 
 async function storagePushSupabase(familyId, pkg) {
-  // Encrypt sensitive fields before storing
   const encrypted = await encryptStateForCloud(pkg);
   const version = (_syncVersion || 0) + 1;
   _syncVersion = version;
-  // Upsert using PostgREST on_conflict parameter
-  await sbFetch('/rest/v1/family_data?on_conflict=family_id', {
-    method: 'POST',
-    headers: { 'Prefer': 'return=minimal,resolution=merge-duplicates' },
-    body: JSON.stringify({
-      family_id: familyId,
-      data: encrypted,
-      synced_at: new Date().toISOString(),
-      version
-    })
+  const payload = { data: encrypted, synced_at: new Date().toISOString(), version };
+
+  // Strategy: PATCH existing row. If 0 rows matched, INSERT new row.
+  // PATCH never 409s — it just updates 0 rows if not found.
+  const patchRes = await fetch(SUPABASE_URL + `/rest/v1/family_data?family_id=eq.${familyId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${getSession()?.access_token || SUPABASE_KEY}`,
+      'Prefer': 'return=headers-only'
+    },
+    body: JSON.stringify(payload)
   });
+
+  // Check content-range header to see if any rows were updated
+  const range = patchRes.headers.get('content-range');
+  const updated = range && !range.startsWith('*/0') && !range.endsWith('/0');
+
+  if (!patchRes.ok && patchRes.status !== 404) {
+    // PATCH failed for a real reason — try with refreshed token
+    const refreshed = await sbRefreshToken();
+    if (refreshed) {
+      const retry = await fetch(SUPABASE_URL + `/rest/v1/family_data?family_id=eq.${familyId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${getSession()?.access_token}`,
+          'Prefer': 'return=headers-only'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (retry.ok) {
+        localStorage.setItem('myfin_sync_version_' + familyId, String(version));
+        localStorage.setItem('myfin_last_sync', new Date().toISOString());
+        return;
+      }
+    }
+    const err = await patchRes.text();
+    throw new Error(`Sync push failed: ${patchRes.status} ${err}`);
+  }
+
+  if (!updated && patchRes.ok) {
+    // No existing row — INSERT
+    try {
+      await sbFetch('/rest/v1/family_data', {
+        method: 'POST',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ family_id: familyId, ...payload })
+      });
+    } catch(e) {
+      // 409 on INSERT means row was created between PATCH and INSERT (race) — retry PATCH
+      if (e.message?.includes('409') || e.message?.includes('23505')) {
+        await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+
   localStorage.setItem('myfin_sync_version_' + familyId, String(version));
   localStorage.setItem('myfin_last_sync', new Date().toISOString());
 }
 
 async function storagePullSupabase(familyId) {
-  toast('Pulling data from cloud...', 'success');
   const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
-  if (!res || !res.length) { toast('No cloud data found for this account', 'error'); return null; }
+  if (!res || !res.length) return null;
   const row = res[0];
-  if (!row?.data) { toast('Cloud data is empty', 'error'); return null; }
-  // Decrypt sensitive fields
-  const decrypted = await decryptStateFromCloud(row.data);
-  const members = decrypted?.members?.length || 0;
-  const stmts = decrypted?.statements?.length || 0;
-  toast('Loaded: ' + members + ' members, ' + stmts + ' statements');
-  return decrypted;
+  if (!row?.data) return null;
+  return await decryptStateFromCloud(row.data);
 }
 
 // ════════════════════════════════════════════════════════════════
