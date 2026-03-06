@@ -5508,7 +5508,11 @@ async function storagePullSupabase(familyId) {
 // ════════════════════════════════════════════════════════════════
 
 function storageLocalFamilyPath(familyId) {
-  return ['MyFin', 'Family_' + familyId.slice(0, 8)];
+  const session = getSession();
+  const name = session?.family_name || '';
+  const safeName = name.replace(/[^a-zA-Z0-9_ \-]/g, '').trim();
+  if (safeName) return ['MyFin', safeName];
+  return ['MyFin', 'Data_' + familyId.slice(0, 8)];
 }
 
 async function storagePushLocal(familyId, pkg) {
@@ -19870,6 +19874,16 @@ function shouldShowOnboarding() {
 
 function startOnboarding() {
   _onboardStep = 0;
+  // Adapt labels for personal vs family accounts
+  if (isPersonalMode()) {
+    const step2 = document.querySelector('.onboard-step[data-step="2"]');
+    if (step2) {
+      const h = step2.querySelector('h3'); if (h) h.textContent = 'Your Profile';
+      const p = step2.querySelector('p'); if (p) p.textContent = 'Confirm your profile details. You can add more members later if needed.';
+    }
+    const chk = document.querySelector('.onboard-step[data-step="0"] .onboard-checklist');
+    if (chk) chk.innerHTML = chk.innerHTML.replace('Add family members', 'Set up your profile');
+  }
   renderOnboardDots();
   showOnboardStep(0);
   document.getElementById('onboarding-overlay').classList.add('open');
