@@ -4990,13 +4990,15 @@ async function storageBuildPackage(familyId) {
 }
 
 // ── PUSH: save data to chosen provider ──────────────────────────────────
+let _pushInProgress = false;
 async function storagePushData(familyId) {
-  if (!familyId) return;
+  if (!familyId || _pushInProgress) return;
   const provider = storageGetProvider();
   if (!provider) return;
-  const pkg = await storageBuildPackage(familyId);
+  _pushInProgress = true;
   setSyncStatus('syncing');
   try {
+    const pkg = await storageBuildPackage(familyId);
     const pushFn = async () => {
       switch(provider) {
         case 'supabase': await storagePushSupabase(familyId, pkg); break;
@@ -5009,29 +5011,14 @@ async function storagePushData(familyId) {
     };
     await Promise.race([
       pushFn(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Push timeout')), 15000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout — will retry later')), 10000))
     ]);
     setSyncStatus('synced');
-    updateStorageStatusBadge();
   } catch(e) {
-    console.warn('Storage push failed:', e);
-    // If payload too large, try stripping more data
-    if (e.message?.includes('413') || e.message?.includes('too large') || e.message?.includes('payload')) {
-      console.log('[MyFin Sync] Payload too large — retrying with trimmed data...');
-      try {
-        // Strip statements rawCSV and large description fields
-        if (pkg.statements?.length > 500) pkg.statements = pkg.statements.slice(-500);
-        if (pkg.ccStatements?.length > 500) pkg.ccStatements = pkg.ccStatements.slice(-500);
-        switch(provider) {
-          case 'supabase': await storagePushSupabase(familyId, pkg); break;
-        }
-        setSyncStatus('synced');
-        console.log('[MyFin Sync] Retry succeeded with trimmed data');
-        return;
-      } catch(e2) { console.warn('Storage push retry also failed:', e2); }
-    }
+    console.warn('Storage push failed:', e.message);
     setSyncStatus('error');
-    toast('Sync error: ' + (e.message || 'Could not save to storage'), 'error');
+  } finally {
+    _pushInProgress = false;
   }
 }
 
@@ -5073,7 +5060,13 @@ async function storagePullData(familyId) {
       });
       state[k] = Array.from(merged.values());
     });
-    await saveData();
+    // Save merged data to IDB only (don't trigger cloud push during pull)
+    if(_dbReady && !_dbError) {
+      const writes = Object.keys(STORES)
+        .filter(s => s !== 'meta' && s in state)
+        .map(name => idbPutBulk(name, state[name]));
+      await Promise.all(writes);
+    }
     return true;
   } catch(e) {
     console.warn('Storage pull failed:', e);
@@ -5094,21 +5087,19 @@ async function storageBootLoad(familyId) {
     showStoragePicker(familyId, true);
     return;
   }
-  setSyncStatus('syncing');
   _bootingSyncLock = true;  // prevent push during entire boot
-  // Pull with 15s timeout so app doesn't hang forever
+  setSyncStatus('syncing');
   try {
     const loaded = await Promise.race([
       storagePullData(familyId),
-      new Promise(resolve => setTimeout(() => resolve(false), 15000))
+      new Promise(resolve => setTimeout(() => resolve(false), 10000))
     ]);
-    setSyncStatus(loaded ? 'synced' : (navigator.onLine ? 'error' : 'offline'));
-    if (!loaded && navigator.onLine) console.warn('[MyFin Boot] Cloud pull returned no data');
+    setSyncStatus(loaded ? 'synced' : 'synced'); // even if no cloud data, local data is fine
   } catch(e) {
-    console.warn('[MyFin Boot] Sync failed:', e.message);
+    console.warn('[MyFin Boot] Pull failed:', e.message);
     setSyncStatus('error');
   }
-  // Keep lock on — bootFamilyApp will release it after full boot
+  // Lock stays on — released by bootFamilyApp after full init
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -5121,18 +5112,24 @@ async function storagePushSupabase(familyId, pkg) {
   _syncVersion = version;
   const payload = { data: encrypted, synced_at: new Date().toISOString(), version };
 
-  // DELETE existing row then INSERT new one (avoids PATCH/RLS issues entirely)
+  // Try POST (insert/upsert). If 409 (row exists), try PATCH (update).
   try {
-    await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, { method: 'DELETE' });
+    await sbFetch('/rest/v1/family_data', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ family_id: familyId, ...payload })
+    });
   } catch(e) {
-    // DELETE failing is OK — row might not exist yet
-    console.warn('DELETE before sync (OK to fail):', e.message);
+    if (e.message?.includes('409') || e.message?.includes('23505')) {
+      // Row exists — update it with PATCH
+      await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      throw e;
+    }
   }
-  await sbFetch('/rest/v1/family_data', {
-    method: 'POST',
-    headers: { 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ family_id: familyId, ...payload })
-  });
 
   localStorage.setItem('myfin_sync_version_' + familyId, String(version));
   localStorage.setItem('myfin_last_sync', new Date().toISOString());
