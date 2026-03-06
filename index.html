@@ -2192,36 +2192,93 @@
 
     <!-- BANK DETAILS -->
     <div id="page-bankdetails" class="page">
-      <div class="page-header"><h2>Bank Details</h2><p>Securely store family bank account information</p></div>
+      <div class="page-header"><h2>Bank &amp; Loan Accounts</h2><p>Securely store bank accounts and track loan repayments</p></div>
       <div class="security-bar">🔒 Bank details are AES-256 encrypted on your device before being saved to the secure cloud database. Account numbers are never stored in plain text.</div>
       <div class="member-tabs" id="bank-member-tabs"></div>
-      <div class="section-header"><h3>Add Bank Account</h3></div>
-      <div class="card" style="margin-bottom:24px">
-        <div class="form-row-3">
-          <div class="form-group"><label>Account Holder</label><select id="bank-member"><option value="">Select member</option></select></div>
-          <div class="form-group"><label>Bank Name</label><input type="text" id="bank-name" placeholder="e.g. HDFC Bank"></div>
-          <div class="form-group"><label>Account Type</label><select id="bank-type"><option>Savings Account</option><option>Current Account</option><option>Salary Account</option><option>NRI Account</option><option>Joint Account</option><option>Fixed Deposit</option><option>Recurring Deposit</option></select></div>
+
+      <!-- Account Type Toggle -->
+      <div style="display:flex;gap:4px;background:rgba(0,150,199,0.08);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content">
+        <button class="dash-toggle-btn active" id="bank-form-tab-bank" onclick="switchBankFormTab('bank')">🏦 Bank Account</button>
+        <button class="dash-toggle-btn" id="bank-form-tab-loan" onclick="switchBankFormTab('loan')">🏠 Loan Account</button>
+      </div>
+
+      <!-- Bank Account Form -->
+      <div id="bank-form-bank">
+        <div class="section-header"><h3>Add Bank Account</h3></div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="form-row-3">
+            <div class="form-group"><label>Account Holder</label><select id="bank-member"><option value="">Select member</option></select></div>
+            <div class="form-group"><label>Bank Name</label><input type="text" id="bank-name" placeholder="e.g. HDFC Bank"></div>
+            <div class="form-group"><label>Account Type</label><select id="bank-type"><option>Savings Account</option><option>Current Account</option><option>Salary Account</option><option>NRI Account</option><option>Joint Account</option><option>Fixed Deposit</option><option>Recurring Deposit</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Account Number</label><input type="text" id="bank-accno" placeholder="Enter account number"></div>
+            <div class="form-group"><label>IFSC Code</label><input type="text" id="bank-ifsc" placeholder="e.g. HDFC0001234"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Branch</label><input type="text" id="bank-branch" placeholder="Branch name"></div>
+            <div class="form-group"><label>Customer ID / CIF</label><input type="text" id="bank-cif" placeholder="Optional"></div>
+            <div class="form-group"><label>Current Balance</label><input type="number" id="bank-balance" placeholder="0.00"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Currency</label><div id="bank-currency-wrap"></div></div>
+            <div class="form-group"><label>Linked Mobile</label><input type="text" id="bank-mobile" placeholder="Registered mobile number"></div>
+            <div class="form-group"><label>Email ID</label><input type="text" id="bank-email" placeholder="Registered email"></div>
+          </div>
+          <div class="form-group"><label>Notes / Nominee</label><input type="text" id="bank-notes" placeholder="Nominee name, purpose, etc."></div>
+          <button class="btn btn-primary" onclick="addBankAccount()">🏦 Save Bank Account</button>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>Account Number</label><input type="text" id="bank-accno" placeholder="Enter account number"></div>
-          <div class="form-group"><label>IFSC Code</label><input type="text" id="bank-ifsc" placeholder="e.g. HDFC0001234"></div>
+      </div>
+
+      <!-- Loan Account Form -->
+      <div id="bank-form-loan" style="display:none">
+        <div class="section-header"><h3>Add Loan Account</h3></div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="form-row-3">
+            <div class="form-group"><label>Borrower</label><select id="loan-member"><option value="">Select member</option></select></div>
+            <div class="form-group"><label>Lender / Bank</label><input type="text" id="loan-lender" placeholder="e.g. SBI, HDFC, Bajaj Finance"></div>
+            <div class="form-group"><label>Loan Type</label>
+              <select id="loan-type">
+                <option>Home Loan</option><option>Car Loan</option><option>Personal Loan</option>
+                <option>Education Loan</option><option>Gold Loan</option><option>Business Loan</option>
+                <option>Loan Against Property</option><option>Two-Wheeler Loan</option><option>Consumer Durable Loan</option>
+                <option>Credit Card Loan</option><option>Other Loan</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Loan Account Number</label><input type="text" id="loan-accno" placeholder="Loan account number"></div>
+            <div class="form-group"><label>Sanction Amount</label><input type="number" id="loan-sanction" placeholder="Total loan sanctioned" step="0.01"></div>
+            <div class="form-group"><label>Outstanding Balance</label><input type="number" id="loan-outstanding" placeholder="Current outstanding" step="0.01"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Interest Rate (%)</label><input type="number" id="loan-rate" placeholder="e.g. 8.5" step="0.01"></div>
+            <div class="form-group"><label>EMI Amount</label><input type="number" id="loan-emi" placeholder="Monthly EMI" step="0.01"></div>
+            <div class="form-group"><label>Tenure (months)</label><input type="number" id="loan-tenure" placeholder="e.g. 240"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label>Start Date</label><input type="date" id="loan-start"></div>
+            <div class="form-group"><label>End Date</label><input type="date" id="loan-end"></div>
+            <div class="form-group"><label>EMI Debit Day</label><input type="number" id="loan-emi-day" placeholder="e.g. 5" min="1" max="31"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Linked Bank Account (EMI debited from)</label>
+              <select id="loan-linked-bank"><option value="">Select bank account</option></select>
+            </div>
+            <div class="form-group"><label>Notes</label><input type="text" id="loan-notes" placeholder="Property address, vehicle details, etc."></div>
+          </div>
+          <button class="btn btn-primary" onclick="addLoanAccount()">🏠 Save Loan Account</button>
         </div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Branch</label><input type="text" id="bank-branch" placeholder="Branch name"></div>
-          <div class="form-group"><label>Customer ID / CIF</label><input type="text" id="bank-cif" placeholder="Optional"></div>
-          <div class="form-group"><label>Current Balance</label><input type="number" id="bank-balance" placeholder="0.00"></div>
-        </div>
-        <div class="form-row-3">
-          <div class="form-group"><label>Currency</label><div id="bank-currency-wrap"></div></div>
-          <div class="form-group"><label>Linked Mobile</label><input type="text" id="bank-mobile" placeholder="Registered mobile number"></div>
-          <div class="form-group"><label>Email ID</label><input type="text" id="bank-email" placeholder="Registered email"></div>
-        </div>
-        <div class="form-group"><label>Notes / Nominee</label><input type="text" id="bank-notes" placeholder="Nominee name, purpose, etc."></div>
-        <button class="btn btn-primary" onclick="addBankAccount()">🏦 Save Bank Account</button>
+      </div>
+
+      <!-- Accounts List -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-header"><h3>Bank Accounts</h3><span id="bank-total-balance" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--accent)"></span></div>
+        <div id="bank-accounts-list"></div>
       </div>
       <div class="card">
-        <div class="section-header"><h3>Family Bank Accounts</h3><span id="bank-total-balance" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--accent)"></span></div>
-        <div id="bank-accounts-list"></div>
+        <div class="section-header"><h3>Loan Accounts</h3><span id="loan-total-outstanding" style="font-family:'DM Mono',monospace;font-size:15px;color:var(--danger)"></span></div>
+        <div id="loan-accounts-list"></div>
       </div>
     </div>
 
@@ -4434,7 +4491,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // All collections (object stores) and their key paths
 
@@ -5844,6 +5901,7 @@ const STORES = {
   invStatements:{ keyPath: 'id' },
   ccStatements: { keyPath: 'id', indexes: [['cardId','cardId'],['date','date']] },
   stmtBatches:  { keyPath: 'id', indexes: [['type','type']] },
+  loans:        { keyPath: 'id', indexes: [['memberId','memberId']] },
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
@@ -6154,7 +6212,7 @@ let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
   businesses:[], invStatements:[], insurances:[], insClaims:[],
-  ccStatements:[], stmtBatches:[]
+  ccStatements:[], stmtBatches:[], loans:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -6517,7 +6575,7 @@ function _showPageCore(id) {
   if(id==='expenses') { populateMemberSelects(); populateContractMemberSelect(); buildMemberTabs('exp-member-tabs','expenses',()=>0, mid=>state.expenses.filter(e=>!mid||e.memberId===mid).length); renderExpenses(); }
   if(id==='transactions') { populateMemberSelects(); populateBankSelects(); buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
   if(id==='investments') { populateMemberSelects(); buildMemberTabs('inv-member-tabs','investments',()=>0, mid=>state.investments.filter(i=>!mid||i.memberId===mid).length); renderInvestments(); initInvStatements(); }
-  if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length); renderBankAccounts(); }
+  if(id==='bankdetails') { populateMemberSelects(); buildMemberTabs('bank-member-tabs','bank',()=>0, mid=>state.bankAccounts.filter(b=>!mid||b.memberId===mid).length + (state.loans||[]).filter(l=>!mid||l.memberId===mid).length); renderBankAccounts(); renderLoanAccounts(); populateLoanMemberSelect(); }
   if(id==='creditcards') { populateCCMemberSelect(); buildMemberTabs('cc-member-tabs','creditcards',()=>0, mid=>(state.creditCards||[]).filter(c=>!mid||c.memberId===mid).length); renderCreditCards(); updateCardPreview(); }
   if(id==='statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); populateCCStmtSelect(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(id==='insurance') { populateInsPage(); switchInsTab('overview'); }
@@ -7741,7 +7799,7 @@ function selectMemberTab(filterKey, memberId, el, containerId) {
   memberFilters[filterKey] = memberId;
   if(filterKey === 'expenses') { buildMemberTabs('exp-member-tabs','expenses',()=>0, id=>state.expenses.filter(e=>!id||e.memberId===id).length); renderExpenses(); }
   if(filterKey === 'investments') { buildMemberTabs('inv-member-tabs','investments',()=>0, id=>state.investments.filter(i=>!id||i.memberId===id).length); renderInvestments(); }
-  if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length); renderBankAccounts(); }
+  if(filterKey === 'bank') { buildMemberTabs('bank-member-tabs','bank',()=>0, id=>state.bankAccounts.filter(b=>!id||b.memberId===id).length + (state.loans||[]).filter(l=>!id||l.memberId===id).length); renderBankAccounts(); renderLoanAccounts(); }
   if(filterKey === 'creditcards') { buildMemberTabs('cc-member-tabs','creditcards',()=>0, id=>(state.creditCards||[]).filter(c=>!id||c.memberId===id).length); renderCreditCards(); }
   if(filterKey === 'statements') { buildStmtMemberTabs(); renderStmtMemberSummary(); populateBankSelects2(); renderStatementTable(); renderStmtBatches(); renderStmtTracker(); renderCCStatementTable(); renderCCStmtSummary(); }
   if(filterKey === 'transactions') { buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions(); }
@@ -9389,6 +9447,191 @@ function deleteBankAccount(id) {
   saveData(); renderBankAccounts(); populateBankSelects(); toast('Account removed');
 }
 
+// =================== LOAN ACCOUNTS ===================
+
+function populateLoanMemberSelect() {
+  const sel = document.getElementById('loan-member');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select member</option>' +
+    state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function switchBankFormTab(tab) {
+  document.getElementById('bank-form-bank').style.display = tab === 'bank' ? '' : 'none';
+  document.getElementById('bank-form-loan').style.display = tab === 'loan' ? '' : 'none';
+  document.getElementById('bank-form-tab-bank').classList.toggle('active', tab === 'bank');
+  document.getElementById('bank-form-tab-loan').classList.toggle('active', tab === 'loan');
+  if (tab === 'loan') populateLoanLinkedBankSelect();
+}
+
+function populateLoanLinkedBankSelect() {
+  const sel = document.getElementById('loan-linked-bank');
+  if (!sel) return;
+  const mid = memberFilters.bank || '';
+  const banks = mid ? state.bankAccounts.filter(b => b.memberId === mid) : state.bankAccounts;
+  sel.innerHTML = '<option value="">Select bank account</option>' +
+    banks.map(b => `<option value="${b.id}">${b.bankName} (...${(b.accountNumber||'').slice(-4)})</option>`).join('');
+}
+
+function addLoanAccount() {
+  const lender = document.getElementById('loan-lender').value.trim();
+  const accNo = document.getElementById('loan-accno').value.trim();
+  if (!lender) return toast('Enter lender / bank name', 'error');
+  const sanction = parseFloat(document.getElementById('loan-sanction').value) || 0;
+  const outstanding = parseFloat(document.getElementById('loan-outstanding').value) || sanction;
+
+  if (!state.loans) state.loans = [];
+  state.loans.push({
+    id: uid(),
+    memberId: document.getElementById('loan-member').value,
+    lender,
+    loanType: document.getElementById('loan-type').value,
+    accountNumber: accNo,
+    sanctionAmount: sanction,
+    outstanding,
+    interestRate: parseFloat(document.getElementById('loan-rate').value) || 0,
+    emi: parseFloat(document.getElementById('loan-emi').value) || 0,
+    tenure: parseInt(document.getElementById('loan-tenure').value) || 0,
+    startDate: document.getElementById('loan-start').value || '',
+    endDate: document.getElementById('loan-end').value || '',
+    emiDay: parseInt(document.getElementById('loan-emi-day').value) || 1,
+    linkedBankId: document.getElementById('loan-linked-bank').value || '',
+    notes: document.getElementById('loan-notes').value,
+    createdAt: new Date().toISOString()
+  });
+  saveData();
+  renderLoanAccounts();
+  toast('Loan account saved!');
+  ['loan-lender','loan-accno','loan-sanction','loan-outstanding','loan-rate','loan-emi','loan-tenure','loan-emi-day','loan-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('loan-start').value = '';
+  document.getElementById('loan-end').value = '';
+}
+
+function renderLoanAccounts() {
+  const list = document.getElementById('loan-accounts-list');
+  const totalEl = document.getElementById('loan-total-outstanding');
+  if (!list) return;
+  if (!state.loans) state.loans = [];
+
+  const filterMember = memberFilters.bank || '';
+  const loans = filterMember ? state.loans.filter(l => l.memberId === filterMember) : state.loans;
+  const totalOutstanding = loans.reduce((a, l) => a + (l.outstanding || 0), 0);
+  if (totalEl) totalEl.textContent = loans.length ? 'Outstanding: ' + fmt(totalOutstanding) : '';
+
+  if (!loans.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">🏠</div><p>No loan accounts' + (filterMember ? ' for this member' : '') + ' yet</p></div>';
+    return;
+  }
+
+  let html = '';
+  if (!filterMember && state.members.length > 1) {
+    const grouped = {};
+    const unassigned = [];
+    loans.forEach(l => {
+      if (l.memberId && getMember(l.memberId).id) { if (!grouped[l.memberId]) grouped[l.memberId] = []; grouped[l.memberId].push(l); }
+      else unassigned.push(l);
+    });
+    state.members.forEach(m => {
+      if (!grouped[m.id]) return;
+      html += `<div class="member-section-header">
+        <div class="member-section-title">
+          <div style="width:28px;height:28px;border-radius:50%;background:${m.color||'#00e5ff'}22;border:2px solid ${m.color||'#00e5ff'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${m.color||'#00e5ff'}">${m.name[0]}</div>
+          ${m.name}
+        </div>
+        <div class="member-section-line"></div>
+      </div>`;
+      html += grouped[m.id].map(l => loanAccountCard(l)).join('');
+    });
+    if (unassigned.length) {
+      html += `<div class="member-section-header"><div class="member-section-title">— Unassigned</div><div class="member-section-line"></div></div>`;
+      html += unassigned.map(l => loanAccountCard(l)).join('');
+    }
+  } else {
+    html = loans.map(l => loanAccountCard(l)).join('');
+  }
+  list.innerHTML = html;
+}
+
+function loanAccountCard(l) {
+  const m = getMember(l.memberId);
+  const paidPct = l.sanctionAmount ? Math.round((1 - l.outstanding / l.sanctionAmount) * 100) : 0;
+  const paidAmt = l.sanctionAmount - (l.outstanding || 0);
+  const linkedBank = l.linkedBankId ? state.bankAccounts.find(b => b.id === l.linkedBankId) : null;
+  const emiRemaining = l.emi > 0 ? Math.ceil((l.outstanding || 0) / l.emi) : 0;
+
+  const loanIcons = {'Home Loan':'🏠','Car Loan':'🚗','Personal Loan':'💰','Education Loan':'🎓','Gold Loan':'🥇','Business Loan':'💼','Loan Against Property':'🏢','Two-Wheeler Loan':'🏍️','Consumer Durable Loan':'📦','Credit Card Loan':'💳','Other Loan':'📋'};
+  const icon = loanIcons[l.loanType] || '📋';
+
+  return `<div style="border:1px solid rgba(255,107,107,0.25);border-radius:12px;padding:18px;margin-bottom:12px;background:linear-gradient(135deg,rgba(30,10,10,0.9),rgba(45,15,15,0.8));flex-wrap:wrap;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,107,107,0.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${icon}</div>
+        <div>
+          <div style="font-weight:600;font-size:15px;color:#fff">${l.lender}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px">${l.loanType}${l.accountNumber ? ' · A/C: •••' + l.accountNumber.slice(-4) : ''}</div>
+          <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+            ${m.name ? `<span class="badge" style="background:${m.color||'#00e5ff'}22;color:${m.color||'#00e5ff'};border:1px solid ${m.color||'#00e5ff'}44;font-size:10px">${m.name[0]} ${m.name}</span>` : ''}
+            ${l.interestRate ? `<span class="badge" style="background:rgba(255,200,0,0.12);color:#f59e0b;font-size:10px">📊 ${l.interestRate}% p.a.</span>` : ''}
+            ${linkedBank ? `<span class="badge" style="background:rgba(0,229,255,0.1);color:var(--accent);font-size:10px">🏦 ${linkedBank.bankName}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:var(--danger)">${fmt(l.outstanding || 0)}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5)">Outstanding</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:var(--seafoam)">Paid: ${fmt(paidAmt)} (${paidPct}%)</span>
+        <span style="color:var(--text3)">Sanctioned: ${fmt(l.sanctionAmount)}</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+        <div style="height:100%;background:var(--seafoam);border-radius:3px;width:${Math.min(100,paidPct)}%;transition:width 0.3s"></div>
+      </div>
+    </div>
+
+    <!-- Loan details row -->
+    <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+      ${l.emi ? `<div style="font-size:12px"><span style="color:var(--text3)">EMI:</span> <span style="font-family:'DM Mono',monospace;color:#fff">${fmt(l.emi)}/mo</span></div>` : ''}
+      ${l.tenure ? `<div style="font-size:12px"><span style="color:var(--text3)">Tenure:</span> <span style="color:#fff">${l.tenure} months</span></div>` : ''}
+      ${emiRemaining ? `<div style="font-size:12px"><span style="color:var(--text3)">EMIs left:</span> <span style="color:#f59e0b">~${emiRemaining}</span></div>` : ''}
+      ${l.startDate ? `<div style="font-size:12px"><span style="color:var(--text3)">Start:</span> <span style="color:#fff">${l.startDate}</span></div>` : ''}
+      ${l.endDate ? `<div style="font-size:12px"><span style="color:var(--text3)">End:</span> <span style="color:#fff">${l.endDate}</span></div>` : ''}
+      ${l.emiDay ? `<div style="font-size:12px"><span style="color:var(--text3)">EMI day:</span> <span style="color:#fff">${l.emiDay}th</span></div>` : ''}
+    </div>
+    ${l.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">📝 ${l.notes}</div>` : ''}
+
+    <div style="display:flex;gap:6px;margin-top:12px;justify-content:flex-end">
+      <button class="btn btn-secondary btn-sm" onclick="editLoanAccount('${l.id}')">✏️ Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLoanAccount('${l.id}')">🗑 Delete</button>
+    </div>
+  </div>`;
+}
+
+function editLoanAccount(id) {
+  const l = (state.loans || []).find(x => x.id === id);
+  if (!l) return;
+  const newOutstanding = prompt('Update outstanding balance:', l.outstanding);
+  if (newOutstanding === null) return;
+  l.outstanding = parseFloat(newOutstanding) || 0;
+  const newEmi = prompt('Update EMI (or cancel to keep):', l.emi);
+  if (newEmi !== null) l.emi = parseFloat(newEmi) || l.emi;
+  saveData();
+  renderLoanAccounts();
+  toast('Loan updated');
+}
+
+function deleteLoanAccount(id) {
+  if (!confirm('Delete this loan account?')) return;
+  state.loans = (state.loans || []).filter(l => l.id !== id);
+  saveData();
+  renderLoanAccounts();
+  toast('Loan account removed');
+}
+
 // =================== STATEMENTS ===================
 function populateBankSelects2() {
   const el = document.getElementById('stmt-bank');
@@ -10943,14 +11186,15 @@ function renderFamilyDashboard() {
   const periodIncome = periodTransactions.filter(t=>t.type==='credit').reduce((a,t)=>a+t.amount, 0);
   const totalCCLimit = (state.creditCards||[]).reduce((a,c)=>a+c.limit,0);
   const totalCCOutstanding = (state.creditCards||[]).reduce((a,c)=>a+c.outstanding,0);
-  const netWorth = totalBalance + currentPortfolio;
+  const totalLoanOutstanding = (state.loans||[]).reduce((a,l)=>a+(l.outstanding||0),0);
+  const netWorth = totalBalance + currentPortfolio - totalLoanOutstanding;
   const colors = ['var(--accent)','var(--accent2)','var(--accent3)','var(--accent4)','var(--gold)','var(--danger)','var(--seafoam)'];
 
   document.getElementById('dashboard-stats').innerHTML = `
     <div class="stat-card green">
       <div class="stat-label">Net Worth</div>
       <div class="stat-value" style="color:var(--seafoam)">${fmt(netWorth)}</div>
-      <div class="stat-change">Banks + Investments</div>
+      <div class="stat-change">Banks + Investments${totalLoanOutstanding ? ' − Loans' : ''}</div>
     </div>
     <div class="stat-card blue">
       <div class="stat-label">${dashPeriod==='all'?'Monthly Income':'Period Income'}</div>
