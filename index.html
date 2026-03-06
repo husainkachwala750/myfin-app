@@ -6378,6 +6378,59 @@ function initCurrencySelectsForPage(id) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  DYNAMIC BALANCE RECALCULATION
+//  Recomputes bank balances from transactions and CC outstanding
+//  from CC statements. Call after any statement/transaction import.
+// ═══════════════════════════════════════════════════════════════
+
+function recalcBankBalances() {
+  // For each bank account, compute balance from transactions
+  state.bankAccounts.forEach(bank => {
+    // Check if there are uploaded statements with closing balance for this bank
+    const batches = (state.stmtBatches||[])
+      .filter(b => b.type === 'bank' && b.bankId === bank.id && b.closingBalance > 0)
+      .sort((a,b) => (b.month||b.uploadedAt||'').localeCompare(a.month||a.uploadedAt||''));
+
+    if (batches.length) {
+      // Use closing balance from latest statement batch
+      bank.balance = batches[0].closingBalance;
+    } else {
+      // Compute from transactions: start from manual balance + credits - debits
+      const txns = state.transactions.filter(t => t.bankId === bank.id);
+      if (txns.length) {
+        const credits = txns.filter(t => t.type === 'credit').reduce((a,t) => a + (t.amount||0), 0);
+        const debits = txns.filter(t => t.type === 'debit').reduce((a,t) => a + (t.amount||0), 0);
+        // If there's a manual starting balance and no statement, keep it and adjust
+        // Otherwise compute net from transactions
+        const manualBal = bank._manualBalance !== undefined ? bank._manualBalance : bank.balance;
+        if (!bank._manualBalance && bank._manualBalance !== 0) {
+          bank._manualBalance = bank.balance; // preserve initial manual entry
+        }
+        bank.balance = manualBal + credits - debits;
+      }
+    }
+  });
+}
+
+function recalcCCOutstanding() {
+  (state.creditCards||[]).forEach(card => {
+    // Sum from CC statements: debits (spend) - credits (payments)
+    const stmts = (state.ccStatements||[]).filter(s => s.cardId === card.id);
+    if (stmts.length) {
+      const spend = stmts.filter(s => s.type === 'debit').reduce((a,s) => a + (s.amount||0), 0);
+      const payments = stmts.filter(s => s.type === 'credit').reduce((a,s) => a + (s.amount||0), 0);
+      card.outstanding = spend - payments;
+      if (card.outstanding < 0) card.outstanding = 0;
+    }
+  });
+}
+
+function recalcAllBalances() {
+  recalcBankBalances();
+  recalcCCOutstanding();
+}
+
 function _showPageCore(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -6919,12 +6972,15 @@ function saveEditBank() {
   b.accountNumber = accNo;
   b.ifsc          = document.getElementById('eb-ifsc').value.trim().toUpperCase();
   b.branch        = document.getElementById('eb-branch').value.trim();
-  b.balance       = parseFloat(document.getElementById('eb-balance').value) || 0;
+  const newBalance = parseFloat(document.getElementById('eb-balance').value) || 0;
+  b.balance       = newBalance;
+  b._manualBalance = newBalance; // Mark as manually set so recalc respects it
   b.currency      = document.getElementById('eb-currency')?.value || b.currency || getBaseCurrency();
   b.cif           = document.getElementById('eb-cif').value.trim();
   b.mobile        = document.getElementById('eb-mobile').value.trim();
   b.email         = document.getElementById('eb-email').value.trim();
   b.notes         = document.getElementById('eb-notes').value.trim();
+  recalcAllBalances();
   saveData(); renderBankAccounts(); populateBankSelects(); closeModal('edit-bank-modal'); toast('✅ Bank account updated');
 }
 
@@ -8980,7 +9036,7 @@ function renderTransactions() {
   }).join('');
 }
 
-function deleteTxn(id) { state.transactions = state.transactions.filter(t => t.id !== id); saveData(); renderTransactions(); toast('Transaction deleted'); }
+function deleteTxn(id) { state.transactions = state.transactions.filter(t => t.id !== id); recalcAllBalances(); saveData(); renderTransactions(); toast('Transaction deleted'); }
 
 function bulkClearTransactions() {
   const mid = memberFilters.transactions || '';
@@ -8998,9 +9054,10 @@ function bulkClearTransactions() {
     state.transactions = [];
     state.expenses = state.expenses.filter(e => !e.txnRef || !allTxnIds.has(e.txnRef));
   }
+  recalcAllBalances();
   saveData();
   buildTxnMemberTabs(); renderTxnMemberSummary(); renderTransactions();
-  toast(`Cleared ${count} transactions`);
+  toast(`Cleared ${count} transactions — balances updated`);
 }
 
 function bulkClearExpenses() {
@@ -9142,6 +9199,7 @@ function addBankAccount() {
     branch: document.getElementById('bank-branch').value,
     cif: document.getElementById('bank-cif').value,
     balance: parseFloat(document.getElementById('bank-balance').value)||0,
+    _manualBalance: parseFloat(document.getElementById('bank-balance').value)||0,
     currency: document.getElementById('bank-currency')?.value || getBaseCurrency(),
     mobile: document.getElementById('bank-mobile').value,
     email: document.getElementById('bank-email').value,
@@ -9214,7 +9272,7 @@ function bankAccountCard(b) {
     </div>
     <div style="text-align:right">
       <div style="font-family:'DM Mono',monospace;font-size:18px;color:var(--accent)">${formatWithCurrency(b.balance, b.currency)}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:2px">Balance${b.currency && b.currency !== getBaseCurrency() ? ` · <span style="color:var(--accent)">${fmt(toBase(b.balance, b.currency))} base</span>` : ''}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Balance${(state.stmtBatches||[]).some(s=>s.type==='bank'&&s.bankId===b.id&&s.closingBalance>0) ? ' <span style="color:var(--seafoam)">(from statement)</span>' : ''}${b.currency && b.currency !== getBaseCurrency() ? ` · <span style="color:var(--accent)">${fmt(toBase(b.balance, b.currency))} base</span>` : ''}</div>
       <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">
         <button class="btn btn-secondary btn-sm" onclick="viewBankDetails('${b.id}')">👁 View</button>
         <button class="btn btn-secondary btn-sm" onclick="editBankAccount('${b.id}')">✏️ Edit</button>
@@ -9480,11 +9538,6 @@ function importParsedTransactions() {
   const closingRow = [...parsedRows].reverse().find(r => r.balance > 0);
   const closingBalance = closingRow ? closingRow.balance : 0;
 
-  // Auto-update bank account balance if statement has closing balance
-  if (closingBalance > 0 && bank) {
-    bank.balance = closingBalance;
-  }
-
   // Save the uploaded batch with raw CSV
   if (!state.stmtBatches) state.stmtBatches = [];
   state.stmtBatches.push({
@@ -9503,11 +9556,13 @@ function importParsedTransactions() {
     rawCSV: _lastParsedRawCSV || ''
   });
 
+  // Recalculate all balances dynamically from statements/transactions
+  recalcAllBalances();
   saveData();
   renderStatementTable();
   renderStmtBatches();
   renderStmtMemberSummary();
-  if (closingBalance > 0) { renderBankAccounts(); }
+  renderBankAccounts();
   toast(`Imported ${parsedRows.length} transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses/income.` : '') + (closingBalance > 0 ? ` Bank balance updated to ${fmt(closingBalance)}.` : ''));
   parsedRows = [];
   _lastParsedRawCSV = '';
@@ -9901,12 +9956,15 @@ function deleteBatch(batchId) {
   state.transactions.filter(t => t.batchId === batchId).forEach(t => txnsToRemove.add(t.id));
   state.transactions = state.transactions.filter(t => t.batchId !== batchId);
   state.expenses = state.expenses.filter(e => !e.txnRef || !txnsToRemove.has(e.txnRef));
+  recalcAllBalances();
   saveData();
   renderStatementTable();
   renderCCStatementTable();
   renderCCStmtSummary();
   renderStmtBatches();
-  toast('Statement batch deleted');
+  renderStmtMemberSummary();
+  renderBankAccounts();
+  toast('Statement batch deleted — balances updated');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -10070,11 +10128,15 @@ function importCCParsedTransactions() {
     rawCSV: _lastCCParsedRawCSV || ''
   });
 
+  // Recalculate CC outstanding from imported statements
+  recalcAllBalances();
   saveData();
   renderCCStatementTable();
   renderCCStmtSummary();
   renderStmtBatches();
-  toast(`Imported ${ccParsedRows.length} CC transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses.` : ''));
+  renderStmtMemberSummary();
+  const updatedCard = (state.creditCards||[]).find(c => c.id === cardId);
+  toast(`Imported ${ccParsedRows.length} CC transactions!` + (tagCount ? ` Auto-tagged ${tagCount} as expenses.` : '') + (updatedCard ? ` Outstanding: ${fmt(updatedCard.outstanding)}.` : ''));
   ccParsedRows = [];
   _lastCCParsedRawCSV = '';
   document.getElementById('cc-parsed-preview').innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All CC transactions imported!</p></div>';
@@ -16267,6 +16329,7 @@ async function bootFamilyApp(familyId) {
   } catch(e) {
     console.warn('Boot data load error:', e);
   }
+  recalcAllBalances(); // Ensure bank/CC balances are fresh from statements/transactions
   initApp();
   renderDashboard();
   setTimeout(runAutoPostEngine, 300);
