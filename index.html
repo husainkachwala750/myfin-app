@@ -5484,6 +5484,7 @@ async function storageBootLoad(familyId) {
         }
         _storageReady = true;
         setSyncStatus('synced');
+        updateStorageStatusBadge();
         // Persist provider to user_metadata so future logins find it
         storageSaveProviderToCloud('supabase');
         console.log('[MyFin Boot] Data loaded from Supabase (auto-detected)');
@@ -5504,12 +5505,14 @@ async function storageBootLoad(familyId) {
       ]);
       _storageReady = true;
       setSyncStatus(loaded ? 'synced' : 'error');
+      updateStorageStatusBadge();
       if (loaded) console.log('[MyFin Boot] Data loaded from', provider);
     } catch(e) {
       console.warn('[MyFin Boot] Pull failed:', e.message);
       _storageReady = true;
       setSyncStatus('error');
     }
+    updateStorageStatusBadge();
     return;
   }
 
@@ -19231,6 +19234,10 @@ async function startSession(session) {
   window._currentMemberName= session.member_name;
   window._currentIsAdmin   = session.is_admin;
   window._currentEmail     = session.email;
+  // Ensure storage provider is set before boot (restored during login)
+  if (_storageProvider) {
+    storageSetProvider(_storageProvider);
+  }
   document.getElementById('auth-overlay').classList.add('hidden');
   updateSessionUI();
   await bootFamilyApp(session.family_id);
@@ -19238,7 +19245,8 @@ async function startSession(session) {
   recalcAllBalances();
   renderDashboard();
   showPage('dashboard');
-  console.log('[MyFin] startSession complete — dashboard rendered');
+  updateStorageStatusBadge();
+  console.log('[MyFin] startSession complete — dashboard rendered, state:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
 }
 
 function updateSessionUI() {
