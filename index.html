@@ -5444,6 +5444,7 @@ async function storagePullData(familyId) {
 // ── BOOT: called on login to load data & show picker if needed ──────────
 async function storageBootLoad(familyId) {
   let provider = storageGetProvider();
+  console.log('[MyFin Boot] storageBootLoad called. Initial provider:', provider, 'familyId:', familyId);
 
   // Step 1: Try restoring provider from Supabase user_metadata
   if (!provider) {
@@ -19247,6 +19248,7 @@ function updateSessionUI() {
 }
 
 async function bootFamilyApp(familyId) {
+  console.log('[MyFin Boot] === bootFamilyApp START === familyId:', familyId, 'provider:', storageGetProvider());
   const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
   fsRestoreFolder(); // restore local folder access if previously granted
@@ -19260,8 +19262,10 @@ async function bootFamilyApp(familyId) {
     console.warn('IDB load error:', e);
   }
   // Load data from cloud — don't let it block the app
+  console.log('[MyFin Boot] About to call storageBootLoad, provider:', storageGetProvider());
   try {
     await storageBootLoad(familyId);
+    console.log('[MyFin Boot] storageBootLoad complete. State:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
   } catch(e) {
     console.warn('Cloud sync error:', e);
     toast('Cloud sync error: ' + e.message, 'error');
