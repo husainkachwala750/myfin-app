@@ -10452,8 +10452,9 @@ function populateBankSelects2() {
 let _autoImportDirHandle = null;
 let _autoImportFiles = []; // { file, fileName, folderName, matchedBankId, matchedType, content, status }
 
-// Try to restore saved directory handle from IndexedDB
+// Try to restore saved directory handle from IndexedDB, or auto-create from MyFin root
 async function restoreAutoImportHandle() {
+  // 1. Try restoring previously saved handle
   try {
     const db = await new Promise((res, rej) => { const r = indexedDB.open('MyFinAutoImport', 1); r.onupgradeneeded = () => r.result.createObjectStore('handles'); r.onsuccess = () => res(r.result); r.onerror = rej; });
     const tx = db.transaction('handles', 'readonly');
@@ -10462,14 +10463,39 @@ async function restoreAutoImportHandle() {
     db.close();
     if (handle) {
       _autoImportDirHandle = handle;
-      const label = document.getElementById('auto-import-folder-label');
-      if (label) label.textContent = '📁 ' + handle.name;
-      const scanBtn = document.getElementById('auto-import-scan-btn');
-      if (scanBtn) scanBtn.style.display = '';
-      const syncBtn = document.getElementById('auto-import-sync-btn');
-      if (syncBtn) syncBtn.style.display = '';
+      _updateAutoImportUI(handle.name);
+      return;
     }
   } catch(e) { /* ignore */ }
+
+  // 2. Auto-create from existing MyFin root folder (if user already granted access)
+  if (_fsRootDir && _fsReady) {
+    try {
+      const perm = await _fsRootDir.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        const familyId = window._currentFamilyId;
+        const base = familyId ? storageLocalFamilyPath(familyId) : ['MyFin'];
+        let parent = _fsRootDir;
+        for (const part of base) {
+          parent = await parent.getDirectoryHandle(part, { create: true });
+        }
+        const stmtDir = await parent.getDirectoryHandle('Statements', { create: true });
+        _autoImportDirHandle = stmtDir;
+        await saveAutoImportHandle(stmtDir);
+        await syncAutoImportFolders();
+        _updateAutoImportUI(stmtDir.name);
+      }
+    } catch(e) { console.warn('[Auto-Import] Auto-setup from root failed:', e.message); }
+  }
+}
+
+function _updateAutoImportUI(folderName) {
+  const label = document.getElementById('auto-import-folder-label');
+  if (label) label.textContent = '📁 ' + folderName;
+  const scanBtn = document.getElementById('auto-import-scan-btn');
+  if (scanBtn) scanBtn.style.display = '';
+  const syncBtn = document.getElementById('auto-import-sync-btn');
+  if (syncBtn) syncBtn.style.display = '';
 }
 
 async function saveAutoImportHandle(handle) {
@@ -10487,8 +10513,38 @@ async function pickAutoImportFolder() {
     toast('Your browser does not support folder access. Use Chrome or Edge.', 'error');
     return;
   }
+
   try {
-    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    let dirHandle = null;
+
+    // Try reusing the existing MyFin root folder first
+    if (_fsRootDir && _fsReady) {
+      try {
+        const perm = await _fsRootDir.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          // Create a dedicated Statements folder inside the existing MyFin structure
+          const familyId = window._currentFamilyId;
+          const base = familyId ? storageLocalFamilyPath(familyId) : ['MyFin'];
+          let parent = _fsRootDir;
+          for (const part of base) {
+            parent = await parent.getDirectoryHandle(part, { create: true });
+          }
+          dirHandle = await parent.getDirectoryHandle('Statements', { create: true });
+        }
+      } catch(e) {
+        console.warn('[Auto-Import] Could not reuse MyFin root:', e.message);
+      }
+    }
+
+    // If no existing root, ask user to pick a folder
+    if (!dirHandle) {
+      dirHandle = await window.showDirectoryPicker({
+        id: 'myfin-auto-import',
+        mode: 'readwrite',
+        startIn: 'documents',
+      });
+    }
+
     _autoImportDirHandle = dirHandle;
     await saveAutoImportHandle(dirHandle);
     document.getElementById('auto-import-folder-label').textContent = '📁 ' + dirHandle.name;
