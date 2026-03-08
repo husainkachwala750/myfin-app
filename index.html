@@ -19247,7 +19247,15 @@ function updateSessionUI() {
   applyAccountTypeLabels();
 }
 
+let _bootInProgress = null;
 async function bootFamilyApp(familyId) {
+  // Cancel any previous boot that's still running
+  if (_bootInProgress) {
+    _bootInProgress.cancelled = true;
+    console.log('[MyFin Boot] Cancelling previous boot');
+  }
+  const thisBoot = { cancelled: false };
+  _bootInProgress = thisBoot;
   console.log('[MyFin Boot] === bootFamilyApp START === familyId:', familyId, 'provider:', storageGetProvider());
   const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
@@ -19261,6 +19269,7 @@ async function bootFamilyApp(familyId) {
   } catch(e) {
     console.warn('IDB load error:', e);
   }
+  if (thisBoot.cancelled) { console.log('[MyFin Boot] Boot cancelled (after IDB)'); return; }
   // Load data from cloud — don't let it block the app
   console.log('[MyFin Boot] About to call storageBootLoad, provider:', storageGetProvider());
   try {
@@ -19270,6 +19279,7 @@ async function bootFamilyApp(familyId) {
     console.warn('Cloud sync error:', e);
     toast('Cloud sync error: ' + e.message, 'error');
   }
+  if (thisBoot.cancelled) { console.log('[MyFin Boot] Boot cancelled (after sync)'); return; }
   try {
     // If state is still empty, try migrating from old generic DB / localStorage
     const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
@@ -19285,6 +19295,7 @@ async function bootFamilyApp(familyId) {
   initApp();
   applyAccountTypeLabels();
   renderDashboard();
+  console.log('[MyFin Boot] === bootFamilyApp COMPLETE === data rendered');
   // Show onboarding wizard for first-time users
   if (shouldShowOnboarding()) setTimeout(startOnboarding, 500);
   setTimeout(runAutoPostEngine, 300);
