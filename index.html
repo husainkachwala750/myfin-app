@@ -5281,17 +5281,22 @@ async function storageSaveProviderToCloud(id) {
 async function storageRestoreProviderFromCloud() {
   try {
     const session = getSession();
-    if (!session?.access_token) return null;
+    if (!session?.access_token) { console.log('[MyFin Boot] No access_token for provider restore'); return null; }
     const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token }
     });
+    console.log('[MyFin Boot] user_metadata fetch status:', res.status);
     if (!res.ok) return null;
     const user = await res.json();
+    console.log('[MyFin Boot] user_metadata keys:', Object.keys(user?.user_metadata || {}));
     const provider = user?.user_metadata?.storage_provider;
     if (provider) {
       _storageProvider = provider;
       localStorage.setItem(STORAGE_KEY, provider);
       updateStorageStatusBadge();
+      console.log('[MyFin Boot] Restored provider from user_metadata:', provider);
+    } else {
+      console.log('[MyFin Boot] No storage_provider in user_metadata');
     }
     return provider || null;
   } catch(e) { console.warn('Could not restore provider from cloud:', e); return null; }
@@ -5483,7 +5488,7 @@ async function storageBootLoad(familyId) {
         console.log('[MyFin Boot] Data loaded from Supabase (auto-detected)');
         return; // Done — data is loaded
       }
-    } catch(e) { console.warn('Direct Supabase pull failed:', e); }
+    } catch(e) { console.warn('[MyFin Boot] Direct Supabase pull failed:', e.message, e); }
   }
 
   // Step 3: If we found a provider from localStorage/user_metadata, pull data from it
@@ -5553,10 +5558,13 @@ async function storagePushSupabase(familyId, pkg) {
 }
 
 async function storagePullSupabase(familyId) {
+  console.log('[MyFin Supabase] Pulling data for family:', familyId);
   const res = await sbFetch(`/rest/v1/family_data?family_id=eq.${familyId}&select=*`);
+  console.log('[MyFin Supabase] Pull response:', res ? (Array.isArray(res) ? res.length + ' rows' : typeof res) : 'null');
   if (!res || !res.length) return null;
   const row = res[0];
-  if (!row?.data) return null;
+  if (!row?.data) { console.log('[MyFin Supabase] Row found but no data field'); return null; }
+  console.log('[MyFin Supabase] Decrypting data...');
   return await decryptStateFromCloud(row.data);
 }
 
@@ -18976,10 +18984,13 @@ async function doFamilyLogin() {
         accountType = userData?.user_metadata?.account_type || 'family';
         // Pre-restore storage provider so bootFamilyApp finds it immediately
         const savedProvider = userData?.user_metadata?.storage_provider;
+        console.log('[MyFin Login] user_metadata:', JSON.stringify(userData?.user_metadata));
         if (savedProvider) {
           _storageProvider = savedProvider;
           localStorage.setItem(STORAGE_KEY, savedProvider);
           console.log('[MyFin Login] Restored storage provider from cloud:', savedProvider);
+        } else {
+          console.log('[MyFin Login] No storage_provider in user_metadata');
         }
       }
     } catch(e) { /* fallback to family */ }
