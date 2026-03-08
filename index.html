@@ -19360,6 +19360,17 @@ async function migrateFromOldDB(familyId) {
 
 async function initFamilyDatabase(familyId) {
   const dbName = FAMILY_DB_PREFIX + familyId;
+  // If already connected to the same database, just reload data
+  if (_db && _dbReady && _db.name === dbName) {
+    console.log('[MyFin IDB] Reusing existing connection for', dbName);
+    await loadAllFromDB();
+    return;
+  }
+  // Close any existing DB connection before re-opening
+  if (_db) {
+    try { _db.close(); } catch(e) {}
+    _db = null;
+  }
   _dbReady = false; _dbError = false;
   return new Promise(resolve => {
     const req = indexedDB.open(dbName, DB_VERSION);
@@ -19371,6 +19382,10 @@ async function initFamilyDatabase(familyId) {
           (cfg.indexes||[]).forEach(([idx,kp])=>store.createIndex(idx,kp,{unique:false}));
         }
       });
+    };
+    req.onblocked = () => {
+      console.warn('[MyFin IDB] Database open blocked — closing old connections');
+      resolve(); // Don't hang forever
     };
     req.onsuccess = e => { _db=e.target.result; _dbReady=true; loadAllFromDB().then(resolve); };
     req.onerror = () => {
