@@ -5439,27 +5439,31 @@ async function storagePullData(familyId) {
 // ── BOOT: called on login to load data & show picker if needed ──────────
 async function storageBootLoad(familyId) {
   let provider = storageGetProvider();
+  let autoDetectedData = null;
+
   // Fallback 1: Restore from Supabase user_metadata
   if (!provider) {
     console.log('[MyFin Boot] No local provider — trying cloud restore...');
     provider = await storageRestoreProviderFromCloud();
   }
-  // Fallback 2: Auto-detect if data exists in Supabase
+
+  // Fallback 2: Auto-detect if data exists in Supabase (and keep the data to avoid double-fetch)
   if (!provider) {
-    console.log('[MyFin Boot] No cloud provider — trying auto-detect...');
+    console.log('[MyFin Boot] No cloud provider — trying auto-detect from Supabase...');
     try {
-      const existing = await storagePullSupabase(familyId);
-      if (existing) {
+      autoDetectedData = await storagePullSupabase(familyId);
+      if (autoDetectedData) {
         provider = 'supabase';
         console.log('[MyFin Boot] Auto-detected supabase from existing cloud data');
       }
     } catch(e) { console.warn('Auto-detect provider failed:', e); }
   }
+
   // If we found a provider through any fallback, persist it everywhere
   if (provider) {
     storageSetProvider(provider);
   } else {
-    // Check if this is a returning user (has family record in Supabase) or truly first time
+    // Determine if this is a returning user or truly first time
     const session = getSession();
     const isReturningUser = session?.family_id && session?.login_time;
     if (!isReturningUser && !localStorage.getItem('myfin_onboarding_done')) {
@@ -5472,15 +5476,43 @@ async function storageBootLoad(familyId) {
     showStoragePicker(familyId, true);
     return;
   }
+
   _bootingSyncLock = true;  // prevent push during entire boot
   setSyncStatus('syncing');
   try {
-    const loaded = await Promise.race([
-      storagePullData(familyId),
-      new Promise(resolve => setTimeout(() => resolve(false), 15000))
-    ]);
+    let loaded = false;
+
+    // If we already fetched data during auto-detect, use it directly (avoid double-fetch)
+    if (autoDetectedData) {
+      console.log('[MyFin Boot] Using auto-detected data (skipping re-fetch)');
+      Object.keys(autoDetectedData).forEach(k => {
+        if (!(k in state)) return;
+        const cloud = autoDetectedData[k];
+        const local = state[k];
+        if (!Array.isArray(cloud) || !Array.isArray(local)) {
+          if (!local) state[k] = cloud;
+          return;
+        }
+        const merged = new Map();
+        cloud.forEach(item => { const id = item.id || item.name || JSON.stringify(item); merged.set(id, item); });
+        local.forEach(item => { const id = item.id || item.name || JSON.stringify(item); merged.set(id, item); });
+        state[k] = Array.from(merged.values());
+      });
+      if (_dbReady && !_dbError) {
+        const writes = Object.keys(STORES).filter(s => s !== 'meta' && s in state).map(name => idbPutBulk(name, state[name]));
+        await Promise.all(writes);
+      }
+      loaded = true;
+    } else {
+      loaded = await Promise.race([
+        storagePullData(familyId),
+        new Promise(resolve => setTimeout(() => resolve(false), 15000))
+      ]);
+    }
+
     _storageReady = true;
-    setSyncStatus('synced');
+    setSyncStatus(loaded ? 'synced' : 'error');
+    if (loaded) console.log('[MyFin Boot] Data loaded from', provider);
   } catch(e) {
     console.warn('[MyFin Boot] Pull failed:', e.message);
     _storageReady = true;
@@ -18935,7 +18967,7 @@ async function doFamilyLogin() {
     const family = await sbGetFamily(userId);
     if (!family) throw new Error('No account found. Please register first.');
 
-    // Restore account_type from Supabase user_metadata
+    // Restore account_type and storage_provider from Supabase user_metadata
     let accountType = 'family';
     try {
       const userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
@@ -18944,6 +18976,13 @@ async function doFamilyLogin() {
       if (userRes.ok) {
         const userData = await userRes.json();
         accountType = userData?.user_metadata?.account_type || 'family';
+        // Pre-restore storage provider so bootFamilyApp finds it immediately
+        const savedProvider = userData?.user_metadata?.storage_provider;
+        if (savedProvider) {
+          _storageProvider = savedProvider;
+          localStorage.setItem(STORAGE_KEY, savedProvider);
+          console.log('[MyFin Login] Restored storage provider from cloud:', savedProvider);
+        }
       }
     } catch(e) { /* fallback to family */ }
 
@@ -19895,6 +19934,8 @@ function esc(s) { const d=document.createElement('div'); d.textContent=s||''; re
 
 function shouldShowOnboarding() {
   if (localStorage.getItem('myfin_onboarding_done')) return false;
+  // Returning users (have a storage provider or cloud data) should never see onboarding
+  if (storageGetProvider()) return false;
   const hasData = state.members.length || state.bankAccounts.length || state.creditCards.length || state.investments.length;
   return !hasData;
 }
