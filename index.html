@@ -5505,14 +5505,12 @@ async function storageBootLoad(familyId) {
       ]);
       _storageReady = true;
       setSyncStatus(loaded ? 'synced' : 'error');
-      updateStorageStatusBadge();
       if (loaded) console.log('[MyFin Boot] Data loaded from', provider);
     } catch(e) {
       console.warn('[MyFin Boot] Pull failed:', e.message);
       _storageReady = true;
       setSyncStatus('error');
     }
-    updateStorageStatusBadge();
     return;
   }
 
@@ -19234,19 +19232,9 @@ async function startSession(session) {
   window._currentMemberName= session.member_name;
   window._currentIsAdmin   = session.is_admin;
   window._currentEmail     = session.email;
-  // Ensure storage provider is set before boot (restored during login)
-  if (_storageProvider) {
-    storageSetProvider(_storageProvider);
-  }
   document.getElementById('auth-overlay').classList.add('hidden');
   updateSessionUI();
   await bootFamilyApp(session.family_id);
-  // Force re-render after boot completes to ensure data is visible
-  recalcAllBalances();
-  renderDashboard();
-  showPage('dashboard');
-  updateStorageStatusBadge();
-  console.log('[MyFin] startSession complete — dashboard rendered, state:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
 }
 
 function updateSessionUI() {
@@ -19260,76 +19248,70 @@ function updateSessionUI() {
   applyAccountTypeLabels();
 }
 
-let _bootDone = false;
-let _bootIntervals = [];
+// ── Boot state machine ───────────────────────────────────
+// Prevents duplicate boots, duplicate intervals, and IDB hangs.
+// Phase 1 (init): IDB + intervals — runs only once per page load.
+// Phase 2 (sync): Cloud pull — runs on every boot call.
+// Phase 3 (render): Recalc + render — runs on every boot call.
+let _bootPhase1Done = false;
+let _fxInterval = null;
+let _tokenInterval = null;
+
 async function bootFamilyApp(familyId) {
-  console.log('[MyFin Boot] === bootFamilyApp START === familyId:', familyId, 'provider:', storageGetProvider(), 'alreadyBooted:', _bootDone);
+  const stateSnapshot = () => Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', ');
+  console.log('[MyFin Boot] === START === familyId:', familyId, 'provider:', storageGetProvider(), 'phase1Done:', _bootPhase1Done);
 
-  // If already booted, just re-pull data and re-render (don't re-init IDB or intervals)
-  if (_bootDone) {
-    console.log('[MyFin Boot] Re-pulling data (already booted)');
-    try {
-      await storageBootLoad(familyId);
-      console.log('[MyFin Boot] Re-pull complete. State:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
-    } catch(e) {
-      console.warn('Cloud sync error:', e);
-    }
-    recalcAllBalances();
-    initApp();
-    applyAccountTypeLabels();
-    renderDashboard();
-    updateStorageStatusBadge();
-    console.log('[MyFin Boot] === Re-render COMPLETE ===');
-    return;
-  }
-
-  const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
+  const dbSplash = document.getElementById('db-splash');
+  if (dbSplash) dbSplash.style.display = 'none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
-  fsRestoreFolder(); // restore local folder access if previously granted
-  loadExchangeRates(); // load live FX rates on boot
-  // Only set intervals once
-  _bootIntervals.forEach(id => clearInterval(id));
-  _bootIntervals = [
-    setInterval(loadExchangeRates, 60*60*1000),
-    setInterval(sbRefreshToken, 45*60*1000)
-  ];
-  try {
-    await initFamilyDatabase(familyId);
-    console.log('[MyFin Boot] IDB loaded:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
-  } catch(e) {
-    console.warn('IDB load error:', e);
+
+  // ── Phase 1: One-time init (IDB, folders, intervals) ──
+  if (!_bootPhase1Done) {
+    fsRestoreFolder();
+    loadExchangeRates();
+    if (!_fxInterval)    _fxInterval    = setInterval(loadExchangeRates, 60*60*1000);
+    if (!_tokenInterval) _tokenInterval = setInterval(sbRefreshToken, 45*60*1000);
+
+    try {
+      await initFamilyDatabase(familyId);
+      console.log('[MyFin Boot] IDB ready:', stateSnapshot());
+    } catch(e) {
+      console.warn('[MyFin Boot] IDB error (continuing):', e.message);
+    }
+    _bootPhase1Done = true;
   }
-  // Load data from cloud
-  console.log('[MyFin Boot] About to call storageBootLoad, provider:', storageGetProvider());
+
+  // ── Phase 2: Cloud sync (always runs — uses latest auth token) ──
+  console.log('[MyFin Boot] Syncing from cloud, provider:', storageGetProvider());
   try {
     await storageBootLoad(familyId);
-    console.log('[MyFin Boot] storageBootLoad complete. State:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
+    console.log('[MyFin Boot] Cloud sync done:', stateSnapshot());
   } catch(e) {
-    console.warn('Cloud sync error:', e);
+    console.warn('[MyFin Boot] Cloud sync error:', e.message);
     toast('Cloud sync error: ' + e.message, 'error');
   }
-  try {
-    // If state is still empty, try migrating from old generic DB / localStorage
-    const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
-    if (!hasData) {
-      console.log('[MyFin Boot] No data found — trying migration...');
+
+  // ── Phase 2b: Migration fallback (first boot only, if empty) ──
+  const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
+  if (!hasData) {
+    try {
+      console.log('[MyFin Boot] No data — trying migration...');
       await migrateFromOldDB(familyId);
-      console.log('[MyFin Boot] After migration:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
-    }
-  } catch(e) {
-    console.warn('Migration error:', e);
+    } catch(e) { console.warn('[MyFin Boot] Migration error:', e.message); }
   }
-  _bootDone = true;
+
+  // ── Phase 3: Render ──
   recalcAllBalances();
   initApp();
   applyAccountTypeLabels();
   renderDashboard();
+  showPage('dashboard');
   updateStorageStatusBadge();
-  console.log('[MyFin Boot] === bootFamilyApp COMPLETE === data rendered');
-  // Show onboarding wizard for first-time users
+  console.log('[MyFin Boot] === COMPLETE ===', stateSnapshot());
+
+  // Post-boot tasks (only on first full boot)
   if (shouldShowOnboarding()) setTimeout(startOnboarding, 500);
   setTimeout(runAutoPostEngine, 300);
-  // Release sync lock after full boot — allow future saves to sync
   setTimeout(() => { _bootingSyncLock = false; }, 2000);
 }
 
@@ -19377,49 +19359,61 @@ async function migrateFromOldDB(familyId) {
 
 async function initFamilyDatabase(familyId) {
   const dbName = FAMILY_DB_PREFIX + familyId;
-  // If already connected to the same database, just reload data
+
+  // Reuse existing connection to the same database
   if (_db && _dbReady && _db.name === dbName) {
-    console.log('[MyFin IDB] Reusing existing connection for', dbName);
     await loadAllFromDB();
     return;
   }
-  // Close any existing DB connection before re-opening
-  if (_db) {
-    try { _db.close(); } catch(e) {}
-    _db = null;
-  }
+
+  // Close stale connection before opening a new one
+  if (_db) { try { _db.close(); } catch(e) {} _db = null; }
+
   _dbReady = false; _dbError = false;
+
   return new Promise(resolve => {
     let settled = false;
     const done = () => { if (!settled) { settled = true; resolve(); } };
-    // Timeout: if IDB doesn't open in 5 seconds, proceed without it
-    setTimeout(() => {
-      if (!settled) {
-        console.warn('[MyFin IDB] Timed out opening database — proceeding without IDB');
-        _dbError = true;
-        done();
-      }
+
+    // Safety timeout — never hang the boot flow
+    const timer = setTimeout(() => {
+      console.warn('[MyFin IDB] Open timed out after 5s — proceeding without local cache');
+      _dbError = true;
+      done();
     }, 5000);
+
     const req = indexedDB.open(dbName, DB_VERSION);
+
     req.onupgradeneeded = e => {
       const db = e.target.result;
       Object.entries(STORES).forEach(([name, cfg]) => {
-        if(!db.objectStoreNames.contains(name)) {
-          const store = db.createObjectStore(name,{keyPath:cfg.keyPath||'id'});
-          (cfg.indexes||[]).forEach(([idx,kp])=>store.createIndex(idx,kp,{unique:false}));
+        if (!db.objectStoreNames.contains(name)) {
+          const store = db.createObjectStore(name, { keyPath: cfg.keyPath || 'id' });
+          (cfg.indexes || []).forEach(([idx, kp]) => store.createIndex(idx, kp, { unique: false }));
         }
       });
     };
+
     req.onblocked = () => {
-      console.warn('[MyFin IDB] Database open blocked');
+      console.warn('[MyFin IDB] Open blocked by another connection');
       _dbError = true;
+      clearTimeout(timer);
       done();
     };
-    req.onsuccess = e => { _db=e.target.result; _dbReady=true; loadAllFromDB().then(done); };
+
+    req.onsuccess = e => {
+      _db = e.target.result;
+      _dbReady = true;
+      clearTimeout(timer);
+      loadAllFromDB().then(done);
+    };
+
     req.onerror = () => {
-      _dbError=true;
-      const raw=localStorage.getItem('fv_data_'+familyId);
-      if(raw) try{Object.assign(state,JSON.parse(raw));}catch(e){}
+      _dbError = true;
+      clearTimeout(timer);
+      // Fallback: try localStorage blob
+      const raw = localStorage.getItem('fv_data_' + familyId);
+      if (raw) try { Object.assign(state, JSON.parse(raw)); } catch(e) {}
       done();
     };
   });
@@ -19682,10 +19676,13 @@ async function doForgotPassword() {
     window._currentMemberId  = session.member_id;
     window._currentMemberName= session.member_name;
     window._currentIsAdmin   = session.is_admin;
+    window._currentEmail     = session.email;
     updateSessionUI();
     bootFamilyApp(session.family_id).then(()=>{
       document.getElementById('auth-overlay').classList.add('hidden');
-      updateStorageStatusBadge();
+    }).catch(e => {
+      console.warn('[MyFin Boot] Auto-boot failed:', e.message);
+      showAuthScreen();
     });
   } else {
     showAuthScreen();
