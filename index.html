@@ -10557,7 +10557,9 @@ async function pickAutoImportFolder() {
   }
 }
 
-// Create/sync sub-folders for all bank accounts and credit cards
+// Create/sync sub-folders for all bank accounts and credit cards.
+// Family mode: Member_Name / BankName_1234 /
+// Personal mode: BankName_1234 / (flat, no member sub-folders)
 async function syncAutoImportFolders() {
   if (!_autoImportDirHandle) return;
   try {
@@ -10569,22 +10571,41 @@ async function syncAutoImportFolders() {
   } catch(e) { return; }
 
   const created = [];
+  const personal = isPersonalMode();
+  const members = state.members || [];
+
+  const memberName = (memberId) => {
+    const m = members.find(m => m.id === memberId);
+    return m ? m.name.replace(/[<>:"/\\|?*]/g, '').trim() : 'Unassigned';
+  };
+
+  // Helper: create account folder (nested under member for family, flat for personal)
+  async function createAccountDir(memberId, folderName) {
+    if (personal) {
+      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+      created.push(folderName);
+    } else {
+      const mName = memberName(memberId);
+      const memberDir = await _autoImportDirHandle.getDirectoryHandle(mName, { create: true });
+      await memberDir.getDirectoryHandle(folderName, { create: true });
+      created.push(mName + '/' + folderName);
+    }
+  }
+
   // Create folders for bank accounts
   for (const bank of state.bankAccounts) {
-    const folderName = sanitizeFolderName(bank.bankName, bank.accountNumber);
     try {
-      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
-      created.push(folderName);
+      await createAccountDir(bank.memberId, sanitizeFolderName(bank.bankName, bank.accountNumber));
     } catch(e) { /* ignore */ }
   }
+
   // Create folders for credit cards
   for (const cc of (state.creditCards || [])) {
-    const folderName = sanitizeFolderName(cc.bankName + '_CC', cc.last4);
     try {
-      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
-      created.push(folderName);
+      await createAccountDir(cc.memberId, sanitizeFolderName(cc.bankName + '_CC', cc.last4));
     } catch(e) { /* ignore */ }
   }
+
   if (created.length) renderAutoImportFolderStatus();
   return created;
 }
@@ -10595,7 +10616,7 @@ function sanitizeFolderName(name, suffix) {
   return fn;
 }
 
-// Create folder for a specific new account
+// Create folder for a specific new account (member-based for family, flat for personal)
 async function createAutoImportFolder(type, account) {
   if (!_autoImportDirHandle) return;
   try {
@@ -10604,12 +10625,19 @@ async function createAutoImportFolder(type, account) {
     const folderName = type === 'bank'
       ? sanitizeFolderName(account.bankName, account.accountNumber)
       : sanitizeFolderName(account.bankName + '_CC', account.last4);
-    await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+    if (isPersonalMode()) {
+      await _autoImportDirHandle.getDirectoryHandle(folderName, { create: true });
+    } else {
+      const member = (state.members || []).find(m => m.id === account.memberId);
+      const mName = member ? member.name.replace(/[<>:"/\\|?*]/g, '').trim() : 'Unassigned';
+      const memberDir = await _autoImportDirHandle.getDirectoryHandle(mName, { create: true });
+      await memberDir.getDirectoryHandle(folderName, { create: true });
+    }
     renderAutoImportFolderStatus();
   } catch(e) { /* ignore */ }
 }
 
-// Delete folder for a removed account
+// Delete folder for a removed account (tries member path first, then flat)
 async function deleteAutoImportFolder(type, account) {
   if (!_autoImportDirHandle) return;
   try {
@@ -10618,9 +10646,25 @@ async function deleteAutoImportFolder(type, account) {
     const folderName = type === 'bank'
       ? sanitizeFolderName(account.bankName, account.accountNumber)
       : sanitizeFolderName(account.bankName + '_CC', account.last4);
-    await _autoImportDirHandle.removeEntry(folderName, { recursive: true });
+    let deleted = false;
+    // Try member-based path (family mode)
+    if (!isPersonalMode()) {
+      const member = (state.members || []).find(m => m.id === account.memberId);
+      if (member) {
+        const mName = member.name.replace(/[<>:"/\\|?*]/g, '').trim();
+        try {
+          const memberDir = await _autoImportDirHandle.getDirectoryHandle(mName);
+          await memberDir.removeEntry(folderName, { recursive: true });
+          deleted = true;
+        } catch(e) { /* folder may not exist in member path */ }
+      }
+    }
+    // Fallback: flat structure
+    if (!deleted) {
+      try { await _autoImportDirHandle.removeEntry(folderName, { recursive: true }); } catch(e) {}
+    }
     renderAutoImportFolderStatus();
-  } catch(e) { /* ignore - folder may not exist */ }
+  } catch(e) { /* ignore */ }
 }
 
 // Show folder status in the UI
