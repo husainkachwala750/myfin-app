@@ -19225,7 +19225,7 @@ function getOfflineSessions() {
 }
 
 // ── Start session & boot app ──────────────────────────────
-function startSession(session) {
+async function startSession(session) {
   window._currentFamilyId  = session.family_id;
   window._currentMemberId  = session.member_id;
   window._currentMemberName= session.member_name;
@@ -19233,7 +19233,12 @@ function startSession(session) {
   window._currentEmail     = session.email;
   document.getElementById('auth-overlay').classList.add('hidden');
   updateSessionUI();
-  bootFamilyApp(session.family_id);
+  await bootFamilyApp(session.family_id);
+  // Force re-render after boot completes to ensure data is visible
+  recalcAllBalances();
+  renderDashboard();
+  showPage('dashboard');
+  console.log('[MyFin] startSession complete — dashboard rendered');
 }
 
 function updateSessionUI() {
