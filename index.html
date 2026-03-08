@@ -5459,14 +5459,16 @@ async function storageBootLoad(familyId) {
   if (provider) {
     storageSetProvider(provider);
   } else {
-    // Truly first time — let onboarding wizard handle storage selection if applicable
-    if (!localStorage.getItem('myfin_onboarding_done')) {
-      // Onboarding will show — skip standalone picker, use offline until user picks in wizard
+    // Check if this is a returning user (has family record in Supabase) or truly first time
+    const session = getSession();
+    const isReturningUser = session?.family_id && session?.login_time;
+    if (!isReturningUser && !localStorage.getItem('myfin_onboarding_done')) {
+      // Truly first time — let onboarding wizard handle storage selection
       _storageReady = true;
       setSyncStatus('synced');
       return;
     }
-    // Not first time but no provider — show standalone storage picker
+    // Returning user with no provider detected — show storage picker so they can reconnect
     showStoragePicker(familyId, true);
     return;
   }
