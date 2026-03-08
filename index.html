@@ -19260,30 +19260,46 @@ function updateSessionUI() {
   applyAccountTypeLabels();
 }
 
-let _bootInProgress = null;
+let _bootDone = false;
+let _bootIntervals = [];
 async function bootFamilyApp(familyId) {
-  // Cancel any previous boot that's still running
-  if (_bootInProgress) {
-    _bootInProgress.cancelled = true;
-    console.log('[MyFin Boot] Cancelling previous boot');
+  console.log('[MyFin Boot] === bootFamilyApp START === familyId:', familyId, 'provider:', storageGetProvider(), 'alreadyBooted:', _bootDone);
+
+  // If already booted, just re-pull data and re-render (don't re-init IDB or intervals)
+  if (_bootDone) {
+    console.log('[MyFin Boot] Re-pulling data (already booted)');
+    try {
+      await storageBootLoad(familyId);
+      console.log('[MyFin Boot] Re-pull complete. State:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
+    } catch(e) {
+      console.warn('Cloud sync error:', e);
+    }
+    recalcAllBalances();
+    initApp();
+    applyAccountTypeLabels();
+    renderDashboard();
+    updateStorageStatusBadge();
+    console.log('[MyFin Boot] === Re-render COMPLETE ===');
+    return;
   }
-  const thisBoot = { cancelled: false };
-  _bootInProgress = thisBoot;
-  console.log('[MyFin Boot] === bootFamilyApp START === familyId:', familyId, 'provider:', storageGetProvider());
+
   const dbSplash=document.getElementById('db-splash'); if(dbSplash) dbSplash.style.display='none';
   window._familyDbName = FAMILY_DB_PREFIX + familyId;
   fsRestoreFolder(); // restore local folder access if previously granted
   loadExchangeRates(); // load live FX rates on boot
-  setInterval(loadExchangeRates, 60*60*1000); // refresh hourly
-  setInterval(sbRefreshToken, 45*60*1000); // refresh auth token every 45 min
+  // Only set intervals once
+  _bootIntervals.forEach(id => clearInterval(id));
+  _bootIntervals = [
+    setInterval(loadExchangeRates, 60*60*1000),
+    setInterval(sbRefreshToken, 45*60*1000)
+  ];
   try {
     await initFamilyDatabase(familyId);
     console.log('[MyFin Boot] IDB loaded:', Object.keys(state).map(k => Array.isArray(state[k]) ? k+':'+state[k].length : k).join(', '));
   } catch(e) {
     console.warn('IDB load error:', e);
   }
-  if (thisBoot.cancelled) { console.log('[MyFin Boot] Boot cancelled (after IDB)'); return; }
-  // Load data from cloud — don't let it block the app
+  // Load data from cloud
   console.log('[MyFin Boot] About to call storageBootLoad, provider:', storageGetProvider());
   try {
     await storageBootLoad(familyId);
@@ -19292,7 +19308,6 @@ async function bootFamilyApp(familyId) {
     console.warn('Cloud sync error:', e);
     toast('Cloud sync error: ' + e.message, 'error');
   }
-  if (thisBoot.cancelled) { console.log('[MyFin Boot] Boot cancelled (after sync)'); return; }
   try {
     // If state is still empty, try migrating from old generic DB / localStorage
     const hasData = state.members.length || state.expenses.length || state.investments.length || state.bankAccounts.length;
@@ -19304,10 +19319,12 @@ async function bootFamilyApp(familyId) {
   } catch(e) {
     console.warn('Migration error:', e);
   }
+  _bootDone = true;
   recalcAllBalances();
   initApp();
   applyAccountTypeLabels();
   renderDashboard();
+  updateStorageStatusBadge();
   console.log('[MyFin Boot] === bootFamilyApp COMPLETE === data rendered');
   // Show onboarding wizard for first-time users
   if (shouldShowOnboarding()) setTimeout(startOnboarding, 500);
@@ -19373,6 +19390,16 @@ async function initFamilyDatabase(familyId) {
   }
   _dbReady = false; _dbError = false;
   return new Promise(resolve => {
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; resolve(); } };
+    // Timeout: if IDB doesn't open in 5 seconds, proceed without it
+    setTimeout(() => {
+      if (!settled) {
+        console.warn('[MyFin IDB] Timed out opening database — proceeding without IDB');
+        _dbError = true;
+        done();
+      }
+    }, 5000);
     const req = indexedDB.open(dbName, DB_VERSION);
     req.onupgradeneeded = e => {
       const db = e.target.result;
@@ -19384,15 +19411,16 @@ async function initFamilyDatabase(familyId) {
       });
     };
     req.onblocked = () => {
-      console.warn('[MyFin IDB] Database open blocked — closing old connections');
-      resolve(); // Don't hang forever
+      console.warn('[MyFin IDB] Database open blocked');
+      _dbError = true;
+      done();
     };
-    req.onsuccess = e => { _db=e.target.result; _dbReady=true; loadAllFromDB().then(resolve); };
+    req.onsuccess = e => { _db=e.target.result; _dbReady=true; loadAllFromDB().then(done); };
     req.onerror = () => {
       _dbError=true;
       const raw=localStorage.getItem('fv_data_'+familyId);
       if(raw) try{Object.assign(state,JSON.parse(raw));}catch(e){}
-      resolve();
+      done();
     };
   });
 }
