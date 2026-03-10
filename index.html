@@ -4887,6 +4887,14 @@
       <button class="btn btn-primary" style="flex:1" onclick="generateSampleData()">⚡ Generate</button>
       <button class="btn btn-danger btn-sm" onclick="clearAllSampleData()" style="font-size:12px">🗑 Clear Sample</button>
     </div>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">🚀 Full Demo Mode</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Create 5 family members with complete data across ALL modules — bank accounts, credit cards, expenses, investments, insurance, budgets, goals, documents &amp; more.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="flex:1;background:linear-gradient(135deg,#2563eb,#7c3aed)" onclick="generateFullDemoData()">🎭 Load Full Demo (5 Members)</button>
+        <button class="btn btn-danger btn-sm" onclick="clearFullDemoData()" style="font-size:12px">🗑 Clear Demo</button>
+      </div>
+    </div>
     <div id="sample-data-result" style="margin-top:12px"></div>
   </div>
 </div>
@@ -11618,6 +11626,337 @@ function clearAllSampleData() {
       🗑 Cleared ${removed} sample records
     </div>`;
   toast(`Cleared ${removed} sample records`);
+}
+
+// =================== FULL DEMO DATA ===================
+function generateFullDemoData() {
+  if (state.members.length > 0) {
+    if (!confirm('This will ADD demo data alongside your existing data. Continue?')) return;
+  }
+
+  const DEMO_TAG = '_demo_';
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const randAmt = (min, max) => Math.round((min + Math.random() * (max - min)) * 100) / 100;
+  const today = new Date();
+  const ym = today.toISOString().slice(0, 7);
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const randDay = () => String(Math.floor(Math.random() * daysInMonth) + 1).padStart(2, '0');
+  const fmtDate = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const counts = { members:0, banks:0, cards:0, expenses:0, txns:0, investments:0, insurance:0, budgets:0, goals:0, documents:0 };
+
+  // ── 1. CREATE 5 FAMILY MEMBERS ──
+  const familyDefs = [
+    { name:'Rajesh Sharma',   role:'Self',    age:'45', occupation:'Software Engineer', income:150000, color:'#2563eb' },
+    { name:'Priya Sharma',    role:'Spouse',  age:'42', occupation:'School Teacher',    income:65000,  color:'#ec4899' },
+    { name:'Aarav Sharma',    role:'Son',     age:'20', occupation:'B.Tech Student',    income:0,      color:'#22c55e' },
+    { name:'Ananya Sharma',   role:'Daughter',age:'17', occupation:'12th Science',      income:0,      color:'#f59e0b' },
+    { name:'Kamala Sharma',   role:'Mother',  age:'70', occupation:'Retired Teacher',   income:25000,  color:'#a78bfa' },
+  ];
+
+  const memberIds = [];
+  familyDefs.forEach(m => {
+    const id = uid();
+    memberIds.push(id);
+    state.members.push({ id, ...m, _sample: DEMO_TAG });
+    counts.members++;
+  });
+
+  // ── 2. BANK ACCOUNTS ──
+  const bankDefs = [
+    { idx:0, bankName:'HDFC Bank',   accountType:'Savings', accountNumber:'50100123456789', ifsc:'HDFC0001234', branch:'Bandra West', balance:487250, mobile:'9876543210', email:'rajesh@email.com' },
+    { idx:0, bankName:'SBI',         accountType:'Savings', accountNumber:'20345678901234', ifsc:'SBIN0005678', branch:'Andheri East', balance:125000, mobile:'9876543210', email:'rajesh@email.com' },
+    { idx:1, bankName:'ICICI Bank',  accountType:'Savings', accountNumber:'12301234567890', ifsc:'ICIC0001234', branch:'Powai',        balance:215800, mobile:'9876543211', email:'priya@email.com' },
+    { idx:1, bankName:'Kotak Mahindra', accountType:'Salary', accountNumber:'98761234567', ifsc:'KKBK0001234', branch:'Thane',       balance:58200,  mobile:'9876543211', email:'priya@email.com' },
+    { idx:4, bankName:'Bank of Baroda', accountType:'Savings', accountNumber:'33401234567890', ifsc:'BARB0ANDHEW', branch:'Andheri', balance:892000, mobile:'9876543214', email:'kamala@email.com' },
+  ];
+
+  const bankIds = [];
+  bankDefs.forEach(b => {
+    const id = uid();
+    bankIds.push(id);
+    state.bankAccounts.push({
+      id, memberId: memberIds[b.idx], bankName: b.bankName, accountType: b.accountType,
+      accountNumber: b.accountNumber, ifsc: b.ifsc, branch: b.branch, cif: '',
+      balance: b.balance, _manualBalance: b.balance, currency: 'INR',
+      mobile: b.mobile, email: b.email, notes: '', _sample: DEMO_TAG
+    });
+    counts.banks++;
+  });
+
+  // ── 3. CREDIT CARDS ──
+  const ccDefs = [
+    { idx:0, bankName:'HDFC Bank', network:'Visa', variant:'Regalia Gold', last4:'4521', holderName:'RAJESH SHARMA', limit:500000, outstanding:42380, theme:'dark' },
+    { idx:0, bankName:'Amex',      network:'Amex', variant:'Platinum',     last4:'3789', holderName:'RAJESH SHARMA', limit:300000, outstanding:18500, theme:'metallic' },
+    { idx:1, bankName:'ICICI Bank', network:'Mastercard', variant:'Amazon Pay', last4:'8834', holderName:'PRIYA SHARMA', limit:200000, outstanding:12750, theme:'gradient' },
+    { idx:1, bankName:'SBI Card',  network:'Visa',       variant:'Simply Click', last4:'6612', holderName:'PRIYA SHARMA', limit:150000, outstanding:8900, theme:'classic' },
+  ];
+
+  ccDefs.forEach(c => {
+    const id = uid();
+    state.creditCards.push({
+      id, memberId: memberIds[c.idx], network: c.network, bankName: c.bankName,
+      variant: c.variant, last4: c.last4, holderName: c.holderName,
+      expiry: `${year+3}-12`, limit: c.limit, outstanding: c.outstanding,
+      statementDay: '15', dueDay: '5', annualFee: pick([0,499,999,2500]),
+      benefits: '', theme: c.theme, photo: null, addedOn: ym+'-01', _sample: DEMO_TAG
+    });
+    counts.cards++;
+  });
+
+  // ── 4. EXPENSES (3 months) ──
+  const expDescs = [
+    { d:'Swiggy Order',c:'🍕 Food & Dining',min:150,max:800 },
+    { d:'Zomato Delivery',c:'🍕 Food & Dining',min:200,max:700 },
+    { d:'BigBasket Groceries',c:'🛒 Groceries',min:500,max:3000 },
+    { d:'DMart Shopping',c:'🛒 Groceries',min:800,max:4000 },
+    { d:'Uber Ride',c:'🚗 Transport',min:100,max:500 },
+    { d:'Petrol - HP',c:'🚗 Transport',min:1000,max:4000 },
+    { d:'Metro Card',c:'🚗 Transport',min:200,max:500 },
+    { d:'Apollo Pharmacy',c:'💊 Medicine',min:200,max:2000 },
+    { d:'Amazon Purchase',c:'📦 Other',min:500,max:8000 },
+    { d:'Flipkart Order',c:'📦 Other',min:300,max:5000 },
+    { d:'Myntra Fashion',c:'👗 Clothing',min:500,max:4000 },
+    { d:'Netflix',c:'🎭 Entertainment',min:199,max:649 },
+    { d:'Electricity Bill',c:'💡 Utilities',min:800,max:3500 },
+    { d:'Water Bill',c:'💡 Utilities',min:200,max:600 },
+    { d:'Jio Recharge',c:'💡 Utilities',min:199,max:999 },
+    { d:'Airtel Broadband',c:'💡 Utilities',min:499,max:1499 },
+    { d:'Society Maintenance',c:'🏠 Housing & Rent',min:5000,max:10000 },
+    { d:'Doctor Visit',c:'🏥 Healthcare',min:500,max:2000 },
+    { d:'School Fees',c:'📚 Education',min:5000,max:20000 },
+    { d:'Movie Tickets',c:'🎭 Entertainment',min:300,max:1200 },
+    { d:'Restaurant Dinner',c:'🍕 Food & Dining',min:1500,max:5000 },
+    { d:'Gym Membership',c:'🏥 Healthcare',min:1000,max:3000 },
+    { d:'Gift Purchase',c:'🎁 Gifts',min:500,max:5000 },
+  ];
+  const modes = ['UPI','Cash','Debit Card','Credit Card','Net Banking','Auto-debit'];
+
+  for (let mo = 0; mo < 3; mo++) {
+    const eMonth = month - mo;
+    const eYear = eMonth < 0 ? year - 1 : year;
+    const eM = ((eMonth % 12) + 12) % 12;
+    const eYM = `${eYear}-${String(eM+1).padStart(2,'0')}`;
+    const eDays = new Date(eYear, eM+1, 0).getDate();
+
+    for (let i = 0; i < 40 + Math.floor(Math.random()*20); i++) {
+      const tpl = pick(expDescs);
+      const mIdx = pick([0,0,0,1,1,1,2,3,4]); // weight towards parents
+      const day = String(Math.floor(Math.random()*eDays)+1).padStart(2,'0');
+      state.expenses.push({
+        id: uid(), memberId: memberIds[mIdx], date: `${eYM}-${day}`,
+        description: tpl.d, amount: randAmt(tpl.min, tpl.max),
+        category: tpl.c, mode: pick(modes), tags: '', notes: '', _sample: DEMO_TAG
+      });
+      counts.expenses++;
+    }
+  }
+
+  // ── 5. TRANSACTIONS (income + expenses) ──
+  for (let mo = 0; mo < 3; mo++) {
+    const tMonth = month - mo;
+    const tYear = tMonth < 0 ? year - 1 : year;
+    const tM = ((tMonth % 12) + 12) % 12;
+    const tYM = `${tYear}-${String(tM+1).padStart(2,'0')}`;
+
+    // Salary credits
+    state.transactions.push({ id:uid(), date:`${tYM}-01`, type:'credit', memberId:memberIds[0], description:'Salary Credit - IntelliCore CG', amount:150000, category:'💰 Salary', mode:'Net Banking', bankId:bankIds[0], _sample:DEMO_TAG });
+    state.transactions.push({ id:uid(), date:`${tYM}-01`, type:'credit', memberId:memberIds[1], description:'Salary Credit - Delhi Public School', amount:65000, category:'💰 Salary', mode:'Net Banking', bankId:bankIds[2], _sample:DEMO_TAG });
+    state.transactions.push({ id:uid(), date:`${tYM}-05`, type:'credit', memberId:memberIds[4], description:'Pension Credit', amount:25000, category:'💰 Pension', mode:'Net Banking', bankId:bankIds[4], _sample:DEMO_TAG });
+    counts.txns += 3;
+
+    // Debit transactions
+    for (let i = 0; i < 25; i++) {
+      const tpl = pick(expDescs);
+      const mIdx = pick([0,0,1,1,2,3,4]);
+      const day = String(Math.floor(Math.random()*28)+1).padStart(2,'0');
+      state.transactions.push({
+        id:uid(), date:`${tYM}-${day}`, type:'debit', memberId:memberIds[mIdx],
+        description:tpl.d, amount:randAmt(tpl.min,tpl.max), category:tpl.c,
+        mode:pick(modes), bankId:pick(bankIds), _sample:DEMO_TAG
+      });
+      counts.txns++;
+    }
+  }
+
+  // ── 6. INVESTMENTS ──
+  const invDefs = [
+    { idx:0, type:'📈 Mutual Fund', name:'HDFC Nifty 50 Direct Growth', invested:200000, ret:0.18 },
+    { idx:0, type:'📈 Mutual Fund', name:'Parag Parikh Flexi Cap Direct', invested:150000, ret:0.22 },
+    { idx:0, type:'📊 Stocks / Equity', name:'Reliance Industries', invested:100000, ret:0.15 },
+    { idx:0, type:'📊 Stocks / Equity', name:'TCS', invested:75000, ret:0.08 },
+    { idx:0, type:'🏦 Fixed Deposit', name:'HDFC FD 2 Year', invested:300000, ret:0.075 },
+    { idx:0, type:'💰 PPF / EPF', name:'PPF Account', invested:500000, ret:0.071 },
+    { idx:1, type:'📈 Mutual Fund', name:'SBI Bluechip Direct Growth', invested:100000, ret:0.14 },
+    { idx:1, type:'📈 Mutual Fund', name:'Axis Midcap Direct Growth', invested:80000, ret:0.25 },
+    { idx:1, type:'🏦 Fixed Deposit', name:'ICICI FD 1 Year', invested:200000, ret:0.07 },
+    { idx:1, type:'🪙 Gold / Commodities', name:'Sovereign Gold Bond 2024', invested:100000, ret:0.12 },
+    { idx:4, type:'💰 PPF / EPF', name:'PPF Account', invested:800000, ret:0.071 },
+    { idx:4, type:'🏦 Fixed Deposit', name:'SBI FD 5 Year', invested:500000, ret:0.068 },
+    { idx:4, type:'🏠 Real Estate', name:'Flat - Andheri East', invested:3500000, ret:0.35 },
+  ];
+
+  invDefs.forEach(inv => {
+    state.investments.push({
+      id:uid(), memberId:memberIds[inv.idx], type:inv.type, name:inv.name,
+      invested:inv.invested, currentValue:Math.round(inv.invested*(1+inv.ret)),
+      units: inv.type.includes('Mutual') ? Math.round(inv.invested/(50+Math.random()*200)*1000)/1000 : 0,
+      purchaseDate: fmtDate(year-2, pick([1,3,5,7,9,11]), pick([1,5,10,15,20])),
+      notes:'', _sample:DEMO_TAG
+    });
+    counts.investments++;
+  });
+
+  // ── 7. INSURANCE POLICIES ──
+  const insDefs = [
+    { idx:0, category:'life', type:'Term Life', provider:'HDFC Life', policyNo:'HDFC'+Math.floor(Math.random()*900000+100000), sumInsured:10000000, premium:12500, frequency:'yearly' },
+    { idx:0, category:'health', type:'Family Floater', provider:'Star Health', policyNo:'SH'+Math.floor(Math.random()*900000+100000), sumInsured:1000000, premium:18000, frequency:'yearly' },
+    { idx:0, category:'vehicle', type:'Car Comprehensive', provider:'ICICI Lombard', policyNo:'IL'+Math.floor(Math.random()*900000+100000), sumInsured:800000, premium:15000, frequency:'yearly' },
+    { idx:1, category:'life', type:'Endowment', provider:'LIC', policyNo:'LIC'+Math.floor(Math.random()*900000+100000), sumInsured:2500000, premium:24000, frequency:'yearly' },
+    { idx:1, category:'health', type:'Individual Health', provider:'Niva Bupa', policyNo:'NB'+Math.floor(Math.random()*900000+100000), sumInsured:500000, premium:8500, frequency:'yearly' },
+    { idx:4, category:'health', type:'Senior Citizen', provider:'New India Assurance', policyNo:'NIA'+Math.floor(Math.random()*900000+100000), sumInsured:500000, premium:22000, frequency:'yearly' },
+  ];
+
+  insDefs.forEach(ins => {
+    const startDate = fmtDate(year-1, pick([1,4,7,10]), 1);
+    const endDate = fmtDate(year, parseInt(startDate.slice(5,7)), 1);
+    state.insurances.push({
+      id:uid(), holderId:memberIds[ins.idx], category:ins.category, type:ins.type,
+      provider:ins.provider, policyNumber:ins.policyNo, sumInsured:ins.sumInsured,
+      premium:ins.premium, frequency:ins.frequency,
+      startDate, endDate, status: new Date(endDate) > today ? 'active' : 'expiring',
+      nominees: memberIds[ins.idx] === memberIds[0] ? 'Priya Sharma' : 'Rajesh Sharma',
+      notes:'', _sample:DEMO_TAG
+    });
+    counts.insurance++;
+  });
+
+  // ── 8. BUDGETS ──
+  const budgetDefs = [
+    { idx:0, category:'food', amount:15000, period:'monthly' },
+    { idx:0, category:'transport', amount:8000, period:'monthly' },
+    { idx:0, category:'utilities', amount:5000, period:'monthly' },
+    { idx:0, category:'entertainment', amount:5000, period:'monthly' },
+    { idx:0, category:'shopping', amount:10000, period:'monthly' },
+    { idx:1, category:'groceries', amount:12000, period:'monthly' },
+    { idx:1, category:'health', amount:5000, period:'monthly' },
+    { idx:1, category:'education', amount:20000, period:'monthly' },
+    { idx:0, category:'investments', amount:50000, period:'monthly' },
+    { idx:0, category:'emi', amount:35000, period:'monthly' },
+  ];
+
+  budgetDefs.forEach(b => {
+    state.budgets.push({
+      id:uid(), memberId:memberIds[b.idx], category:b.category,
+      period:b.period, amount:b.amount, alertPct:80, notes:'',
+      createdAt:new Date().toISOString(), _sample:DEMO_TAG
+    });
+    counts.budgets++;
+  });
+
+  // ── 9. FINANCIAL GOALS ──
+  const goalDefs = [
+    { idx:0, name:'Emergency Fund (6 months)', category:'emergency', target:500000, saved:320000, priority:'high', date:fmtDate(year,12,31) },
+    { idx:0, name:'New Car - Hyundai Creta', category:'vehicle', target:1500000, saved:450000, priority:'medium', date:fmtDate(year+1,6,30) },
+    { idx:0, name:'Family Europe Trip', category:'vacation', target:800000, saved:180000, priority:'low', date:fmtDate(year+1,12,31) },
+    { idx:1, name:'Ananya College Fund', category:'education', target:2000000, saved:650000, priority:'high', date:fmtDate(year+1,6,30) },
+    { idx:0, name:'Home Loan Prepayment', category:'debt', target:1000000, saved:280000, priority:'medium', date:fmtDate(year+2,3,31) },
+    { idx:1, name:'Kitchen Renovation', category:'home', target:300000, saved:120000, priority:'low', date:fmtDate(year+1,3,31) },
+    { idx:4, name:'Pilgrimage Trip', category:'vacation', target:200000, saved:175000, priority:'medium', date:fmtDate(year,9,30) },
+    { idx:0, name:'Retirement Corpus', category:'retirement', target:20000000, saved:5800000, priority:'high', date:fmtDate(year+15,3,31) },
+  ];
+
+  goalDefs.forEach(g => {
+    const contributions = [];
+    const numContribs = 3 + Math.floor(Math.random()*5);
+    let running = 0;
+    for (let i = 0; i < numContribs; i++) {
+      const amt = Math.round(g.saved / numContribs);
+      running += amt;
+      contributions.push({ amount: amt, date: fmtDate(year, Math.max(1,month-numContribs+i+1), pick([1,5,10,15,20,25])) });
+    }
+    state.goals.push({
+      id:uid(), memberId:memberIds[g.idx], name:g.name, category:g.category,
+      target:g.target, saved:g.saved, targetDate:g.date, priority:g.priority,
+      status: g.saved >= g.target ? 'completed' : 'active',
+      notes:'', contributions, createdAt:new Date().toISOString(), _sample:DEMO_TAG
+    });
+    counts.goals++;
+  });
+
+  // ── 10. DOCUMENTS ──
+  const docDefs = [
+    { idx:0, category:'identity', type:'PAN Card', name:'PAN Card', number:'ABCPS1234F', authority:'Income Tax Dept', status:'active' },
+    { idx:0, category:'identity', type:'Aadhaar Card', name:'Aadhaar Card', number:'9876 5432 1098', authority:'UIDAI', status:'active' },
+    { idx:0, category:'identity', type:'Passport', name:'Passport', number:'T1234567', authority:'MEA', status:'active', expiry:fmtDate(year+5,8,15) },
+    { idx:0, category:'identity', type:'Driving License', name:'Driving License', number:'MH01-20150012345', authority:'RTO Mumbai', status:'active', expiry:fmtDate(year+4,3,20) },
+    { idx:1, category:'identity', type:'PAN Card', name:'PAN Card', number:'BPAPS5678K', authority:'Income Tax Dept', status:'active' },
+    { idx:1, category:'identity', type:'Aadhaar Card', name:'Aadhaar Card', number:'8765 4321 0987', authority:'UIDAI', status:'active' },
+    { idx:1, category:'identity', type:'Passport', name:'Passport', number:'U2345678', authority:'MEA', status:'active', expiry:fmtDate(year+3,11,10) },
+    { idx:2, category:'identity', type:'Aadhaar Card', name:'Aadhaar Card', number:'7654 3210 9876', authority:'UIDAI', status:'active' },
+    { idx:2, category:'education', type:'12th Marksheet', name:'12th Marksheet - PCM', number:'', authority:'CBSE', status:'active' },
+    { idx:3, category:'identity', type:'Aadhaar Card', name:'Aadhaar Card', number:'6543 2109 8765', authority:'UIDAI', status:'active' },
+    { idx:0, category:'property', type:'Sale Deed', name:'Flat Sale Deed - Powai', number:'BOM/REG/2018/45678', authority:'Sub-Registrar Mumbai', status:'active' },
+    { idx:0, category:'vehicle', type:'RC Book', name:'Car RC - Hyundai i20', number:'MH01AB1234', authority:'RTO Mumbai', status:'active' },
+    { idx:0, category:'financial', type:'IT Return', name:'ITR FY 2024-25', number:'ACKITR2025-'+Math.floor(Math.random()*900000+100000), authority:'Income Tax Dept', status:'active' },
+    { idx:4, category:'identity', type:'Aadhaar Card', name:'Aadhaar Card', number:'5432 1098 7654', authority:'UIDAI', status:'active' },
+    { idx:4, category:'medical', type:'Health Report', name:'Annual Health Checkup 2025', number:'', authority:'Apollo Hospital', status:'active' },
+  ];
+
+  docDefs.forEach(d => {
+    state.documents.push({
+      id:uid(), memberId:memberIds[d.idx], category:d.category, type:d.type,
+      name:d.name, number:d.number, issueDate:fmtDate(year-2, pick([1,3,5,7,9,11]), pick([1,10,20])),
+      expiryDate:d.expiry||'', authority:d.authority, status:d.status,
+      notes:'', images:[], createdAt:new Date().toISOString(), _sample:DEMO_TAG
+    });
+    counts.documents++;
+  });
+
+  // ── SAVE & REFRESH ──
+  saveData();
+  populateMemberSelects();
+  renderDashboard();
+
+  const result = document.getElementById('sample-data-result');
+  if (result) {
+    result.innerHTML = `<div style="padding:12px;background:rgba(6,214,160,0.08);border-radius:8px;font-size:12px;color:var(--text2)">
+      ✅ <strong>Full Demo Loaded!</strong><br>
+      👨‍👩‍👧‍👦 ${counts.members} members · 🏦 ${counts.banks} bank accounts · 💳 ${counts.cards} credit cards<br>
+      💸 ${counts.expenses} expenses · 🔄 ${counts.txns} transactions · 📈 ${counts.investments} investments<br>
+      🛡️ ${counts.insurance} insurance · 📊 ${counts.budgets} budgets · 🎯 ${counts.goals} goals · 📁 ${counts.documents} documents
+    </div>`;
+  }
+  toast('🎭 Full demo data loaded! Explore all features now.', 'success');
+}
+
+function clearFullDemoData() {
+  const DEMO_TAG = '_demo_';
+  const collections = ['members','bankAccounts','creditCards','expenses','transactions','investments',
+    'insurances','insClaims','budgets','goals','documents','statements','ccStatements','stmtBatches',
+    'contracts','loans','wallets'];
+  let totalRemoved = 0;
+  collections.forEach(col => {
+    if (!state[col]) return;
+    const before = state[col].length;
+    state[col] = state[col].filter(item => item._sample !== DEMO_TAG);
+    totalRemoved += before - state[col].length;
+  });
+
+  if (!totalRemoved) { toast('No demo data to clear', 'error'); return; }
+
+  saveData();
+  populateMemberSelects();
+  renderDashboard();
+
+  const result = document.getElementById('sample-data-result');
+  if (result) {
+    result.innerHTML = `<div style="padding:10px;background:rgba(255,107,107,0.08);border-radius:8px;font-size:12px;color:var(--danger)">
+      🗑 Cleared ${totalRemoved} demo records across all modules
+    </div>`;
+  }
+  toast(`Cleared ${totalRemoved} demo records`);
 }
 
 function loadSampleStatement(bank) {
