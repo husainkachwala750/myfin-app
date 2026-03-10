@@ -60,6 +60,8 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Hide external injected widgets (Cloudflare, analytics, etc.) at bottom-left */
+  iframe[src*="challenges"], div[class*="cf-"], div[style*="position: fixed"][style*="bottom"][style*="left"]:not(#home-fab):not(.mobile-nav):not(.more-drawer) { display:none !important; }
 
   body {
     background: var(--bg);
