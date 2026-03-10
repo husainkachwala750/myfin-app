@@ -3496,6 +3496,17 @@
       </div>
       <div class="security-bar">🤖 Claude AI reads your family's financial snapshot and gives personalized, context-aware answers. All data stays in your browser.</div>
 
+      <!-- API Key Setup -->
+      <div id="aichat-apikey-bar" class="card" style="margin-bottom:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">🔑 API Key:</span>
+        <div style="flex:1;min-width:200px;position:relative">
+          <input type="password" id="aichat-apikey" class="form-input" placeholder="Enter your Anthropic API key (sk-ant-...)" style="font-size:12px;padding-right:36px" onchange="saveAiApiKey()">
+          <button onclick="toggleApiKeyVisibility()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:2px" title="Show/Hide">👁</button>
+        </div>
+        <span id="aichat-key-status" style="font-size:11px;color:var(--text3)"></span>
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="font-size:11px;color:var(--primary);text-decoration:none">Get API Key →</a>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start" class="aichat-layout">
         <!-- Chat Area -->
         <div class="card" style="display:flex;flex-direction:column;min-height:520px;padding:0;overflow:hidden">
@@ -14964,22 +14975,29 @@ Suggest 2-3 alternative approaches or timing suggestions
 
 Keep currency in ₹ (Indian Rupees). Be specific to their numbers. Be honest, not just encouraging.`;
 
+  const apiKey = localStorage.getItem('myfin_ai_apikey') || '';
+  if (!apiKey) {
+    area.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center">🔑 Please set your Anthropic API key in <a href="#" onclick="showPage('aichat');return false" style="color:var(--primary)">AI Finance Chat</a> to use the AI Advisor.</div>`;
+    return;
+  }
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(AICHAT_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        apiKey: apiKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `API error: ${res.status}`); }
     const data = await res.json();
     const text = data.content?.find(b=>b.type==='text')?.text || '';
     lastAIResult = { scenario: currentScenario, label: SCENARIOS[currentScenario].label, inputs: decisionInputs, result: text, date: new Date().toISOString() };
     renderAIResponse(text);
   } catch(e) {
-    area.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center">❌ Could not connect to AI. Please check your connection.<br><small style="color:var(--text3)">${e.message}</small></div>`;
+    area.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center">❌ Could not connect to AI. Please check your connection and API key.<br><small style="color:var(--text3)">${e.message}</small></div>`;
   }
 }
 
@@ -18134,6 +18152,41 @@ setTimeout(runAutoPostEngine, 800);
 
 let aiChatHistory = [];
 
+// AI Chat API Key Management
+const AICHAT_PROXY_URL = 'https://myfin-ai-proxy.YOUR_SUBDOMAIN.workers.dev'; // ← Replace with your Cloudflare Worker URL
+
+function saveAiApiKey() {
+  const key = document.getElementById('aichat-apikey')?.value?.trim() || '';
+  if (key) {
+    localStorage.setItem('myfin_ai_apikey', key);
+    updateApiKeyStatus(true);
+  } else {
+    localStorage.removeItem('myfin_ai_apikey');
+    updateApiKeyStatus(false);
+  }
+}
+
+function loadAiApiKey() {
+  const key = localStorage.getItem('myfin_ai_apikey') || '';
+  const input = document.getElementById('aichat-apikey');
+  if (input && key) { input.value = key; updateApiKeyStatus(true); }
+  else if (input) updateApiKeyStatus(false);
+}
+
+function updateApiKeyStatus(hasKey) {
+  const el = document.getElementById('aichat-key-status');
+  if (!el) return;
+  el.innerHTML = hasKey
+    ? '<span style="color:#22c55e">✅ Key saved (stored locally)</span>'
+    : '<span style="color:#f59e0b">⚠️ Enter your API key to use AI Chat</span>';
+}
+
+function toggleApiKeyVisibility() {
+  const input = document.getElementById('aichat-apikey');
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
 function getFinancialSnapshot() {
   const members = state.members || [];
   const expenses = state.expenses || [];
@@ -18219,6 +18272,13 @@ async function sendAiChat() {
   const msg = input.value.trim();
   if (!msg) return;
 
+  const apiKey = localStorage.getItem('myfin_ai_apikey') || '';
+  if (!apiKey) {
+    appendAiMessage('ai', '🔑 Please enter your Anthropic API key above to use AI Chat. You can get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary)">console.anthropic.com</a>');
+    document.getElementById('aichat-apikey')?.focus();
+    return;
+  }
+
   input.value = '';
   appendAiMessage('user', msg);
   setAiChatStatus('thinking');
@@ -18230,16 +18290,21 @@ async function sendAiChat() {
   document.getElementById('aichat-send-icon').textContent = '⏳ ...';
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(AICHAT_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        apiKey: apiKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system: buildAiSystemPrompt(),
         messages: aiChatHistory.slice(-10)
       })
     });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error || `API error: ${resp.status}`);
+    }
     const data = await resp.json();
     const reply = data.content?.[0]?.text || 'Sorry, I could not get a response. Please try again.';
     aiChatHistory.push({ role: 'assistant', content: reply });
@@ -18248,7 +18313,14 @@ async function sendAiChat() {
     setAiChatStatus('ready');
   } catch(err) {
     removeAiTyping(typingId);
-    appendAiMessage('ai', '⚠️ Connection error. Please check your internet and try again.');
+    const errMsg = err.message || '';
+    if (errMsg.includes('401') || errMsg.includes('invalid') || errMsg.includes('authentication')) {
+      appendAiMessage('ai', '🔑 Invalid API key. Please check your Anthropic API key and try again.');
+    } else if (errMsg.includes('429')) {
+      appendAiMessage('ai', '⏳ Rate limit reached. Please wait a moment and try again.');
+    } else {
+      appendAiMessage('ai', '⚠️ ' + (errMsg || 'Connection error. Please check your internet and try again.'));
+    }
     setAiChatStatus('error');
   }
 
@@ -18961,19 +19033,25 @@ Context: Indian family portfolio in INR
 Give: 1) Portfolio health assessment 2) Diversification analysis 3) Specific improvement recommendations 4) Risk assessment
 Keep it concise, practical, and India-specific.`;
 
+  const apiKey = localStorage.getItem('myfin_ai_apikey') || '';
+  if (!apiKey) {
+    el.innerHTML = `<p style="color:var(--danger);font-size:13px">🔑 Please set your Anthropic API key in <a href="#" onclick="showPage('aichat');return false" style="color:var(--primary)">AI Finance Chat</a> first.</p>`;
+    return;
+  }
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(AICHAT_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
+    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || `API error: ${resp.status}`); }
     const data = await resp.json();
     const reply = data.content?.[0]?.text || 'Could not generate analysis.';
     const formatted = reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
     el.innerHTML = `<div style="font-size:13px;color:var(--text2);line-height:1.7">${formatted}</div>
       <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="generatePortfolioAnalysis()">🔄 Regenerate</button>`;
   } catch(err) {
-    el.innerHTML = `<p style="color:var(--danger);font-size:13px">⚠️ Could not connect to AI. Please check your connection.</p>
+    el.innerHTML = `<p style="color:var(--danger);font-size:13px">⚠️ Could not connect to AI. ${err.message || 'Please check your connection.'}</p>
       <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="generatePortfolioAnalysis()">Retry</button>`;
   }
 }
@@ -20041,7 +20119,7 @@ function showPage(pageId) {
   }
   // Page-specific render hooks
   if (pageId === 'advisor') { renderFamilySnapshot(); renderDecisionHistory(); }
-  if (pageId === 'aichat') { renderAiChatSnapshot(); }
+  if (pageId === 'aichat') { renderAiChatSnapshot(); loadAiApiKey(); }
   if (pageId === 'portfolio') { buildPortfolioMemberTabs(); renderPortfolioMemberSummary(); switchPortfolioTab('overview'); }
   if (pageId === 'insurance') { buildInsMemberTabs(); renderInsMemberSummary(); switchInsTab('overview'); }
   if (pageId === 'documents') { buildDocMemberTabs(); renderDocuments(); }
