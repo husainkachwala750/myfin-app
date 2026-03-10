@@ -1479,6 +1479,12 @@
     </div>
 
     <div class="nav-section">
+      <div class="nav-label">Planning</div>
+      <div class="nav-item" onclick="showPage('budgets')" data-page="budgets"><span class="icon">📊</span> Budget Planner</div>
+      <div class="nav-item" onclick="showPage('goals')" data-page="goals"><span class="icon">🎯</span> Financial Goals</div>
+    </div>
+
+    <div class="nav-section">
       <div class="nav-label">Analysis</div>
       <div class="nav-item" onclick="showPage('reports')" data-page="reports"><span class="icon">📋</span> Reports</div>
       <div class="nav-item" onclick="showPage('portfolio')" data-page="portfolio"><span class="icon">📉</span> Portfolio</div>
@@ -2849,6 +2855,178 @@
 
       <!-- Documents List -->
       <div id="doc-list"></div>
+    </div>
+
+    <!-- BUDGET PLANNER -->
+    <div id="page-budgets" class="page">
+      <div class="page-header">
+        <h2>📊 Budget Planner</h2>
+        <p>Set monthly/yearly budgets per category &amp; track actual vs planned spending</p>
+      </div>
+
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="budget-member-tabs"></div>
+
+      <!-- Period Toggle -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm active" id="budget-period-monthly" onclick="switchBudgetPeriod('monthly')">Monthly</button>
+        <button class="btn btn-secondary btn-sm" id="budget-period-yearly" onclick="switchBudgetPeriod('yearly')">Yearly</button>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="budgetPrevPeriod()">◀</button>
+          <span id="budget-period-label" style="font-weight:600;font-size:14px;min-width:120px;text-align:center"></span>
+          <button class="btn btn-secondary btn-sm" onclick="budgetNextPeriod()">▶</button>
+        </div>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="grid-4" id="budget-kpi-strip" style="margin-bottom:18px"></div>
+
+      <!-- Overall Progress -->
+      <div class="card" id="budget-overall-card" style="margin-bottom:18px"></div>
+
+      <!-- Add Budget Form -->
+      <div class="card" id="budget-add-panel" style="margin-bottom:18px">
+        <h3 style="margin:0 0 14px;font-size:16px;font-weight:600">➕ Add Budget</h3>
+        <div class="grid-3" style="gap:12px">
+          <div>
+            <label class="form-label">Member</label>
+            <select id="budget-member" class="form-input"></select>
+          </div>
+          <div>
+            <label class="form-label">Category</label>
+            <select id="budget-category" class="form-input">
+              <option value="food">🍔 Food &amp; Dining</option>
+              <option value="transport">🚗 Transport</option>
+              <option value="shopping">🛍️ Shopping</option>
+              <option value="utilities">💡 Utilities</option>
+              <option value="rent">🏠 Rent / Housing</option>
+              <option value="health">🏥 Health &amp; Medical</option>
+              <option value="education">🎓 Education</option>
+              <option value="entertainment">🎬 Entertainment</option>
+              <option value="travel">✈️ Travel</option>
+              <option value="groceries">🛒 Groceries</option>
+              <option value="personal">💆 Personal Care</option>
+              <option value="insurance">🛡️ Insurance</option>
+              <option value="investments">📈 Investments / SIP</option>
+              <option value="emi">🏦 EMI / Loans</option>
+              <option value="gifts">🎁 Gifts &amp; Donations</option>
+              <option value="subscriptions">📱 Subscriptions</option>
+              <option value="other">📋 Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Period</label>
+            <select id="budget-period-type" class="form-input">
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-3" style="gap:12px;margin-top:12px">
+          <div>
+            <label class="form-label">Budget Amount</label>
+            <input type="number" id="budget-amount" class="form-input" placeholder="e.g. 10000" min="0" step="100">
+          </div>
+          <div>
+            <label class="form-label">Alert at (%)</label>
+            <input type="number" id="budget-alert-pct" class="form-input" placeholder="e.g. 80" min="0" max="100" value="80">
+          </div>
+          <div>
+            <label class="form-label">Notes</label>
+            <input id="budget-notes" class="form-input" placeholder="Optional notes">
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="addBudget()">💾 Save Budget</button>
+          <button class="btn btn-secondary" onclick="clearBudgetForm()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Budget Cards List -->
+      <div id="budget-list"></div>
+    </div>
+
+    <!-- FINANCIAL GOALS -->
+    <div id="page-goals" class="page">
+      <div class="page-header">
+        <h2>🎯 Financial Goals</h2>
+        <p>Set savings &amp; investment targets with deadlines and track your progress</p>
+      </div>
+
+      <!-- Member Tabs -->
+      <div class="member-tabs" id="goals-member-tabs"></div>
+
+      <!-- KPI Strip -->
+      <div class="grid-4" id="goals-kpi-strip" style="margin-bottom:18px"></div>
+
+      <!-- Add Goal Form -->
+      <div class="card" id="goals-add-panel" style="margin-bottom:18px">
+        <h3 style="margin:0 0 14px;font-size:16px;font-weight:600">➕ Add Financial Goal</h3>
+        <div class="grid-3" style="gap:12px">
+          <div>
+            <label class="form-label">Member</label>
+            <select id="goal-member" class="form-input"></select>
+          </div>
+          <div>
+            <label class="form-label">Goal Name</label>
+            <input id="goal-name" class="form-input" placeholder="e.g. Emergency Fund, New Car, Vacation">
+          </div>
+          <div>
+            <label class="form-label">Category</label>
+            <select id="goal-category" class="form-input">
+              <option value="emergency">🆘 Emergency Fund</option>
+              <option value="home">🏠 Home / Property</option>
+              <option value="vehicle">🚗 Vehicle</option>
+              <option value="education">🎓 Education</option>
+              <option value="vacation">✈️ Vacation / Travel</option>
+              <option value="wedding">💍 Wedding</option>
+              <option value="retirement">🏖️ Retirement</option>
+              <option value="business">🏢 Business</option>
+              <option value="electronics">💻 Electronics / Gadgets</option>
+              <option value="medical">🏥 Medical</option>
+              <option value="debt">💳 Debt Payoff</option>
+              <option value="investment">📈 Investment Target</option>
+              <option value="other">📋 Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-3" style="gap:12px;margin-top:12px">
+          <div>
+            <label class="form-label">Target Amount</label>
+            <input type="number" id="goal-target" class="form-input" placeholder="e.g. 500000" min="0" step="1000">
+          </div>
+          <div>
+            <label class="form-label">Saved So Far</label>
+            <input type="number" id="goal-saved" class="form-input" placeholder="e.g. 50000" min="0" step="1000" value="0">
+          </div>
+          <div>
+            <label class="form-label">Target Date</label>
+            <input type="date" id="goal-target-date" class="form-input">
+          </div>
+        </div>
+        <div class="grid-3" style="gap:12px;margin-top:12px">
+          <div>
+            <label class="form-label">Priority</label>
+            <select id="goal-priority" class="form-input">
+              <option value="high">🔴 High</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="low">🟢 Low</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Notes</label>
+            <input id="goal-notes" class="form-input" placeholder="Optional notes">
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <div>
+              <button class="btn btn-primary" onclick="addGoal()">💾 Save Goal</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goals List -->
+      <div id="goals-list"></div>
     </div>
 
     <!-- BUSINESS MANAGER -->
@@ -4709,7 +4887,7 @@
 // Graceful fallback to localStorage if IndexedDB is unavailable
 
 const DB_NAME    = 'FamilyVaultDB';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 // All collections (object stores) and their key paths
 
@@ -6261,6 +6439,8 @@ const STORES = {
   insurances:   { keyPath: 'id', indexes: [['holderId','holderId'],['category','category'],['endDate','endDate']] },
   insClaims:    { keyPath: 'id', indexes: [['policyId','policyId'],['status','status']] },
   documents:    { keyPath: 'id', indexes: [['memberId','memberId'],['category','category'],['type','type']] },
+  budgets:      { keyPath: 'id', indexes: [['memberId','memberId'],['category','category'],['period','period']] },
+  goals:        { keyPath: 'id', indexes: [['memberId','memberId'],['status','status']] },
   meta:         { keyPath: 'key' }  // app metadata / settings
 };
 
@@ -6569,7 +6749,8 @@ let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
   businesses:[], invStatements:[], insurances:[], insClaims:[],
-  ccStatements:[], stmtBatches:[], loans:[], wallets:[], documents:[]
+  ccStatements:[], stmtBatches:[], loans:[], wallets:[], documents:[],
+  budgets:[], goals:[]
 };
 
 // ── Open / upgrade DB ──────────────────────────────────────────────
@@ -6969,6 +7150,8 @@ function _showPageCore(id) {
   if(id==='reports') { buildReportMemberTabs(); renderReports(); renderDBStatus(); }
   if(id==='business') { populateBizSelects(); renderBizOverview(); }
   if(id==='documents') { buildDocMemberTabs(); renderDocuments(); }
+  if(id==='budgets') { populateMemberSelects(); renderBudgetPage(); }
+  if(id==='goals') { populateMemberSelects(); renderGoalsPage(); }
   if(id==='family-access') { renderFamilyAccessPage(); }
   if(id==='features') { renderFeaturesGrid(); initCurrencySettings(); }
   initCurrencySelectsForPage(id);
@@ -15043,6 +15226,8 @@ const FEATURE_DEFS = [
   { id:'insurance',    label:'Insurance Vault',     emoji:'🛡️', color:'#fb923c', tag:'optional', desc:'Manage all family insurance policies, claims and renewals.',              page:'insurance',    navText:'Insurance Vault',  core:false },
   { id:'advisor',      label:'AI Decision Advisor', emoji:'🧠', color:'#c084fc', tag:'optional', desc:'AI-powered financial advisor using Claude to analyse your data.',         page:'advisor',      navText:'Decision Advisor', core:false },
   { id:'documents',    label:'Document Vault',      emoji:'📁', color:'#0ea5e9', tag:'optional', desc:'Store personal records — IDs, certificates, property docs, contracts & more per member.', page:'documents', navText:'Document Vault', core:false },
+  { id:'budgets',      label:'Budget Planner',      emoji:'📊', color:'#10b981', tag:'optional', desc:'Set monthly/yearly budgets per category, track actual vs planned spending with visual progress.', page:'budgets', navText:'Budget Planner', core:false },
+  { id:'goals',        label:'Financial Goals',     emoji:'🎯', color:'#f59e0b', tag:'optional', desc:'Set savings & investment goals with target amounts, deadlines and progress tracking.', page:'goals', navText:'Financial Goals', core:false },
 
   // ── Business module ──
   { id:'business',     label:'Business Manager',    emoji:'🏢', color:'#fbbf24', tag:'business', desc:'Full business P&L, bank accounts, staff, assets, loans and tax tracking. Enable only if you run a business.', page:'business', navText:'Business Manager', core:false },
@@ -19867,6 +20052,525 @@ function showPage(pageId) {
 
 // Handle OAuth redirects from Google Drive / OneDrive / Dropbox
 storageHandleOAuthRedirect();
+
+// =================== BUDGET PLANNER ===================
+
+const BUDGET_CATEGORIES = {
+  food:          { emoji:'🍔', label:'Food & Dining' },
+  transport:     { emoji:'🚗', label:'Transport' },
+  shopping:      { emoji:'🛍️', label:'Shopping' },
+  utilities:     { emoji:'💡', label:'Utilities' },
+  rent:          { emoji:'🏠', label:'Rent / Housing' },
+  health:        { emoji:'🏥', label:'Health & Medical' },
+  education:     { emoji:'🎓', label:'Education' },
+  entertainment: { emoji:'🎬', label:'Entertainment' },
+  travel:        { emoji:'✈️', label:'Travel' },
+  groceries:     { emoji:'🛒', label:'Groceries' },
+  personal:      { emoji:'💆', label:'Personal Care' },
+  insurance:     { emoji:'🛡️', label:'Insurance' },
+  investments:   { emoji:'📈', label:'Investments / SIP' },
+  emi:           { emoji:'🏦', label:'EMI / Loans' },
+  gifts:         { emoji:'🎁', label:'Gifts & Donations' },
+  subscriptions: { emoji:'📱', label:'Subscriptions' },
+  other:         { emoji:'📋', label:'Other' }
+};
+
+let _budgetPeriod = 'monthly';
+let _budgetMonth = new Date().getMonth();
+let _budgetYear = new Date().getFullYear();
+
+function switchBudgetPeriod(period) {
+  _budgetPeriod = period;
+  document.getElementById('budget-period-monthly')?.classList.toggle('active', period === 'monthly');
+  document.getElementById('budget-period-yearly')?.classList.toggle('active', period === 'yearly');
+  renderBudgetPage();
+}
+
+function budgetPrevPeriod() {
+  if (_budgetPeriod === 'monthly') {
+    _budgetMonth--;
+    if (_budgetMonth < 0) { _budgetMonth = 11; _budgetYear--; }
+  } else { _budgetYear--; }
+  renderBudgetPage();
+}
+
+function budgetNextPeriod() {
+  if (_budgetPeriod === 'monthly') {
+    _budgetMonth++;
+    if (_budgetMonth > 11) { _budgetMonth = 0; _budgetYear++; }
+  } else { _budgetYear++; }
+  renderBudgetPage();
+}
+
+function getBudgetPeriodLabel() {
+  if (_budgetPeriod === 'yearly') return String(_budgetYear);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[_budgetMonth] + ' ' + _budgetYear;
+}
+
+function getActualSpending(category, memberId) {
+  const expenses = state.expenses || [];
+  return expenses.filter(e => {
+    if (memberId && e.memberId !== memberId) return false;
+    const cat = (e.category || '').toLowerCase();
+    if (cat !== category && !cat.includes(category)) return false;
+    if (!e.date) return false;
+    const d = new Date(e.date);
+    if (_budgetPeriod === 'monthly') {
+      return d.getMonth() === _budgetMonth && d.getFullYear() === _budgetYear;
+    }
+    return d.getFullYear() === _budgetYear;
+  }).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+}
+
+function renderBudgetPage() {
+  // Period label
+  const label = document.getElementById('budget-period-label');
+  if (label) label.textContent = getBudgetPeriodLabel();
+
+  // Member tabs
+  buildMemberTabs('budget-member-tabs', 'budgets', ()=>0, mid => {
+    if (!mid) return (state.budgets||[]).length;
+    return (state.budgets||[]).filter(b => b.memberId === mid).length;
+  });
+
+  // Populate member select
+  const memberSel = document.getElementById('budget-member');
+  if (memberSel && memberSel.options.length <= 1) {
+    memberSel.innerHTML = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  }
+
+  let budgets = (state.budgets || []).filter(b => b.period === _budgetPeriod);
+  const mid = memberFilters.budgets || '';
+  if (mid) budgets = budgets.filter(b => b.memberId === mid);
+
+  // Calculate totals
+  let totalBudget = 0, totalSpent = 0, overBudgetCount = 0, alertCount = 0;
+  const budgetData = budgets.map(b => {
+    const spent = getActualSpending(b.category, b.memberId);
+    const pct = b.amount > 0 ? (spent / b.amount) * 100 : 0;
+    totalBudget += b.amount;
+    totalSpent += spent;
+    if (pct >= 100) overBudgetCount++;
+    else if (pct >= (b.alertPct || 80)) alertCount++;
+    return { ...b, spent, pct };
+  });
+
+  // KPI strip
+  const kpi = document.getElementById('budget-kpi-strip');
+  if (kpi) {
+    const remaining = totalBudget - totalSpent;
+    kpi.innerHTML = `
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:var(--primary)">${budgets.length}</div><div style="font-size:12px;color:var(--text2)">Active Budgets</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#22c55e">₹${formatNum(totalBudget)}</div><div style="font-size:12px;color:var(--text2)">Total Budget</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:${totalSpent>totalBudget?'#ef4444':'#f59e0b'}">₹${formatNum(totalSpent)}</div><div style="font-size:12px;color:var(--text2)">Total Spent</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:${remaining<0?'#ef4444':'#22c55e'}">₹${formatNum(Math.abs(remaining))}</div><div style="font-size:12px;color:var(--text2)">${remaining<0?'Over Budget':'Remaining'}</div></div>`;
+  }
+
+  // Overall progress bar
+  const overallCard = document.getElementById('budget-overall-card');
+  if (overallCard) {
+    const overallPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
+    const barColor = overallPct >= 100 ? '#ef4444' : overallPct >= 80 ? '#f59e0b' : '#22c55e';
+    overallCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:14px">Overall Budget Usage</span>
+        <span style="font-size:13px;color:var(--text2)">${overallPct.toFixed(1)}% used</span>
+      </div>
+      <div style="height:12px;background:var(--surface2);border-radius:6px;overflow:hidden">
+        <div style="height:100%;width:${overallPct}%;background:${barColor};border-radius:6px;transition:width 0.5s"></div>
+      </div>
+      ${overBudgetCount > 0 ? `<div style="margin-top:8px;font-size:12px;color:#ef4444;font-weight:600">⚠️ ${overBudgetCount} budget(s) exceeded</div>` : ''}
+      ${alertCount > 0 ? `<div style="margin-top:4px;font-size:12px;color:#f59e0b;font-weight:600">⚡ ${alertCount} budget(s) nearing limit</div>` : ''}`;
+  }
+
+  // Budget cards
+  const container = document.getElementById('budget-list');
+  if (!container) return;
+
+  if (!budgetData.length) {
+    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--text2)">No budgets set for this period. Add your first budget above.</div>';
+    return;
+  }
+
+  container.innerHTML = budgetData.sort((a,b) => b.pct - a.pct).map(b => {
+    const catInfo = BUDGET_CATEGORIES[b.category] || BUDGET_CATEGORIES.other;
+    const member = state.members.find(m => m.id === b.memberId);
+    const barColor = b.pct >= 100 ? '#ef4444' : b.pct >= (b.alertPct||80) ? '#f59e0b' : '#22c55e';
+    const remaining = b.amount - b.spent;
+    const statusLabel = b.pct >= 100 ? '🚨 OVER BUDGET' : b.pct >= (b.alertPct||80) ? '⚠️ Nearing Limit' : '✅ On Track';
+    return `<div class="card" style="margin-bottom:12px;border-left:4px solid ${barColor}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:600">${catInfo.emoji} ${catInfo.label}</div>
+          <div style="font-size:12px;color:var(--text2)">${esc(member?.name||'—')} · ${b.period}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:600;color:${barColor}">${statusLabel}</div>
+          <div style="font-size:11px;color:var(--text2)">Alert at ${b.alertPct||80}%</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span>₹${formatNum(b.spent)} spent</span>
+        <span>₹${formatNum(b.amount)} budget</span>
+      </div>
+      <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${Math.min(b.pct,100)}%;background:${barColor};border-radius:5px;transition:width 0.5s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text2)">${b.pct.toFixed(1)}% used · ${remaining >= 0 ? '₹'+formatNum(remaining)+' left' : '₹'+formatNum(Math.abs(remaining))+' over'}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="editBudget('${b.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteBudget('${b.id}')" style="padding:4px 8px;font-size:11px">🗑️</button>
+        </div>
+      </div>
+      ${b.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">${esc(b.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function formatNum(n) {
+  if (typeof window.fmtCurr === 'function') return fmtCurr(n);
+  return Number(n||0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function addBudget() {
+  const memberId = document.getElementById('budget-member')?.value;
+  const category = document.getElementById('budget-category')?.value;
+  const period   = document.getElementById('budget-period-type')?.value || 'monthly';
+  const amount   = parseFloat(document.getElementById('budget-amount')?.value) || 0;
+  const alertPct = parseInt(document.getElementById('budget-alert-pct')?.value) || 80;
+  const notes    = document.getElementById('budget-notes')?.value?.trim() || '';
+
+  if (!memberId) { toast('Please select a member', 'error'); return; }
+  if (amount <= 0) { toast('Please enter a valid budget amount', 'error'); return; }
+
+  // Check for duplicate
+  const exists = state.budgets.find(b => b.memberId === memberId && b.category === category && b.period === period);
+  if (exists) { toast('Budget already exists for this category & period. Edit it instead.', 'error'); return; }
+
+  state.budgets.push({
+    id: 'bgt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    memberId, category, period, amount, alertPct, notes,
+    createdAt: new Date().toISOString()
+  });
+  saveData();
+  clearBudgetForm();
+  renderBudgetPage();
+  toast('Budget saved!', 'success');
+}
+
+function clearBudgetForm() {
+  const el = document.getElementById('budget-amount'); if (el) el.value = '';
+  const n = document.getElementById('budget-notes'); if (n) n.value = '';
+  const a = document.getElementById('budget-alert-pct'); if (a) a.value = '80';
+}
+
+function editBudget(id) {
+  const b = state.budgets.find(x => x.id === id);
+  if (!b) return;
+  const memberOpts = state.members.map(m => `<option value="${m.id}" ${m.id===b.memberId?'selected':''}>${esc(m.name)}</option>`).join('');
+  const catOpts = Object.entries(BUDGET_CATEGORIES).map(([k,v]) => `<option value="${k}" ${k===b.category?'selected':''}>${v.emoji} ${v.label}</option>`).join('');
+
+  let modal = document.getElementById('edit-budget-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-budget-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:500px"><h3 style="margin:0 0 16px">Edit Budget</h3><div id="edit-budget-body"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('edit-budget-modal'); });
+  }
+  document.getElementById('edit-budget-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label class="form-label">Member</label><select id="edit-bgt-member" class="form-input">${memberOpts}</select></div>
+      <div><label class="form-label">Category</label><select id="edit-bgt-category" class="form-input">${catOpts}</select></div>
+      <div><label class="form-label">Period</label><select id="edit-bgt-period" class="form-input"><option value="monthly" ${b.period==='monthly'?'selected':''}>Monthly</option><option value="yearly" ${b.period==='yearly'?'selected':''}>Yearly</option></select></div>
+      <div><label class="form-label">Amount</label><input type="number" id="edit-bgt-amount" class="form-input" value="${b.amount}" min="0"></div>
+      <div><label class="form-label">Alert at (%)</label><input type="number" id="edit-bgt-alert" class="form-input" value="${b.alertPct||80}" min="0" max="100"></div>
+      <div><label class="form-label">Notes</label><input id="edit-bgt-notes" class="form-input" value="${esc(b.notes||'')}"></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveEditBudget('${id}')">💾 Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-budget-modal')">Cancel</button>
+    </div>`;
+  openModal('edit-budget-modal');
+}
+
+function saveEditBudget(id) {
+  const b = state.budgets.find(x => x.id === id);
+  if (!b) return;
+  b.memberId = document.getElementById('edit-bgt-member')?.value || b.memberId;
+  b.category = document.getElementById('edit-bgt-category')?.value || b.category;
+  b.period   = document.getElementById('edit-bgt-period')?.value || b.period;
+  b.amount   = parseFloat(document.getElementById('edit-bgt-amount')?.value) || b.amount;
+  b.alertPct = parseInt(document.getElementById('edit-bgt-alert')?.value) || 80;
+  b.notes    = document.getElementById('edit-bgt-notes')?.value?.trim() || '';
+  saveData();
+  closeModal('edit-budget-modal');
+  renderBudgetPage();
+  toast('Budget updated!', 'success');
+}
+
+function deleteBudget(id) {
+  if (!confirm('Delete this budget?')) return;
+  state.budgets = state.budgets.filter(b => b.id !== id);
+  saveData();
+  renderBudgetPage();
+  toast('Budget deleted');
+}
+
+// =================== FINANCIAL GOALS ===================
+
+const GOAL_CATEGORIES = {
+  emergency:   { emoji:'🆘', label:'Emergency Fund' },
+  home:        { emoji:'🏠', label:'Home / Property' },
+  vehicle:     { emoji:'🚗', label:'Vehicle' },
+  education:   { emoji:'🎓', label:'Education' },
+  vacation:    { emoji:'✈️', label:'Vacation / Travel' },
+  wedding:     { emoji:'💍', label:'Wedding' },
+  retirement:  { emoji:'🏖️', label:'Retirement' },
+  business:    { emoji:'🏢', label:'Business' },
+  electronics: { emoji:'💻', label:'Electronics / Gadgets' },
+  medical:     { emoji:'🏥', label:'Medical' },
+  debt:        { emoji:'💳', label:'Debt Payoff' },
+  investment:  { emoji:'📈', label:'Investment Target' },
+  other:       { emoji:'📋', label:'Other' }
+};
+
+function renderGoalsPage() {
+  // Member tabs
+  buildMemberTabs('goals-member-tabs', 'goals', ()=>0, mid => {
+    if (!mid) return (state.goals||[]).length;
+    return (state.goals||[]).filter(g => g.memberId === mid).length;
+  });
+
+  // Populate member select
+  const memberSel = document.getElementById('goal-member');
+  if (memberSel && memberSel.options.length <= 1) {
+    memberSel.innerHTML = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  }
+
+  let goals = state.goals || [];
+  const mid = memberFilters.goals || '';
+  if (mid) goals = goals.filter(g => g.memberId === mid);
+
+  // Calculations
+  let totalTarget = 0, totalSaved = 0, completedCount = 0;
+  const goalData = goals.map(g => {
+    const pct = g.target > 0 ? (g.saved / g.target) * 100 : 0;
+    totalTarget += g.target || 0;
+    totalSaved += g.saved || 0;
+    if (pct >= 100) completedCount++;
+
+    // Calculate monthly contribution needed
+    let monthlyNeeded = 0;
+    if (g.targetDate && pct < 100) {
+      const remaining = (g.target || 0) - (g.saved || 0);
+      const monthsLeft = Math.max(1, Math.ceil((new Date(g.targetDate) - new Date()) / (1000*60*60*24*30.44)));
+      monthlyNeeded = remaining / monthsLeft;
+    }
+
+    // Days remaining
+    let daysLeft = null;
+    if (g.targetDate) {
+      daysLeft = Math.ceil((new Date(g.targetDate) - new Date()) / (1000*60*60*24));
+    }
+
+    return { ...g, pct, monthlyNeeded, daysLeft };
+  });
+
+  // KPI strip
+  const kpi = document.getElementById('goals-kpi-strip');
+  if (kpi) {
+    kpi.innerHTML = `
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:var(--primary)">${goals.length}</div><div style="font-size:12px;color:var(--text2)">Total Goals</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#22c55e">${completedCount}</div><div style="font-size:12px;color:var(--text2)">Completed</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#f59e0b">₹${formatNum(totalTarget)}</div><div style="font-size:12px;color:var(--text2)">Total Target</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#60a5fa">₹${formatNum(totalSaved)}</div><div style="font-size:12px;color:var(--text2)">Total Saved</div></div>`;
+  }
+
+  // Goals list
+  const container = document.getElementById('goals-list');
+  if (!container) return;
+
+  if (!goalData.length) {
+    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--text2)">No financial goals set yet. Add your first goal above.</div>';
+    return;
+  }
+
+  // Sort: active first (by priority), then completed
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  goalData.sort((a,b) => {
+    if (a.pct >= 100 && b.pct < 100) return 1;
+    if (a.pct < 100 && b.pct >= 100) return -1;
+    return (priorityOrder[a.priority]||1) - (priorityOrder[b.priority]||1);
+  });
+
+  container.innerHTML = goalData.map(g => {
+    const catInfo = GOAL_CATEGORIES[g.category] || GOAL_CATEGORIES.other;
+    const member = state.members.find(m => m.id === g.memberId);
+    const isComplete = g.pct >= 100;
+    const barColor = isComplete ? '#22c55e' : g.pct >= 60 ? '#60a5fa' : g.pct >= 30 ? '#f59e0b' : '#ef4444';
+    const remaining = Math.max(0, (g.target||0) - (g.saved||0));
+    const priorityBadge = g.priority === 'high' ? '🔴' : g.priority === 'low' ? '🟢' : '🟡';
+
+    let timelineText = '';
+    if (g.daysLeft !== null) {
+      if (g.daysLeft < 0) timelineText = `<span style="color:#ef4444;font-weight:600">⏰ ${Math.abs(g.daysLeft)} days overdue</span>`;
+      else if (g.daysLeft === 0) timelineText = `<span style="color:#f59e0b;font-weight:600">⏰ Due today!</span>`;
+      else if (g.daysLeft <= 30) timelineText = `<span style="color:#f59e0b">⏰ ${g.daysLeft} days left</span>`;
+      else if (g.daysLeft <= 365) timelineText = `<span style="color:var(--text2)">${Math.ceil(g.daysLeft/30)} months left</span>`;
+      else timelineText = `<span style="color:var(--text2)">${(g.daysLeft/365).toFixed(1)} years left</span>`;
+    }
+
+    return `<div class="card" style="margin-bottom:14px;border-left:4px solid ${barColor};${isComplete?'opacity:0.85':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:16px;font-weight:600">${catInfo.emoji} ${esc(g.name||catInfo.label)} ${isComplete?'<span style="color:#22c55e;font-size:13px">✅ Complete!</span>':''}</div>
+          <div style="font-size:12px;color:var(--text2)">${esc(member?.name||'—')} · ${priorityBadge} ${g.priority} priority</div>
+        </div>
+        <div style="text-align:right">
+          ${timelineText ? `<div style="font-size:12px">${timelineText}</div>` : ''}
+          ${!isComplete && g.monthlyNeeded > 0 ? `<div style="font-size:11px;color:var(--primary);font-weight:500;margin-top:2px">Need ₹${formatNum(Math.ceil(g.monthlyNeeded))}/month</div>` : ''}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span style="font-weight:500">₹${formatNum(g.saved)} saved</span>
+        <span style="color:var(--text2)">Target: ₹${formatNum(g.target)}</span>
+      </div>
+      <div style="height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${Math.min(g.pct,100)}%;background:${barColor};border-radius:6px;transition:width 0.5s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text2)">${g.pct.toFixed(1)}% · ₹${formatNum(remaining)} remaining${g.targetDate ? ' · Due: '+g.targetDate : ''}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="addToGoal('${g.id}')" style="padding:4px 10px;font-size:11px" ${isComplete?'disabled':''}>+ Add Savings</button>
+          <button class="btn btn-secondary btn-sm" onclick="editGoal('${g.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteGoal('${g.id}')" style="padding:4px 8px;font-size:11px">🗑️</button>
+        </div>
+      </div>
+      ${g.notes ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">${esc(g.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function addGoal() {
+  const memberId   = document.getElementById('goal-member')?.value;
+  const name       = document.getElementById('goal-name')?.value?.trim();
+  const category   = document.getElementById('goal-category')?.value;
+  const target     = parseFloat(document.getElementById('goal-target')?.value) || 0;
+  const saved      = parseFloat(document.getElementById('goal-saved')?.value) || 0;
+  const targetDate = document.getElementById('goal-target-date')?.value || '';
+  const priority   = document.getElementById('goal-priority')?.value || 'medium';
+  const notes      = document.getElementById('goal-notes')?.value?.trim() || '';
+
+  if (!memberId) { toast('Please select a member', 'error'); return; }
+  if (!name) { toast('Please enter a goal name', 'error'); return; }
+  if (target <= 0) { toast('Please enter a valid target amount', 'error'); return; }
+
+  state.goals.push({
+    id: 'goal_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    memberId, name, category, target, saved, targetDate, priority, notes, status: 'active',
+    contributions: [],
+    createdAt: new Date().toISOString()
+  });
+  saveData();
+  clearGoalForm();
+  renderGoalsPage();
+  toast('Goal saved!', 'success');
+}
+
+function clearGoalForm() {
+  ['goal-name','goal-target','goal-saved','goal-target-date','goal-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const p = document.getElementById('goal-priority'); if (p) p.value = 'medium';
+  const s = document.getElementById('goal-saved'); if (s) s.value = '0';
+}
+
+function addToGoal(id) {
+  const g = state.goals.find(x => x.id === id);
+  if (!g) return;
+  const remaining = (g.target||0) - (g.saved||0);
+  const amtStr = prompt(`Add savings to "${g.name}"\nRemaining: ₹${formatNum(remaining)}\n\nEnter amount:`);
+  if (!amtStr) return;
+  const amt = parseFloat(amtStr);
+  if (isNaN(amt) || amt <= 0) { toast('Invalid amount', 'error'); return; }
+  g.saved = (g.saved || 0) + amt;
+  if (!g.contributions) g.contributions = [];
+  g.contributions.push({ amount: amt, date: new Date().toISOString() });
+  if (g.saved >= g.target) {
+    g.status = 'completed';
+    toast('🎉 Goal completed! Congratulations!', 'success');
+  } else {
+    toast(`₹${formatNum(amt)} added to "${g.name}"`, 'success');
+  }
+  saveData();
+  renderGoalsPage();
+}
+
+function editGoal(id) {
+  const g = state.goals.find(x => x.id === id);
+  if (!g) return;
+  const memberOpts = state.members.map(m => `<option value="${m.id}" ${m.id===g.memberId?'selected':''}>${esc(m.name)}</option>`).join('');
+  const catOpts = Object.entries(GOAL_CATEGORIES).map(([k,v]) => `<option value="${k}" ${k===g.category?'selected':''}>${v.emoji} ${v.label}</option>`).join('');
+  const priOpts = ['high','medium','low'].map(p => `<option value="${p}" ${p===g.priority?'selected':''}>${p==='high'?'🔴':p==='low'?'🟢':'🟡'} ${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('');
+
+  let modal = document.getElementById('edit-goal-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-goal-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:560px"><h3 style="margin:0 0 16px">Edit Goal</h3><div id="edit-goal-body"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('edit-goal-modal'); });
+  }
+  document.getElementById('edit-goal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label class="form-label">Member</label><select id="edit-goal-member" class="form-input">${memberOpts}</select></div>
+      <div><label class="form-label">Name</label><input id="edit-goal-name" class="form-input" value="${esc(g.name||'')}"></div>
+      <div><label class="form-label">Category</label><select id="edit-goal-category" class="form-input">${catOpts}</select></div>
+      <div><label class="form-label">Priority</label><select id="edit-goal-priority" class="form-input">${priOpts}</select></div>
+      <div><label class="form-label">Target Amount</label><input type="number" id="edit-goal-target" class="form-input" value="${g.target||0}" min="0"></div>
+      <div><label class="form-label">Saved So Far</label><input type="number" id="edit-goal-saved" class="form-input" value="${g.saved||0}" min="0"></div>
+      <div><label class="form-label">Target Date</label><input type="date" id="edit-goal-date" class="form-input" value="${g.targetDate||''}"></div>
+      <div><label class="form-label">Notes</label><input id="edit-goal-notes" class="form-input" value="${esc(g.notes||'')}"></div>
+    </div>
+    ${g.contributions && g.contributions.length ? `<div style="margin-top:12px;font-size:12px;color:var(--text2)"><strong>Contribution History:</strong> ${g.contributions.slice(-5).map(c => '₹'+formatNum(c.amount)+' ('+new Date(c.date).toLocaleDateString()+')').join(' → ')}</div>` : ''}
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveEditGoal('${id}')">💾 Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-goal-modal')">Cancel</button>
+    </div>`;
+  openModal('edit-goal-modal');
+}
+
+function saveEditGoal(id) {
+  const g = state.goals.find(x => x.id === id);
+  if (!g) return;
+  g.memberId   = document.getElementById('edit-goal-member')?.value || g.memberId;
+  g.name       = document.getElementById('edit-goal-name')?.value?.trim() || g.name;
+  g.category   = document.getElementById('edit-goal-category')?.value || g.category;
+  g.priority   = document.getElementById('edit-goal-priority')?.value || g.priority;
+  g.target     = parseFloat(document.getElementById('edit-goal-target')?.value) || g.target;
+  g.saved      = parseFloat(document.getElementById('edit-goal-saved')?.value) || 0;
+  g.targetDate = document.getElementById('edit-goal-date')?.value || '';
+  g.notes      = document.getElementById('edit-goal-notes')?.value?.trim() || '';
+  g.status     = g.saved >= g.target ? 'completed' : 'active';
+  saveData();
+  closeModal('edit-goal-modal');
+  renderGoalsPage();
+  toast('Goal updated!', 'success');
+}
+
+function deleteGoal(id) {
+  if (!confirm('Delete this financial goal?')) return;
+  state.goals = state.goals.filter(g => g.id !== id);
+  saveData();
+  renderGoalsPage();
+  toast('Goal deleted');
+}
 
 // =================== DOCUMENT VAULT ===================
 
