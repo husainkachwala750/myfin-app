@@ -1481,6 +1481,7 @@
       <div class="nav-label">Daily Tracking</div>
       <div class="nav-item" onclick="showPage('expenses')" data-page="expenses"><span class="icon">📊</span> Expense Analysis</div>
       <div class="nav-item" onclick="showPage('transactions')" data-page="transactions"><span class="icon">🔄</span> Transactions</div>
+      <div class="nav-item" onclick="showPage('whatsapp')" data-page="whatsapp"><span class="icon">💬</span> WhatsApp Inbox</div>
       <div class="nav-item" onclick="showPage('statements')" data-page="statements"><span class="icon">📄</span> Statements</div>
     </div>
 
@@ -3034,6 +3035,88 @@
 
       <!-- Goals List -->
       <div id="goals-list"></div>
+    </div>
+
+    <!-- WHATSAPP INBOX -->
+    <div id="page-whatsapp" class="page">
+      <div class="page-header">
+        <h2>💬 WhatsApp Cash Transactions</h2>
+        <p>Send a WhatsApp message to log expenses &amp; income — review and approve here</p>
+      </div>
+
+      <div class="security-bar" style="margin-bottom:18px;background:rgba(37,211,102,0.06);border-color:rgba(37,211,102,0.2);border-left-color:#25D366;color:#166534">
+        📱 Send messages like <strong>"lunch 500"</strong>, <strong>"petrol 2000"</strong>, <strong>"received 5000 from client"</strong> to your MyFin WhatsApp number
+      </div>
+
+      <!-- Setup Card -->
+      <div class="card" id="wa-setup-card" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;font-size:24px">💬</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:15px" id="wa-status">Setup Required</div>
+            <div style="font-size:12px;color:var(--text2)" id="wa-status-detail">Enter your Twilio WhatsApp number below</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="form-label">WhatsApp Number (Twilio)</label>
+            <input id="wa-phone" class="form-input" placeholder="e.g. +14155238886" onchange="saveWAConfig()">
+          </div>
+          <div>
+            <label class="form-label">Your Family ID</label>
+            <input id="wa-family-id" class="form-input" placeholder="Auto-detected" readonly>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text3)">
+          💡 Send <strong>"join &lt;sandbox-keyword&gt;"</strong> to the Twilio number on WhatsApp to activate. Then send transactions like "chai 40" or "salary 50000".
+        </div>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="grid-4" id="wa-kpi-strip" style="margin-bottom:18px"></div>
+
+      <!-- Quick Actions -->
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="fetchWATransactions()" style="background:linear-gradient(135deg,#25D366,#128C7E)">🔄 Refresh Inbox</button>
+        <button class="btn btn-secondary" onclick="approveAllWA()">✅ Approve All Parsed</button>
+        <button class="btn btn-secondary" onclick="clearApprovedWA()">🗑 Clear Approved</button>
+      </div>
+
+      <!-- Transaction List -->
+      <div id="wa-transactions-list"></div>
+
+      <!-- How It Works -->
+      <div class="card" style="margin-top:18px">
+        <h3 style="margin:0 0 12px;font-size:15px;font-weight:600">📖 How It Works</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;font-size:12px;color:var(--text2)">
+          <div style="padding:12px;background:var(--surface2);border-radius:10px">
+            <div style="font-size:20px;margin-bottom:6px">1️⃣</div>
+            <strong>Send WhatsApp</strong><br>
+            Message: "lunch 500" or "received 5000 salary"
+          </div>
+          <div style="padding:12px;background:var(--surface2);border-radius:10px">
+            <div style="font-size:20px;margin-bottom:6px">2️⃣</div>
+            <strong>Auto-Parsed</strong><br>
+            AI detects amount, category, and type (income/expense)
+          </div>
+          <div style="padding:12px;background:var(--surface2);border-radius:10px">
+            <div style="font-size:20px;margin-bottom:6px">3️⃣</div>
+            <strong>Review Here</strong><br>
+            Check parsed data, assign member, edit if needed
+          </div>
+          <div style="padding:12px;background:var(--surface2);border-radius:10px">
+            <div style="font-size:20px;margin-bottom:6px">4️⃣</div>
+            <strong>Approve</strong><br>
+            One click to add to your expenses/transactions
+          </div>
+        </div>
+        <div style="margin-top:14px;padding:12px;background:rgba(37,211,102,0.06);border-radius:10px;font-size:12px;color:var(--text2)">
+          <strong>Example messages:</strong><br>
+          💸 "chai 40" · "auto 150" · "grocery 2500 cash" · "petrol 1800" · "medicine 350"<br>
+          💰 "received 5000 from amit" · "salary 150000" · "refund 500"<br>
+          ❓ "help" — see all commands · "balance" — check in app
+        </div>
+      </div>
     </div>
 
     <!-- GOOGLE SHEETS SYNC -->
@@ -7287,6 +7370,7 @@ function _showPageCore(id) {
   if(id==='budgets') { populateMemberSelects(); renderBudgetPage(); }
   if(id==='goals') { populateMemberSelects(); renderGoalsPage(); }
   if(id==='gsheets') { renderGSheetsPage(); }
+  if(id==='whatsapp') { renderWhatsAppInbox(); }
   if(id==='family-access') { renderFamilyAccessPage(); }
   if(id==='features') { renderFeaturesGrid(); initCurrencySettings(); }
   initCurrencySelectsForPage(id);
@@ -15690,6 +15774,7 @@ const FEATURE_DEFS = [
   { id:'expenses',     label:'Expenses',            emoji:'💸', color:'#f87171', tag:'core',     desc:'Track and categorise daily family expenses.',                             page:'expenses',     navText:'Expenses',         core:true  },
   { id:'transactions', label:'Transactions',        emoji:'🔄', color:'#60a5fa', tag:'core',     desc:'Full ledger of income and payment transactions.',                         page:'transactions', navText:'Transactions',     core:true  },
   { id:'reports',      label:'Reports & Analytics', emoji:'📋', color:'#a78bfa', tag:'core',     desc:'Financial summaries, trends and insights.',                               page:'reports',      navText:'Reports',          core:true  },
+  { id:'whatsapp',    label:'WhatsApp Inbox',      emoji:'💬', color:'#25D366', tag:'optional', desc:'Log cash transactions via WhatsApp — send a message, it appears here for review.', page:'whatsapp', navText:'WhatsApp Inbox', core:false },
 
   // ── Optional modules ──
   { id:'investments',  label:'Investments',         emoji:'📈', color:'#34d399', tag:'optional', desc:'Portfolio tracker, broker statement import, 12 asset types.',             page:'investments',  navText:'Investments',      core:false },
@@ -20586,6 +20671,241 @@ function showPage(pageId) {
 
 // Handle OAuth redirects from Google Drive / OneDrive / Dropbox
 storageHandleOAuthRedirect();
+
+// =================== WHATSAPP INBOX ===================
+
+const WA_CONFIG_KEY = 'myfin_wa_config';
+const WA_WORKER_URL = 'https://myfin-whatsapp.husainkachwala750.workers.dev';
+
+function saveWAConfig() {
+  const phone = document.getElementById('wa-phone')?.value?.trim() || '';
+  localStorage.setItem(WA_CONFIG_KEY, JSON.stringify({ phone }));
+  renderWhatsAppInbox();
+}
+
+function loadWAConfig() {
+  try { return JSON.parse(localStorage.getItem(WA_CONFIG_KEY) || '{}'); } catch { return {}; }
+}
+
+async function fetchWATransactions() {
+  const familyId = window._currentFamilyId;
+  if (!familyId) { toast('No family ID found. Please sign in.', 'error'); return; }
+
+  const session = getSession();
+  if (!session?.access_token) { toast('Please sign in first', 'error'); return; }
+
+  try {
+    toast('🔄 Fetching WhatsApp transactions...', 'success');
+
+    const res = await fetch(SUPABASE_URL + '/rest/v1/whatsapp_transactions?family_id=eq.' + encodeURIComponent(familyId) + '&order=created_at.desc&limit=50', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    const data = await res.json();
+
+    // Store locally for rendering
+    window._waTransactions = data || [];
+    renderWATransactionsList();
+    toast(`📬 ${data.length} WhatsApp transaction(s) found`, 'success');
+  } catch(e) {
+    console.warn('WA fetch error:', e);
+    toast('Could not fetch: ' + e.message, 'error');
+  }
+}
+
+function renderWhatsAppInbox() {
+  const config = loadWAConfig();
+  const familyId = window._currentFamilyId || '';
+
+  // Setup card
+  const phoneInput = document.getElementById('wa-phone');
+  if (phoneInput && config.phone) phoneInput.value = config.phone;
+  const famInput = document.getElementById('wa-family-id');
+  if (famInput) famInput.value = familyId || 'Not signed in';
+
+  const statusEl = document.getElementById('wa-status');
+  const detailEl = document.getElementById('wa-status-detail');
+
+  if (config.phone && familyId) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#25D366">✅ Connected</span>';
+    if (detailEl) detailEl.textContent = 'Send messages to ' + config.phone + ' on WhatsApp';
+  } else {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#f59e0b">⚠️ Setup Required</span>';
+    if (detailEl) detailEl.textContent = config.phone ? 'Please sign in to link your family' : 'Enter your Twilio WhatsApp number below';
+  }
+
+  // KPIs
+  const txns = window._waTransactions || [];
+  const kpi = document.getElementById('wa-kpi-strip');
+  if (kpi) {
+    const pending = txns.filter(t => t.status === 'pending').length;
+    const approved = txns.filter(t => t.status === 'approved').length;
+    const totalAmt = txns.filter(t => t.status === 'pending').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const unparsed = txns.filter(t => !t.parsed).length;
+    kpi.innerHTML = `
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#25D366">${pending}</div><div style="font-size:12px;color:var(--text2)">Pending</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:#22c55e">${approved}</div><div style="font-size:12px;color:var(--text2)">Approved</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:var(--primary)">₹${formatNum(totalAmt)}</div><div style="font-size:12px;color:var(--text2)">Pending Amount</div></div>
+      <div class="card" style="text-align:center;padding:14px"><div style="font-size:24px;font-weight:700;color:${unparsed?'#f59e0b':'#94a3b8'}">${unparsed}</div><div style="font-size:12px;color:var(--text2)">Needs Review</div></div>`;
+  }
+
+  renderWATransactionsList();
+}
+
+function renderWATransactionsList() {
+  const container = document.getElementById('wa-transactions-list');
+  if (!container) return;
+
+  const txns = window._waTransactions || [];
+  if (!txns.length) {
+    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--text2)">No WhatsApp transactions yet. Send a message to get started! Click "Refresh Inbox" after sending.</div>';
+    return;
+  }
+
+  const memberOpts = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+
+  container.innerHTML = txns.map(t => {
+    const isIncome = t.type === 'credit';
+    const statusColor = t.status === 'approved' ? '#22c55e' : t.status === 'rejected' ? '#ef4444' : '#f59e0b';
+    const statusLabel = t.status === 'approved' ? '✅ Approved' : t.status === 'rejected' ? '❌ Rejected' : '⏳ Pending';
+    const time = new Date(t.created_at).toLocaleString();
+    const borderColor = isIncome ? '#22c55e' : '#ef4444';
+
+    return `<div class="card" style="margin-bottom:10px;border-left:4px solid ${borderColor};${t.status==='approved'?'opacity:0.6':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:18px">${isIncome ? '💰' : '💸'}</span>
+            <span style="font-size:16px;font-weight:700;color:${isIncome?'#22c55e':'#ef4444'}">₹${formatNum(t.amount||0)}</span>
+            <span style="font-size:12px;padding:2px 8px;border-radius:10px;background:${statusColor}20;color:${statusColor};font-weight:600">${statusLabel}</span>
+            ${!t.parsed ? '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#f59e0b20;color:#f59e0b;font-weight:600">⚠️ Needs Review</span>' : ''}
+          </div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px">${esc(t.category || 'Uncategorized')} — ${esc(t.description || t.message)}</div>
+          <div style="font-size:11px;color:var(--text3)">📱 "${esc(t.message)}" · ${time} · ${esc(t.phone||'')}</div>
+        </div>
+        ${t.status === 'pending' ? `
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <select class="form-input" style="font-size:11px;padding:4px 8px;width:130px" id="wa-member-${t.id}">
+            <option value="">Assign member</option>
+            ${memberOpts}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="approveWA('${t.id}')" style="padding:5px 12px;font-size:11px;background:#25D366">✅ Approve</button>
+          <button class="btn btn-secondary btn-sm" onclick="rejectWA('${t.id}')" style="padding:5px 10px;font-size:11px">❌</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveWA(id) {
+  const txn = (window._waTransactions || []).find(t => t.id === id);
+  if (!txn) return;
+
+  const memberId = document.getElementById('wa-member-' + id)?.value || (state.members[0]?.id || '');
+  if (!memberId) { toast('Please assign a member', 'error'); return; }
+
+  // Add to expenses
+  state.expenses.push({
+    id: uid(),
+    memberId,
+    date: new Date(txn.created_at).toISOString().slice(0, 10),
+    description: txn.description || txn.message,
+    amount: parseFloat(txn.amount) || 0,
+    category: txn.category || '📦 Other',
+    mode: 'Cash',
+    tags: 'whatsapp',
+    notes: 'Via WhatsApp: ' + txn.message,
+  });
+
+  // Also add to transactions
+  state.transactions.push({
+    id: uid(),
+    date: new Date(txn.created_at).toISOString().slice(0, 10),
+    type: txn.type || 'debit',
+    memberId,
+    description: txn.description || txn.message,
+    amount: parseFloat(txn.amount) || 0,
+    category: txn.category || '📦 Other',
+    mode: 'Cash',
+    tags: 'whatsapp',
+  });
+
+  saveData();
+
+  // Update status in Supabase
+  await updateWAStatus(id, 'approved');
+  txn.status = 'approved';
+  renderWhatsAppInbox();
+  toast('✅ Transaction approved and added!', 'success');
+}
+
+async function rejectWA(id) {
+  const txn = (window._waTransactions || []).find(t => t.id === id);
+  if (!txn) return;
+  await updateWAStatus(id, 'rejected');
+  txn.status = 'rejected';
+  renderWhatsAppInbox();
+  toast('Transaction rejected');
+}
+
+async function updateWAStatus(id, status) {
+  const session = getSession();
+  if (!session?.access_token) return;
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/whatsapp_transactions?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ status })
+    });
+  } catch(e) { console.warn('WA status update error:', e); }
+}
+
+async function approveAllWA() {
+  const pending = (window._waTransactions || []).filter(t => t.status === 'pending' && t.parsed);
+  if (!pending.length) { toast('No parsed pending transactions to approve', 'error'); return; }
+  if (!confirm(`Approve ${pending.length} transaction(s) and add to expenses?`)) return;
+
+  const defaultMember = state.members[0]?.id || '';
+  for (const txn of pending) {
+    const memberId = document.getElementById('wa-member-' + txn.id)?.value || defaultMember;
+    state.expenses.push({
+      id: uid(), memberId,
+      date: new Date(txn.created_at).toISOString().slice(0, 10),
+      description: txn.description || txn.message,
+      amount: parseFloat(txn.amount) || 0,
+      category: txn.category || '📦 Other',
+      mode: 'Cash', tags: 'whatsapp', notes: 'Via WhatsApp: ' + txn.message,
+    });
+    state.transactions.push({
+      id: uid(),
+      date: new Date(txn.created_at).toISOString().slice(0, 10),
+      type: txn.type || 'debit', memberId,
+      description: txn.description || txn.message,
+      amount: parseFloat(txn.amount) || 0,
+      category: txn.category || '📦 Other', mode: 'Cash', tags: 'whatsapp',
+    });
+    await updateWAStatus(txn.id, 'approved');
+    txn.status = 'approved';
+  }
+  saveData();
+  renderWhatsAppInbox();
+  toast(`✅ ${pending.length} transactions approved!`, 'success');
+}
+
+async function clearApprovedWA() {
+  window._waTransactions = (window._waTransactions || []).filter(t => t.status !== 'approved' && t.status !== 'rejected');
+  renderWhatsAppInbox();
+}
 
 // =================== GOOGLE SHEETS SYNC ===================
 

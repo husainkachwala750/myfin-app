@@ -1,0 +1,6 @@
+name = "myfin-whatsapp"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+SUPABASE_URL = "https://lnivxetuqhyrgefkzmau.supabase.co"
