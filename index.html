@@ -3104,6 +3104,44 @@
           <div id="gsheets-history"></div>
         </div>
       </div>
+
+      <!-- OFFLINE CSV/EXCEL — Works for ALL users -->
+      <div class="card" style="margin-top:18px;border:2px solid #34a853;border-radius:14px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span style="font-size:28px">📥</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;font-weight:700">Download &amp; Upload as CSV</h3>
+            <div style="font-size:12px;color:var(--text2)">Works for everyone — no Google account needed. Open in Excel, Google Sheets, or any spreadsheet app.</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px" id="csv-tabs-grid">
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Members"> 👨‍👩‍👧‍👦 Members</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Expenses"> 💸 Expenses</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Transactions"> 🔄 Transactions</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Investments"> 📈 Investments</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Bank Accounts"> 🏦 Bank Accounts</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Credit Cards"> 💳 Credit Cards</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Insurance"> 🛡️ Insurance</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Budgets"> 📊 Budgets</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Goals"> 🎯 Goals</label>
+          <label class="gsheets-tab-check"><input type="checkbox" checked data-csv="Documents"> 📁 Documents</label>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="csvDownloadAll()" style="padding:12px 24px;font-size:14px;background:linear-gradient(135deg,#34a853,#0f9d58)">
+            ⬇️ Download All CSVs (ZIP)
+          </button>
+          <button class="btn btn-secondary" onclick="csvDownloadSingle()" style="padding:12px 20px;font-size:13px">
+            ⬇️ Download Selected as Single CSV
+          </button>
+          <label class="btn btn-secondary" style="padding:12px 20px;font-size:13px;cursor:pointer">
+            ⬆️ Upload CSV to Import
+            <input type="file" accept=".csv" style="display:none" onchange="csvImportFile(this.files[0])">
+          </label>
+        </div>
+        <div id="csv-sync-log" style="margin-top:12px;font-size:12px;color:var(--text2)"></div>
+      </div>
     </div>
 
     <!-- BUSINESS MANAGER -->
@@ -20965,6 +21003,170 @@ function gsheetsUnlink() {
   localStorage.removeItem(GSHEETS_SPREADSHEET_KEY);
   renderGSheetsPage();
   toast('Spreadsheet unlinked');
+}
+
+// =================== CSV DOWNLOAD / UPLOAD ===================
+
+function getSelectedCsvSheets() {
+  const checks = document.querySelectorAll('#csv-tabs-grid input[type=checkbox]');
+  return Array.from(checks).filter(c => c.checked).map(c => c.dataset.csv);
+}
+
+function csvEscape(val) {
+  const s = String(val == null ? '' : val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function sheetToCsv(name) {
+  const defs = getSheetDefs();
+  const def = defs[name];
+  if (!def) return null;
+  const rows = def.rows();
+  const lines = [def.headers.map(csvEscape).join(',')];
+  rows.forEach(r => lines.push(r.map(csvEscape).join(',')));
+  return lines.join('\n');
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvDownloadSingle() {
+  const names = getSelectedCsvSheets();
+  if (!names.length) { toast('Select at least one sheet', 'error'); return; }
+
+  if (names.length === 1) {
+    const csv = sheetToCsv(names[0]);
+    if (csv) downloadFile(csv, `MyFin_${names[0].replace(/\s+/g,'_')}.csv`, 'text/csv');
+    return;
+  }
+
+  // Multiple selected — download each
+  names.forEach(name => {
+    const csv = sheetToCsv(name);
+    if (csv) downloadFile(csv, `MyFin_${name.replace(/\s+/g,'_')}.csv`, 'text/csv');
+  });
+  toast(`Downloaded ${names.length} CSV files`);
+}
+
+async function csvDownloadAll() {
+  const names = getSelectedCsvSheets();
+  if (!names.length) { toast('Select at least one sheet', 'error'); return; }
+
+  // Check if JSZip is available, if not load it
+  if (typeof JSZip === 'undefined') {
+    const log = document.getElementById('csv-sync-log');
+    if (log) log.innerHTML = '<span style="color:var(--primary)">📦 Loading ZIP library...</span>';
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  }
+
+  if (typeof JSZip === 'undefined') {
+    // Fallback: download individual CSVs
+    toast('Downloading individual CSV files...', 'success');
+    csvDownloadSingle();
+    return;
+  }
+
+  const zip = new JSZip();
+  let totalRows = 0;
+
+  names.forEach(name => {
+    const csv = sheetToCsv(name);
+    if (csv) {
+      zip.file(`MyFin_${name.replace(/\s+/g,'_')}.csv`, csv);
+      totalRows += csv.split('\n').length - 1;
+    }
+  });
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `MyFin_Data_${new Date().toISOString().slice(0,10)}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const log = document.getElementById('csv-sync-log');
+  if (log) log.innerHTML = `<div style="padding:8px 12px;background:rgba(6,214,160,0.08);border-radius:8px;border-left:3px solid #34a853">✅ Downloaded ZIP with ${names.length} CSVs · ${totalRows} total rows</div>`;
+  toast(`📥 Downloaded ${names.length} CSVs as ZIP!`, 'success');
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function csvImportFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { toast('CSV file is empty or has only headers', 'error'); return; }
+
+    const headers = parseCSVLine(lines[0]);
+    const dataRows = lines.slice(1).map(parseCSVLine);
+
+    // Auto-detect which sheet this CSV belongs to
+    const defs = getSheetDefs();
+    let matchedName = null;
+    let bestScore = 0;
+
+    for (const [name, def] of Object.entries(defs)) {
+      const score = def.headers.filter(h => headers.includes(h)).length;
+      if (score > bestScore) { bestScore = score; matchedName = name; }
+    }
+
+    if (!matchedName || bestScore < 2) {
+      toast('Could not identify CSV format. Make sure headers match MyFin format.', 'error');
+      return;
+    }
+
+    const def = defs[matchedName];
+
+    // Map CSV columns to expected order
+    const colMap = def.headers.map(h => headers.indexOf(h));
+    const mappedRows = dataRows.map(row => colMap.map(i => i >= 0 ? (row[i] || '') : ''));
+
+    if (!confirm(`Detected: "${matchedName}" (${mappedRows.length} rows)\n\nThis will REPLACE your current ${matchedName} data. Continue?`)) return;
+
+    const imported = def.importFn(mappedRows);
+    state[def.stateKey] = imported;
+    saveData();
+
+    const log = document.getElementById('csv-sync-log');
+    if (log) log.innerHTML = `<div style="padding:8px 12px;background:rgba(6,214,160,0.08);border-radius:8px;border-left:3px solid #34a853">✅ Imported ${imported.length} rows into <strong>${matchedName}</strong></div>`;
+    toast(`📥 Imported ${imported.length} ${matchedName} records!`, 'success');
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i+1] === '"') { current += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else current += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { result.push(current.trim()); current = ''; }
+      else current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
 }
 
 // =================== BUDGET PLANNER ===================
