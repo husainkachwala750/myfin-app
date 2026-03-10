@@ -2831,6 +2831,16 @@
           <label class="form-label">Notes / Details</label>
           <textarea id="doc-notes" class="form-input" rows="2" placeholder="Any additional details, reference numbers, linked assets..."></textarea>
         </div>
+        <div style="margin-top:12px">
+          <label class="form-label">📷 Document Images</label>
+          <div id="doc-image-upload-area" style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s" onclick="document.getElementById('doc-image-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='var(--primary)08'" ondragleave="this.style.borderColor='var(--border)';this.style.background=''" ondrop="handleDocImageDrop(event)">
+            <div style="font-size:28px;margin-bottom:6px">📤</div>
+            <div style="font-size:13px;color:var(--text2)">Click to upload or drag &amp; drop images</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">JPG, PNG, PDF — max 5 MB each</div>
+            <input type="file" id="doc-image-input" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocImageSelect(event)">
+          </div>
+          <div id="doc-image-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px"></div>
+        </div>
         <div style="margin-top:14px;display:flex;gap:10px">
           <button class="btn btn-primary" onclick="addDocument()">💾 Save Document</button>
           <button class="btn btn-secondary" onclick="clearDocForm()">Clear</button>
@@ -19872,6 +19882,84 @@ const DOC_CATEGORIES = {
 };
 
 let _docActiveTab = 'all';
+let _docPendingImages = []; // temp storage for images being added to new doc
+
+function handleDocImageSelect(e) {
+  const files = e.target.files;
+  if (files) processDocImageFiles(files, '_docPendingImages', 'doc-image-preview');
+}
+
+function handleDocImageDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--border)';
+  e.currentTarget.style.background = '';
+  const files = e.dataTransfer.files;
+  if (files) processDocImageFiles(files, '_docPendingImages', 'doc-image-preview');
+}
+
+function processDocImageFiles(files, storageVar, previewId) {
+  const arr = (storageVar === '_docPendingImages') ? _docPendingImages : (window[storageVar] || []);
+  Array.from(files).forEach(file => {
+    if (file.size > 5 * 1024 * 1024) { toast('File "' + file.name + '" exceeds 5 MB limit', 'error'); return; }
+    if (!file.type.match(/^image\/|application\/pdf/)) { toast('Only image and PDF files are allowed', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      arr.push({ name: file.name, data: ev.target.result, type: file.type });
+      renderDocImagePreviews(arr, previewId, storageVar);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderDocImagePreviews(images, containerId, storageVar) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = images.map((img, i) => `
+    <div style="position:relative;width:100px;height:100px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface2)">
+      ${img.type === 'application/pdf'
+        ? `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;flex-direction:column"><span style="font-size:28px">📄</span><span style="font-size:10px;color:var(--text2);margin-top:4px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(img.name)}</span></div>`
+        : `<img src="${img.data}" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="viewDocImage('${img.data.substring(0,50)}','${storageVar}',${i})" title="${esc(img.name)}">`
+      }
+      <button onclick="removeDocImage('${storageVar}',${i},'${containerId}')" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">×</button>
+    </div>`).join('');
+}
+
+function removeDocImage(storageVar, index, containerId) {
+  const arr = (storageVar === '_docPendingImages') ? _docPendingImages : window._editDocImages;
+  arr.splice(index, 1);
+  renderDocImagePreviews(arr, containerId, storageVar);
+}
+
+function viewDocImage(prefix, storageVar, index) {
+  const arr = (storageVar === '_docPendingImages') ? _docPendingImages : window._editDocImages;
+  const img = arr[index];
+  if (!img) return;
+  let modal = document.getElementById('doc-image-viewer-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'doc-image-viewer-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:90vw;max-height:90vh;padding:10px;text-align:center"><img id="doc-image-viewer-img" style="max-width:100%;max-height:80vh;border-radius:8px"><div style="margin-top:10px"><button class="btn btn-secondary" onclick="closeModal(\'doc-image-viewer-modal\')">Close</button></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('doc-image-viewer-modal'); });
+  }
+  document.getElementById('doc-image-viewer-img').src = img.data;
+  openModal('doc-image-viewer-modal');
+}
+
+function viewDocImageDirect(dataUrl) {
+  let modal = document.getElementById('doc-image-viewer-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'doc-image-viewer-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:90vw;max-height:90vh;padding:10px;text-align:center"><img id="doc-image-viewer-img" style="max-width:100%;max-height:80vh;border-radius:8px"><div style="margin-top:10px"><button class="btn btn-secondary" onclick="closeModal(\'doc-image-viewer-modal\')">Close</button></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('doc-image-viewer-modal'); });
+  }
+  document.getElementById('doc-image-viewer-img').src = dataUrl;
+  openModal('doc-image-viewer-modal');
+}
 
 function buildDocMemberTabs() {
   buildMemberTabs('doc-member-tabs', 'documents', ()=>0, mid => {
@@ -19918,6 +20006,7 @@ function addDocument() {
     name: name || type,
     number, issueDate, expiryDate,
     authority, status, notes,
+    images: _docPendingImages.map(img => ({ name: img.name, data: img.data, type: img.type })),
     createdAt: new Date().toISOString()
   };
 
@@ -19933,6 +20022,9 @@ function clearDocForm() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const st = document.getElementById('doc-status'); if (st) st.value = 'active';
+  _docPendingImages = [];
+  const preview = document.getElementById('doc-image-preview'); if (preview) preview.innerHTML = '';
+  const fileInput = document.getElementById('doc-image-input'); if (fileInput) fileInput.value = '';
 }
 
 function editDocument(id) {
@@ -19944,6 +20036,9 @@ function editDocument(id) {
   const statusOpts = ['active','expired','pending','archived'].map(s => `<option value="${s}" ${s===doc.status?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('');
   const types = DOC_CATEGORIES[doc.category]?.types || ['Other'];
   const typeOpts = types.map(t => `<option value="${t}" ${t===doc.type?'selected':''}>${t}</option>`).join('');
+
+  // Set up edit images array
+  window._editDocImages = (doc.images || []).map(img => ({ name: img.name, data: img.data, type: img.type }));
 
   const html = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -19958,6 +20053,14 @@ function editDocument(id) {
       <div><label class="form-label">Status</label><select id="edit-doc-status" class="form-input">${statusOpts}</select></div>
     </div>
     <div style="margin-top:12px"><label class="form-label">Notes</label><textarea id="edit-doc-notes" class="form-input" rows="2">${esc(doc.notes||'')}</textarea></div>
+    <div style="margin-top:12px">
+      <label class="form-label">📷 Document Images</label>
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById('edit-doc-image-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleEditDocImageDrop(event)">
+        <div style="font-size:13px;color:var(--text2)">📤 Click to upload or drag &amp; drop images</div>
+        <input type="file" id="edit-doc-image-input" accept="image/*,.pdf" multiple style="display:none" onchange="handleEditDocImageSelect(event)">
+      </div>
+      <div id="edit-doc-image-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px"></div>
+    </div>
     <div style="margin-top:14px;display:flex;gap:10px">
       <button class="btn btn-primary" onclick="saveEditDocument('${id}')">💾 Save</button>
       <button class="btn btn-secondary" onclick="closeModal('edit-doc-modal')">Cancel</button>
@@ -19974,6 +20077,29 @@ function editDocument(id) {
   }
   document.getElementById('edit-doc-body').innerHTML = html;
   openModal('edit-doc-modal');
+  renderDocImagePreviews(window._editDocImages, 'edit-doc-image-preview', '_editDocImages');
+}
+
+function handleEditDocImageSelect(e) {
+  const files = e.target.files;
+  if (files) {
+    Array.from(files).forEach(file => {
+      if (file.size > 5 * 1024 * 1024) { toast('File "' + file.name + '" exceeds 5 MB limit', 'error'); return; }
+      if (!file.type.match(/^image\/|application\/pdf/)) { toast('Only image and PDF files are allowed', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        window._editDocImages.push({ name: file.name, data: ev.target.result, type: file.type });
+        renderDocImagePreviews(window._editDocImages, 'edit-doc-image-preview', '_editDocImages');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+function handleEditDocImageDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--border)';
+  handleEditDocImageSelect({ target: { files: e.dataTransfer.files } });
 }
 
 function updateEditDocTypes(docId) {
@@ -19997,6 +20123,7 @@ function saveEditDocument(id) {
   doc.authority  = document.getElementById('edit-doc-authority')?.value?.trim() || '';
   doc.status     = document.getElementById('edit-doc-status')?.value || 'active';
   doc.notes      = document.getElementById('edit-doc-notes')?.value?.trim() || '';
+  doc.images     = (window._editDocImages || []).map(img => ({ name: img.name, data: img.data, type: img.type }));
   saveData();
   closeModal('edit-doc-modal');
   renderDocuments();
@@ -20014,6 +20141,31 @@ function deleteDocument(id) {
 function viewDocNote(id) {
   const doc = state.documents.find(d => d.id === id);
   if (doc?.notes) alert(doc.notes);
+}
+
+function viewDocImages(id) {
+  const doc = state.documents.find(d => d.id === id);
+  if (!doc || !doc.images || !doc.images.length) return;
+
+  let modal = document.getElementById('doc-gallery-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'doc-gallery-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = '<div class="modal" style="max-width:800px"><h3 style="margin:0 0 16px" id="doc-gallery-title"></h3><div id="doc-gallery-body"></div><div style="margin-top:14px;text-align:right"><button class="btn btn-secondary" onclick="closeModal(\'doc-gallery-modal\')">Close</button></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('doc-gallery-modal'); });
+  }
+
+  document.getElementById('doc-gallery-title').textContent = '📷 ' + (doc.name || doc.type) + ' — Images';
+  document.getElementById('doc-gallery-body').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">
+      ${doc.images.map((img, i) => img.type === 'application/pdf'
+        ? `<div style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--surface2);cursor:pointer" onclick="window.open('${img.data}')"><span style="font-size:36px">📄</span><span style="font-size:11px;color:var(--text2);margin-top:6px">${esc(img.name)}</span></div>`
+        : `<img src="${img.data}" style="width:140px;height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="viewDocImageDirect(this.src)" title="${esc(img.name)}">`
+      ).join('')}
+    </div>`;
+  openModal('doc-gallery-modal');
 }
 
 function renderDocuments() {
@@ -20075,6 +20227,7 @@ function renderDocuments() {
             <th style="padding:8px 6px">Number</th>
             <th style="padding:8px 6px">Issue Date</th>
             <th style="padding:8px 6px">Expiry</th>
+            <th style="padding:8px 6px">Images</th>
             <th style="padding:8px 6px">Status</th>
             <th style="padding:8px 6px">Actions</th>
           </tr></thead><tbody>`;
@@ -20083,6 +20236,10 @@ function renderDocuments() {
       const member = state.members.find(m => m.id === d.memberId);
       const statusColor = d.status==='active'?'#22c55e':d.status==='expired'?'#ef4444':d.status==='pending'?'#f59e0b':'#94a3b8';
       const isExpiringSoon = d.expiryDate && d.status !== 'expired' && ((new Date(d.expiryDate) - new Date()) / (1000*60*60*24)) <= 90 && ((new Date(d.expiryDate) - new Date()) / (1000*60*60*24)) >= 0;
+      const imgCount = (d.images||[]).length;
+      const imgCell = imgCount > 0
+        ? `<span style="cursor:pointer;color:var(--primary);font-weight:500" onclick="viewDocImages('${d.id}')" title="View ${imgCount} image(s)">📷 ${imgCount}</span>`
+        : `<span style="color:var(--text3)">—</span>`;
       html += `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:8px 6px">${esc(member?.name||'—')}</td>
         <td style="padding:8px 6px">${esc(d.type||'')}</td>
@@ -20090,6 +20247,7 @@ function renderDocuments() {
         <td style="padding:8px 6px;font-family:'DM Mono',monospace">${esc(d.number||'—')}</td>
         <td style="padding:8px 6px">${d.issueDate||'—'}</td>
         <td style="padding:8px 6px${isExpiringSoon?';color:#f59e0b;font-weight:600':''}">${d.expiryDate||'—'}${isExpiringSoon?' ⚠️':''}</td>
+        <td style="padding:8px 6px">${imgCell}</td>
         <td style="padding:8px 6px"><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor}">${d.status}</span></td>
         <td style="padding:8px 6px;white-space:nowrap">
           <button class="btn btn-secondary btn-sm" onclick="editDocument('${d.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
