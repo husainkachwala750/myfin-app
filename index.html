@@ -19611,6 +19611,12 @@ const SYNC_STATUS_KEY = 'myfin_sync_status';
 // ── Supabase REST helpers ─────────────────────────────────
 async function sbFetch(path, options={}, _retried=false) {
   const session = getSession();
+  if (!session?.access_token && !path.startsWith('/auth/')) {
+    // No session at all — force re-login
+    toast('Please log in to sync your data.', 'error');
+    showAuthScreen();
+    throw new Error('Not authenticated');
+  }
   const headers = {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_KEY,
@@ -19623,6 +19629,8 @@ async function sbFetch(path, options={}, _retried=false) {
     if ((res.status === 401 || res.status === 403) && !_retried) {
       const refreshed = await sbRefreshToken();
       if (refreshed) return sbFetch(path, options, true);
+      // sbRefreshToken handles re-login prompt if refresh fails
+      throw new Error('Session expired — please log in again');
     }
     const err = await res.text();
     throw new Error(`Supabase ${res.status}: ${err}`);
@@ -19663,7 +19671,14 @@ async function sbRefreshToken() {
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
       body: JSON.stringify({ refresh_token: session.refresh_token })
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn('[MyFin Auth] Refresh token rejected (status ' + res.status + '). Session expired.');
+      // Refresh token is invalid/expired — force re-login
+      clearSession();
+      toast('Session expired. Please log in again.', 'error');
+      showAuthScreen();
+      return null;
+    }
     const data = await res.json();
     if (data.access_token) {
       // Merge new tokens into existing session (keep family_id, member_id, etc.)
@@ -20185,6 +20200,10 @@ async function bootFamilyApp(familyId) {
     loadExchangeRates();
     if (!_fxInterval)    _fxInterval    = setInterval(loadExchangeRates, 60*60*1000);
     if (!_tokenInterval) _tokenInterval = setInterval(sbRefreshToken, 45*60*1000);
+    // Proactively refresh token on boot to prevent JWT expired errors
+    if (getSession()?.refresh_token) {
+      try { await sbRefreshToken(); } catch(e) { console.warn('[MyFin Boot] Token refresh on boot failed:', e.message); }
+    }
 
     try {
       await initFamilyDatabase(familyId);
