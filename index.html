@@ -5676,20 +5676,41 @@ async function storageSaveProviderToCloud(id) {
   try {
     const session = getSession();
     if (!session?.access_token) return;
-    await fetch(SUPABASE_URL + '/auth/v1/user', {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token },
       body: JSON.stringify({ data: { storage_provider: id } })
     });
+    if (res.status === 401 || res.status === 403) {
+      const refreshed = await sbRefreshToken();
+      if (refreshed) {
+        const s2 = getSession();
+        await fetch(SUPABASE_URL + '/auth/v1/user', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + s2.access_token },
+          body: JSON.stringify({ data: { storage_provider: id } })
+        });
+      }
+    }
   } catch(e) { console.warn('Could not save provider to cloud:', e); }
 }
 async function storageRestoreProviderFromCloud() {
   try {
-    const session = getSession();
+    let session = getSession();
     if (!session?.access_token) { console.log('[MyFin Boot] No access_token for provider restore'); return null; }
-    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    let res = await fetch(SUPABASE_URL + '/auth/v1/user', {
       headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token }
     });
+    // Retry with refreshed token on 401
+    if (res.status === 401 || res.status === 403) {
+      const refreshed = await sbRefreshToken();
+      if (refreshed) {
+        session = getSession();
+        res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token }
+        });
+      }
+    }
     console.log('[MyFin Boot] user_metadata fetch status:', res.status);
     if (!res.ok) return null;
     const user = await res.json();
@@ -20203,6 +20224,12 @@ async function bootFamilyApp(familyId) {
     // Proactively refresh token on boot to prevent JWT expired errors
     if (getSession()?.refresh_token) {
       try { await sbRefreshToken(); } catch(e) { console.warn('[MyFin Boot] Token refresh on boot failed:', e.message); }
+      // If refresh cleared the session (expired), abort boot
+      if (!getSession()?.access_token) {
+        console.warn('[MyFin Boot] Session cleared after refresh — aborting boot');
+        _bootPhase1Done = false;
+        return;
+      }
     }
 
     try {
@@ -20716,16 +20743,7 @@ async function fetchWATransactions() {
   try {
     toast('🔄 Fetching WhatsApp transactions...', 'success');
 
-    const res = await fetch(SUPABASE_URL + '/rest/v1/whatsapp_transactions?family_id=eq.' + encodeURIComponent(familyId) + '&order=created_at.desc&limit=50', {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + session.access_token,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) throw new Error('API error: ' + res.status);
-    const data = await res.json();
+    const data = await sbFetch('/rest/v1/whatsapp_transactions?family_id=eq.' + encodeURIComponent(familyId) + '&order=created_at.desc&limit=50');
 
     // Store locally for rendering
     window._waTransactions = data || [];
@@ -20876,14 +20894,9 @@ async function updateWAStatus(id, status) {
   const session = getSession();
   if (!session?.access_token) return;
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/whatsapp_transactions?id=eq.' + id, {
+    await sbFetch('/rest/v1/whatsapp_transactions?id=eq.' + id, {
       method: 'PATCH',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + session.access_token,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
+      headers: { 'Prefer': 'return=minimal' },
       body: JSON.stringify({ status })
     });
   } catch(e) { console.warn('WA status update error:', e); }
