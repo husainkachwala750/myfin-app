@@ -1490,6 +1490,7 @@
       <div class="nav-item" onclick="showPage('budgets')" data-page="budgets"><span class="icon">📊</span> Budget Planner</div>
       <div class="nav-item" onclick="showPage('goals')" data-page="goals"><span class="icon">🎯</span> Financial Goals</div>
       <div class="nav-item" onclick="showPage('gsheets')" data-page="gsheets"><span class="icon">📗</span> Sheets Sync</div>
+      <div class="nav-item" onclick="showPage('exchange')" data-page="exchange"><span class="icon">💱</span> Exchange Rates</div>
     </div>
 
     <div class="nav-section">
@@ -3120,6 +3121,70 @@
     </div>
 
     <!-- GOOGLE SHEETS SYNC -->
+    <!-- ═══ EXCHANGE RATES PAGE ═══ -->
+    <div id="page-exchange" class="page">
+      <div class="page-header">
+        <h2>💱 Exchange Rates</h2>
+        <p>Live currency rates, converter & rate history — powered by open.er-api.com</p>
+      </div>
+
+      <!-- Converter Card -->
+      <div style="background:var(--surface);border:1.5px solid rgba(37,99,235,0.25);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+          <span style="font-size:24px">🔄</span>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">Currency Converter</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Amount</label>
+            <input type="number" id="fx-conv-amount" value="1" min="0" step="any"
+              oninput="updateFxConverter()"
+              style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-weight:600;background:var(--surface2)">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">From</label>
+            <div id="fx-conv-from-wrap"></div>
+          </div>
+          <button onclick="swapFxConverter()" style="padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:18px;margin-bottom:2px" title="Swap currencies">⇄</button>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">To</label>
+            <div id="fx-conv-to-wrap"></div>
+          </div>
+        </div>
+        <div id="fx-conv-result" style="margin-top:16px;padding:16px;background:linear-gradient(135deg,rgba(37,99,235,0.06),rgba(37,99,235,0.02));border:1px solid rgba(37,99,235,0.15);border-radius:12px;font-size:22px;font-weight:700;color:var(--accent);text-align:center">
+          —
+        </div>
+        <div id="fx-conv-rate-info" style="text-align:center;font-size:12px;color:var(--text3);margin-top:8px"></div>
+      </div>
+
+      <!-- Status & Refresh -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="fx-page-badge" style="font-size:13px;font-weight:600;color:#06d6a0">💱 Loading rates…</span>
+          <span id="fx-page-timestamp" style="font-size:11px;color:var(--text3)"></span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="fx-rate-search" placeholder="Search currency..." oninput="renderFxRatesTable()"
+            style="padding:7px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;width:180px;background:var(--surface2)">
+          <button onclick="loadExchangeRates(true).then(()=>{renderFxRatesPage();toast('Rates refreshed!','success')})"
+            style="padding:7px 16px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:12px;cursor:pointer">
+            🔄 Refresh Rates
+          </button>
+        </div>
+      </div>
+
+      <!-- Base currency info -->
+      <div style="padding:10px 14px;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.12);border-radius:10px;font-size:12px;color:var(--text3);margin-bottom:16px">
+        Showing rates relative to your base currency: <strong id="fx-page-base" style="color:var(--text)">—</strong>
+        <span style="margin-left:6px;opacity:0.7">(change in Settings)</span>
+      </div>
+
+      <!-- Rates Table -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm)">
+        <div id="fx-rates-table" style="overflow-x:auto"></div>
+      </div>
+    </div>
+
     <div id="page-gsheets" class="page">
       <div class="page-header">
         <h2>📗 Google Sheets Sync</h2>
@@ -4168,6 +4233,7 @@
     <div class="more-drawer-item" onclick="showPage('reports');closeMoreDrawer()" data-page="reports"><span class="icon">📋</span> Reports</div>
     <div class="more-drawer-item" onclick="showPage('aichat');closeMoreDrawer()" data-page="aichat"><span class="icon">💬</span> AI Finance Chat</div>
     <div class="more-drawer-item" onclick="showPage('portfolio');closeMoreDrawer()" data-page="portfolio"><span class="icon">📉</span> Portfolio Tracker</div>
+    <div class="more-drawer-item" onclick="showPage('exchange');closeMoreDrawer()" data-page="exchange"><span class="icon">💱</span> Exchange Rates</div>
   </div>
   <!-- More drawer backdrop -->
   <div id="more-drawer-overlay" style="display:none;position:fixed;inset:0;z-index:198;" onclick="closeMoreDrawer()"></div>
@@ -6983,6 +7049,113 @@ function totalIncomeInBase() {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+// EXCHANGE RATE PAGE
+// ═══════════════════════════════════════════════════════════
+function renderFxRatesPage() {
+  const base = getBaseCurrency();
+  // Init converter dropdowns
+  const fromWrap = document.getElementById('fx-conv-from-wrap');
+  const toWrap = document.getElementById('fx-conv-to-wrap');
+  if (fromWrap && !document.getElementById('fx-conv-from')) {
+    fromWrap.innerHTML = buildCurrencySelect('fx-conv-from', 'USD', 'width:100%');
+    document.getElementById('fx-conv-from').onchange = updateFxConverter;
+  }
+  if (toWrap && !document.getElementById('fx-conv-to')) {
+    toWrap.innerHTML = buildCurrencySelect('fx-conv-to', base, 'width:100%');
+    document.getElementById('fx-conv-to').onchange = updateFxConverter;
+  }
+  // Update base label
+  const baseEl = document.getElementById('fx-page-base');
+  if (baseEl) { const c = getCurrency(base); baseEl.textContent = c.code + ' (' + c.symbol + ' ' + c.name + ')'; }
+  // Update badge
+  const badge = document.getElementById('fx-page-badge');
+  if (badge) {
+    if (_fxLoaded) { badge.textContent = '💱 Live Rates'; badge.style.color = '#06d6a0'; }
+    else { badge.textContent = '💱 No FX Data'; badge.style.color = '#ff6b6b'; }
+  }
+  // Timestamp
+  const tsEl = document.getElementById('fx-page-timestamp');
+  if (tsEl && _fxTimestamp) { tsEl.textContent = 'Updated: ' + new Date(_fxTimestamp).toLocaleString(); }
+  updateFxConverter();
+  renderFxRatesTable();
+}
+
+function updateFxConverter() {
+  const amt = parseFloat(document.getElementById('fx-conv-amount')?.value) || 0;
+  const from = document.getElementById('fx-conv-from')?.value || 'USD';
+  const to = document.getElementById('fx-conv-to')?.value || getBaseCurrency();
+  const resultEl = document.getElementById('fx-conv-result');
+  const infoEl = document.getElementById('fx-conv-rate-info');
+  if (!_fxLoaded || !_fxRates[from] || !_fxRates[to]) {
+    if (resultEl) resultEl.textContent = 'Rates not loaded yet';
+    return;
+  }
+  const converted = convertCurrency(amt, from, to);
+  const fromC = getCurrency(from);
+  const toC = getCurrency(to);
+  if (resultEl) resultEl.innerHTML = fromC.symbol + amt.toLocaleString(undefined,{maximumFractionDigits:2}) + ' <span style="color:var(--text3);font-size:16px;font-weight:500">=</span> ' + toC.symbol + converted.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:4});
+  if (infoEl) {
+    const rate1 = convertCurrency(1, from, to);
+    const rateInv = convertCurrency(1, to, from);
+    infoEl.textContent = '1 ' + from + ' = ' + rate1.toFixed(4) + ' ' + to + '  •  1 ' + to + ' = ' + rateInv.toFixed(4) + ' ' + from;
+  }
+}
+
+function swapFxConverter() {
+  const fromEl = document.getElementById('fx-conv-from');
+  const toEl = document.getElementById('fx-conv-to');
+  if (!fromEl || !toEl) return;
+  const tmp = fromEl.value;
+  fromEl.value = toEl.value;
+  toEl.value = tmp;
+  updateFxConverter();
+}
+
+function renderFxRatesTable() {
+  const el = document.getElementById('fx-rates-table');
+  if (!el) return;
+  if (!_fxLoaded) { el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text3)">Loading exchange rates...</div>'; return; }
+  const base = getBaseCurrency();
+  const search = (document.getElementById('fx-rate-search')?.value || '').toLowerCase();
+  // Build rates relative to base currency
+  const baseRate = _fxRates[base] || 1;
+  let currencies = WORLD_CURRENCIES.filter(c => _fxRates[c.code]).map(c => ({
+    code: c.code, symbol: c.symbol, name: c.name, country: c.country,
+    rate: _fxRates[c.code] / baseRate
+  }));
+  if (search) {
+    currencies = currencies.filter(c =>
+      c.code.toLowerCase().includes(search) ||
+      c.name.toLowerCase().includes(search) ||
+      c.country.toLowerCase().includes(search)
+    );
+  }
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html += '<thead><tr style="background:var(--surface2);border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:12px 16px;font-weight:700;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Currency</th>';
+  html += '<th style="text-align:right;padding:12px 16px;font-weight:700;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Rate (1 ' + base + ')</th>';
+  html += '<th style="text-align:right;padding:12px 16px;font-weight:700;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Inverse</th>';
+  html += '</tr></thead><tbody>';
+  currencies.forEach((c, i) => {
+    const isBase = c.code === base;
+    const bg = isBase ? 'rgba(37,99,235,0.06)' : (i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)');
+    const fw = isBase ? '700' : '400';
+    html += '<tr style="background:' + bg + ';border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:10px 16px;font-weight:' + fw + '">';
+    html += '<span style="font-size:12px;font-weight:600;color:var(--text)">' + c.code + '</span>';
+    html += ' <span style="color:var(--text3);font-size:11px">' + c.symbol + '</span>';
+    html += ' <span style="color:var(--text3);font-size:11px;margin-left:4px">' + c.name + '</span>';
+    html += '</td>';
+    html += '<td style="text-align:right;padding:10px 16px;font-family:\'DM Mono\',monospace;font-weight:' + fw + ';color:var(--text)">' + c.rate.toFixed(4) + '</td>';
+    html += '<td style="text-align:right;padding:10px 16px;font-family:\'DM Mono\',monospace;color:var(--text3);font-size:12px">' + (1/c.rate).toFixed(4) + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div style="padding:10px 16px;font-size:11px;color:var(--text3);text-align:right;border-top:1px solid var(--border)">' + currencies.length + ' currencies</div>';
+  el.innerHTML = html;
+}
+
 let state = {
   members:[], expenses:[], transactions:[], investments:[],
   bankAccounts:[], statements:[], creditCards:[], contracts:[],
@@ -7390,6 +7563,7 @@ function _showPageCore(id) {
   if(id==='documents') { buildDocMemberTabs(); renderDocuments(); }
   if(id==='budgets') { populateMemberSelects(); renderBudgetPage(); }
   if(id==='goals') { populateMemberSelects(); renderGoalsPage(); }
+  if(id==='exchange') { renderFxRatesPage(); }
   if(id==='gsheets') { renderGSheetsPage(); }
   if(id==='whatsapp') { renderWhatsAppInbox(); }
   if(id==='family-access') { renderFamilyAccessPage(); }
